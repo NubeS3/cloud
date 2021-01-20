@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="8ad6495a-42d1-4cbd-aecd-f5ac08decd31" name="Default Changelist" comment="set up dir tree, add authenticate">
-      <change afterPath="$PROJECT_DIR$/cmd/internals/routes/apiKey.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/cmd/internals/routes/user.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/cmd/internals/middlewares/authenticate.go" beforeDir="false" afterPath="$PROJECT_DIR$/cmd/internals/middlewares/authenticate.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-    </list>
+    <list default="true" id="8ad6495a-42d1-4cbd-aecd-f5ac08decd31" name="Default Changelist" comment="update authen Access Key and User authen" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -105,7 +99,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="set up dir tree, add authenticate" />
-    <option name="LAST_COMMIT_MESSAGE" value="set up dir tree, add authenticate" />
+    <MESSAGE value="update authen Access Key and User authen" />
+    <option name="LAST_COMMIT_MESSAGE" value="update authen Access Key and User authen" />
   </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
