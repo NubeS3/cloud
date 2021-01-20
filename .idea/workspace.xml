@@ -1,7 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="8ad6495a-42d1-4cbd-aecd-f5ac08decd31" name="Default Changelist" comment="" />
+    <list default="true" id="8ad6495a-42d1-4cbd-aecd-f5ac08decd31" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/internals/middlewares/authenticate.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/internals/models/.keep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/internals/routes/.keep" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/internals/ultis/config.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/cmd/internals/ultis/jwt_claims.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/cmd/internals/api_server/api_server.go" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -14,7 +24,10 @@
       </list>
     </option>
   </component>
-  <component name="GOROOT" path="C:\Users\phamt\go\go1.15.6" />
+  <component name="GOROOT" path="$USER_HOME$/sdk/go1.15.6" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectId" id="1lXyqJJdANY6MKttZUAV7TGYhwK" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -28,7 +41,14 @@
     <property name="configurable.Module.GOPATH.is.expanded" value="false" />
     <property name="configurable.Project.GOPATH.is.expanded" value="true" />
     <property name="go.import.settings.migrated" value="true" />
-    <property name="last_opened_file_path" value="$USER_HOME$" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="go.vgo" />
   </component>
   <component name="RecentsManager">
@@ -52,17 +72,18 @@
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
   <component name="VgoProject">
     <integration-enabled>true</integration-enabled>
-  </component>
-  <component name="WindowStateProjectService">
-    <state x="223" y="72" width="1089" height="729" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1607758218632">
-      <screen x="0" y="0" width="1536" height="834" />
-    </state>
-    <state x="223" y="72" width="1089" height="729" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1536.834@0.0.1536.834" timestamp="1607758218632" />
-    <state x="277" y="62" key="SettingsEditor" timestamp="1607758272005">
-      <screen x="0" y="0" width="1536" height="834" />
-    </state>
-    <state x="277" y="62" key="SettingsEditor/0.0.1536.834@0.0.1536.834" timestamp="1607758272005" />
   </component>
 </project>
