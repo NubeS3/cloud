@@ -1,23 +1,23 @@
 package models
 
 import (
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
 	"github.com/gocql/gocql"
+	"github.com/linxGnu/goseaweedfs"
 	"github.com/spf13/viper"
-	"io/ioutil"
-	"path/filepath"
+	"net/http"
 	"time"
 )
 
 var (
-	session  *gocql.Session
-	keyspace string
-	cqlport  string
+	session *gocql.Session
+	sw      *goseaweedfs.Seaweed
 )
 
-func IninDb() error {
+const (
+	CHUNK_SIZE = 8096
+)
+
+func InitDb() error {
 	viper.SetConfigName("config") // name of config file (without extension)
 	viper.SetConfigType("json")
 	viper.AddConfigPath(".")
@@ -26,38 +26,19 @@ func IninDb() error {
 		return err
 	}
 
-	cqlshrcHost := fmt.Sprintf("%s-%s.db.astra.datastax.com", viper.GetString("ASTRA_DB_ID"), viper.GetString("ASTRA_DB_REGION"))
 	//_cqlshrc_port :=
-	_username := viper.GetString("ASTRA_DB_USERNAME")
-	_password := viper.GetString("ASTRA_DB_PASSWORD")
-	keyspace = viper.GetString("ASTRA_DB_KEYSPACE")
-	cqlport = viper.GetString("ASTRA_DB_CQL_PORT")
-
-	_certPath, _ := filepath.Abs("./configs/cert")
-	_keyPath, _ := filepath.Abs("./configs/key")
-	_caPath, _ := filepath.Abs("./configs/ca.crt")
-	_cert, _ := tls.LoadX509KeyPair(_certPath, _keyPath)
-	_caCert, _ := ioutil.ReadFile(_caPath)
-	_caCertPool := x509.NewCertPool()
-	_caCertPool.AppendCertsFromPEM(_caCert)
-	_tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{_cert},
-		RootCAs:      _caCertPool,
-	}
+	cqlshrcHost := viper.GetString("DB_URL")
+	_username := viper.GetString("DB_USERNAME")
+	_password := viper.GetString("DB_PASSWORD")
+	keyspace := viper.GetString("DB_KEYSPACE")
 
 	cluster := gocql.NewCluster(cqlshrcHost)
 	cluster.Authenticator = gocql.PasswordAuthenticator{
 		Username: _username,
 		Password: _password,
 	}
-	clusterHosts := fmt.Sprintf("%s:%s", cqlshrcHost, cqlport)
-	fmt.Println(clusterHosts)
-	cluster.Hosts = []string{clusterHosts}
-
-	cluster.SslOpts = &gocql.SslOptions{
-		Config:                 _tlsConfig,
-		EnableHostVerification: false,
-	}
+	cluster.Keyspace = keyspace
+	cluster.Consistency = gocql.Quorum
 
 	cluster.ConnectTimeout = time.Second * 10
 	session, err = cluster.CreateSession()
@@ -65,9 +46,28 @@ func IninDb() error {
 		return err
 	}
 
-	_query := "SELECT * FROM system.local"
-	iter := session.Query(_query).Iter()
-	fmt.Printf("Testing: %d rows returned", iter.NumRows())
+	//_query := "SELECT * FROM system.local"
+	//iter := session.Query(_query).Iter()
+	//fmt.Printf("Testing: %d rows returned", iter.NumRows())
 
 	return nil
+}
+
+func InitFs() error {
+	masterUrl := viper.GetString("SW_MASTER")
+	filerUrl := viper.GetString("SW_FILER")
+
+	var err error
+	sw, err = goseaweedfs.NewSeaweed(masterUrl, []string{filerUrl}, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
+
+	return err
+}
+
+func CleanUp() {
+	if sw != nil {
+		_ = sw.Close()
+	}
+	if session != nil {
+		session.Close()
+	}
 }

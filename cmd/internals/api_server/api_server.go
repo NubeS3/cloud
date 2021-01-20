@@ -3,16 +3,29 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/routes"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
+func Routing(r *gin.Engine) {
+	routes.TestRoute(r)
+}
+
 func Run() {
 	fmt.Println("Initialize DB connection")
-	err := models.IninDb()
+	err := models.InitDb()
 	if err != nil {
 		panic(err)
 	}
+
+	err = models.InitFs()
+	if err != nil {
+		panic(err)
+	}
+
+	defer models.CleanUp()
+
 	fmt.Println("Starting Cloud Server")
 	r := gin.Default()
 	r.GET("/", func(c *gin.Context) {
@@ -20,6 +33,7 @@ func Run() {
 			"message": "OK!",
 		})
 	})
+	Routing(r)
 
-	_ = r.Run(":8080")
+	_ = r.Run(":6160")
 }
