@@ -11,8 +11,16 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-
-# Config file
-config.json
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
+
+# configs
+config.json
+/configs
+
+# idea
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
