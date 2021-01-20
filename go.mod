@@ -1,4 +1,4 @@
-module https: //github.com/NubeS3/cloud
+module github.com/NubeS3/cloud
 
 go 1.15
 
