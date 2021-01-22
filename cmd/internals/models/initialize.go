@@ -11,6 +11,7 @@ import (
 var (
 	session *gocql.Session
 	sw      *goseaweedfs.Seaweed
+	filer   []string
 )
 
 const (
@@ -57,8 +58,11 @@ func InitFs() error {
 	masterUrl := viper.GetString("SW_MASTER")
 	filerUrl := viper.GetString("SW_FILER")
 
+	if _filer := filerUrl; _filer != "" {
+		filer = []string{_filer}
+	}
 	var err error
-	sw, err = goseaweedfs.NewSeaweed(masterUrl, []string{filerUrl}, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
+	sw, err = goseaweedfs.NewSeaweed(masterUrl, filer, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
 
 	return err
 }
