@@ -45,7 +45,7 @@ func TestDelete(path string) error {
 	return err
 }
 
-func TestDownload(path string, fileName string, callback func(r io.Reader) error) error {
+func TestDownload(path string, callback func(r io.Reader) error) error {
 	filers := sw.Filers()
 	filer := filers[0]
 	err := filer.Download(path, nil, callback)
