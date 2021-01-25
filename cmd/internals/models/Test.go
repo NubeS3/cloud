@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
+	"io"
 	"log"
 	"mime/multipart"
 )
@@ -41,5 +42,12 @@ func TestDelete(path string) error {
 	filers := sw.Filers()
 	filer := filers[0]
 	err := filer.Delete(path, nil)
+	return err
+}
+
+func TestDownload(path string, fileName string, callback func(r io.Reader) error) error {
+	filers := sw.Filers()
+	filer := filers[0]
+	err := filer.Download(path, nil, callback)
 	return err
 }

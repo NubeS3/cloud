@@ -5,6 +5,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/gin-gonic/gin"
 	"github.com/linxGnu/goseaweedfs"
+	"io"
 	"net/http"
 )
 
@@ -12,6 +13,18 @@ func TestRoute(r *gin.Engine) {
 	r.GET("/test", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "Connected",
+		})
+	})
+	r.GET("/testUser", func(c *gin.Context) {
+		user, err := models.FindUserByUsername("test")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": errors.New("read fail"),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"user": user,
 		})
 	})
 	r.GET("/testInsertDB", func(c *gin.Context) {
@@ -45,6 +58,42 @@ func TestRoute(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, res)
+	})
+
+	r.POST("/download", func(c *gin.Context) {
+		path := c.PostForm("path")
+		//Get bucket name via bucket_id
+		bucketName := c.PostForm("bucket_id") + "Name"
+		fileName := c.PostForm("file_name")
+		newPath := bucketName + path + fileName
+		err := models.TestDownload(newPath, fileName, func(r io.Reader) error {
+			response, err := http.Get("http://localhost:8888/" + newPath)
+			if err != nil || response.StatusCode != http.StatusOK {
+				c.Status(http.StatusServiceUnavailable)
+				return err
+			}
+
+			reader := response.Body
+			defer reader.Close()
+			contentLength := response.ContentLength
+			contentType := response.Header.Get("Content-Type")
+
+			extraHeaders := map[string]string{
+				"Content-Disposition": `attachment; filename=` + fileName,
+			}
+			c.DataFromReader(http.StatusOK, contentLength, contentType, r, extraHeaders)
+			return err
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "download success",
+		})
 	})
 
 	r.DELETE("/delete", func(c *gin.Context) {
