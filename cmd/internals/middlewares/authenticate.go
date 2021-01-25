@@ -1,7 +1,6 @@
 package middlewares
 
 import (
-	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -48,7 +47,7 @@ func UserAuthenticate(c *gin.Context) {
 			//	return
 			//}
 
-			newAccessToken, newRfToken, err := "access", "refresh", errors.New("")
+			//newAccessToken, newRfToken, err := "access", "refresh", errors.New("")
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "unauthorized",
@@ -59,8 +58,8 @@ func UserAuthenticate(c *gin.Context) {
 
 			//END TODO
 
-			c.Writer.Header().Set("AccessToken", *newAccessToken)
-			c.Writer.Header().Set("RefreshToken", *newRfToken)
+			//c.Writer.Header().Set("AccessToken", *newAccessToken)
+			//c.Writer.Header().Set("RefreshToken", *newRfToken)
 		}
 
 		if err == jwt.ErrSignatureInvalid {
