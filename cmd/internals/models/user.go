@@ -184,7 +184,7 @@ func FindUserByEmail(mail string) (*User, error) {
 	return &users[0], nil
 }
 
-func UpdateUser(
+func UpdateUserData(
 	uid gocql.UUID,
 	firstname string, 
 	lastname string, 
@@ -206,6 +206,35 @@ func UpdateUser(
 			uid,
 		)
 
+	if err := query.Exec(); err != nil {
+		return nil, err
+	}
+
+	user, err := FindUserById(uid)
+
+	return user, err
+}
+
+func UpdateUserPassword(uid gocql.UUID, password string) (*User, error) {
+	_, err := FindUserById(uid)
+	if err != nil {
+		return nil, err
+	}
+
+	query := session.
+		Query(`UPDATE users_by_id SET password = ?`, password)
+	if err := query.Exec(); err != nil {
+		return nil, err
+	}
+
+	query = session.
+		Query(`UPDATE users_by_username SET password = ?`, password)
+	if err := query.Exec(); err != nil {
+		return nil, err
+	}
+
+	query = session.
+		Query(`UPDATE users_by_email SET password = ?`, password)
 	if err := query.Exec(); err != nil {
 		return nil, err
 	}
