@@ -7,16 +7,42 @@ import (
 	"time"
 )
 
+type KeyType int
+
+const (
+	Invalid KeyType = iota - 1
+	Full
+	Write
+	Read
+)
+
+func (kt KeyType) String() string {
+	return [...]string{"Full", "Write", "Read"}[kt]
+}
+
+func ParseKeyType(t string) KeyType {
+	switch t {
+	case "Full":
+		return Full
+	case "Write":
+		return Write
+	case "Read":
+		return Read
+	default:
+		return Invalid
+	}
+}
+
 type AccessKey struct {
 	Key         string
 	BucketId    gocql.UUID
 	ExpiredDate time.Time
-	Type        string
+	Type        KeyType
 	Uid         gocql.UUID
 }
 
 func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
-	keyType string, expiredDate time.Time) (*AccessKey, error) {
+	keyType KeyType, expiredDate time.Time) (*AccessKey, error) {
 	key := randstr.GetString(16)
 	queryTableByKey := session.Query("INSERT INTO access_keys_by_key"+
 		" (key, bucket_id, expired_date, type, uid)"+
