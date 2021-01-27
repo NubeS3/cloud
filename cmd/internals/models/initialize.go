@@ -107,7 +107,7 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" access_keys_by_uid_bid" +
-			" (uid uuid, bucket_id uuid, key ascii, type ascii," +
+			" (uid uuid, bucket_id uuid, key ascii, type int," +
 			" expired_date date, PRIMARY KEY ((uid), bucket_id, key))").
 		Exec()
 	if err != nil {
@@ -117,7 +117,7 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" access_keys_by_key" +
-			" (uid uuid, bucket_id uuid, key ascii, type ascii," +
+			" (uid uuid, bucket_id uuid, key ascii, type int," +
 			" expired_date date, PRIMARY KEY ((key), bucket_id))").
 		Exec()
 	if err != nil {
