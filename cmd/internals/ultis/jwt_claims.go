@@ -3,15 +3,16 @@ package ultis
 import (
 	"errors"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gocql/gocql"
 	"time"
 )
 
 type UserClaims struct {
-	Id string
+	Id gocql.UUID
 	jwt.StandardClaims
 }
 
-func CreateToken(oid string) (string, error) {
+func CreateToken(oid gocql.UUID) (string, error) {
 	userClaims := UserClaims{
 		Id: oid,
 		StandardClaims: jwt.StandardClaims{

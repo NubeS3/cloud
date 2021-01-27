@@ -148,6 +148,17 @@ func initDbTables() error {
 		return err
 	}
 
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" file_metadata_by_id" +
+			" (id uuid, bucket_id uuid, name text, type ascii," +
+			" length int, upload_date timestamp," +
+			" PRIMARY KEY ((id), upload_date, bucket_id))" +
+			" with clustering order by (upload_date desc, bucket_id asc)").
+		Exec()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
