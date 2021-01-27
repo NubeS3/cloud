@@ -145,6 +145,8 @@ github.com/linxGnu/goseaweedfs v0.1.5 h1:7dChPdq8+fsPH0yqxKEofPhiosaar4LWePm4M+1
 github.com/linxGnu/goseaweedfs v0.1.5/go.mod h1:Zwe/7H7FJaPQyMTNKXgv6fhVDw6qi34MMJQp1K0VLNc=
 github.com/linxGnu/gumble v1.0.0 h1:OAJud8Hy4rmV9I5p/KTRiVpwwklMTd9Ankza3Mz7a4M=
 github.com/linxGnu/gumble v1.0.0/go.mod h1:iyhNJpBHvJ0q2Hr41iiZRJyj6LLF47i2a9C9zLiucVY=
+github.com/m1ome/randstr v0.0.0-20170328115817-50e7f2dc0288 h1:DOrMBJuHExFrY5UjHTgWPuEpTZcGvlqQ1IF7hSzjKQs=
+github.com/m1ome/randstr v0.0.0-20170328115817-50e7f2dc0288/go.mod h1:8OwJXxE6+gdUVI2U9l57q1HZaz+haD18PTSSyGqRb6I=
 github.com/magiconair/properties v1.8.1 h1:ZC2Vc7/ZFkGmsVC9KvOjumD+G5lXy2RtTKyzRKO2BQ4=
 github.com/magiconair/properties v1.8.1/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
