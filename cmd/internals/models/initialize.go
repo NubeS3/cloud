@@ -1,11 +1,12 @@
 package models
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"github.com/spf13/viper"
-	"net/http"
-	"time"
 )
 
 var (
@@ -65,6 +66,110 @@ func InitFs() error {
 	sw, err = goseaweedfs.NewSeaweed(masterUrl, filer, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
 
 	return err
+}
+
+func initDbTables() error {
+	err := session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" users_by_id (id uuid PRIMARY KEY, username ascii, password ascii)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" users_by_username (id uuid, username ascii PRIMARY KEY," +
+			" password ascii)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" users_by_email (id uuid, username ascii," +
+			" email ascii PRIMARY KEY)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
+			" gender boolean, company ascii, firstname text," +
+			" lastname text, dob date)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" buckets (id uuid, uid uuid, name ascii, region ascii," +
+			" PRIMARY KEY ((uid), id))").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" access_keys_by_uid_bid" +
+			" (uid uuid, bucket_id uuid, key ascii, type ascii," +
+			" expired_date date, PRIMARY KEY ((uid), bucket_id, key))").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" access_keys_by_key" +
+			" (uid uuid, bucket_id uuid, key ascii, type ascii," +
+			" expired_date date, PRIMARY KEY ((key), bucket_id))").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" file_metadata_by_bid" +
+			" (id uuid, bucket_id uuid, name text, type ascii," +
+			" length int, upload_date timestamp," +
+			" PRIMARY KEY ((bucket_id), upload_date, id))" +
+			" with clustering order by (upload_date desc, id asc)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" file_metadata_by_id" +
+			" (id uuid, bucket_id uuid, name text, type ascii," +
+			" length int, upload_date timestamp," +
+			" PRIMARY KEY ((id), upload_date, bucket_id))" +
+			" with clustering order by (upload_date desc, bucket_id asc)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" file_metadata_by_id" +
+			" (id uuid, bucket_id uuid, name text, type ascii," +
+			" length int, upload_date timestamp," +
+			" PRIMARY KEY ((id), upload_date, bucket_id))" +
+			" with clustering order by (upload_date desc, bucket_id asc)").
+		Exec()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func CleanUp() {

@@ -1,9 +1,10 @@
 package models
 
 import (
-	"github.com/gocql/gocql"
+	"errors"
 	"log"
 	"time"
+	"github.com/gocql/gocql"
 )
 
 type User struct {
@@ -24,70 +25,199 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-func FindUserById(id gocql.UUID) (*User, error) {
+type UserById struct {
+	Id           gocql.UUID
+	Username     string
+	Pass         string
+}
+
+func SaveUser(firstname string, lastname string, username string, password string, email string, dob time.Time, company string, gender bool) (*User, error) {
+	id, err := gocql.RandomUUID()
+	if err != nil {
+		return nil, err
+	}
+	query := session.
+		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?) IF NOT EXIST`,
+			id,
+			company,
+			dob,
+			email,
+			firstname,
+			gender,
+			lastname,
+		)
+	if err := query.Exec(); err != nil {
+		return nil, err
+	}
+
+	query = session.
+		Query(`INSERT INTO users_by_username VALUES (?, ?, ?) IF NOT EXIST`,
+			username,
+			id,
+			password,
+		)
+	if err := query.Exec(); err != nil {
+		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id)
+		return nil, err
+	}
+
+	query = session.
+		Query(`INSERT INTO users_by_id VALUES (?, ?, ?)`,
+			id,
+			password,
+			username,
+		)
+	if err := query.Exec(); err != nil {
+		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id)
+		session.Query(`DELETE FROM users_by_username WHERE id = ?`, id)
+		return nil, err
+	}
+
+	user := &User {
+		Id: id,
+		Firstname: firstname,
+		Lastname: lastname,
+		Username: username,
+		Pass: password,
+		Email: email,
+		Dob: dob,
+		Company: company,
+		Gender: gender,
+	}
+
+	return user, nil
+}
+
+func FindUserById(uid gocql.UUID) (*User, error) {
+	var users []User
+	users = []User{}
+
+	var user *User
 	iter := session.
-		Query(`SELECT * FROM userbyuid WHERE username = ?`, id).
-		Consistency(gocql.One).
+		Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
 		Iter()
+
+	var id gocql.UUID
+	var username string
+	var password string
+
+	for iter.Scan(&id, &password, &username) {
+		user = &User {
+			Id: id,
+			Username: username,
+			Pass: password,
+		}
+		users = append(users, *user)
+	}
+
+	var err error
+	if err = iter.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(users) < 1 {
+		return nil, errors.New("user not found")
+	}
+
+	return &users[0], nil
+}
+
+func FindUserByUsername(uname string) (*User, error) {
+	var users []User
+	users = []User{}
+
+	var user *User
+	iter := session.
+		Query(`SELECT * FROM users_by_username WHERE username = ? `, uname).
+		Iter()
+
+	var username string
+	var id gocql.UUID
+	var password string
+
+	for iter.Scan(&username, &id, &password) {
+		user = &User {
+			Id: id,
+			Username: username,
+			Pass: password,
+		}
+		users = append(users, *user)
+	}
+
+	var err error
+	if err = iter.Close(); err != nil {
+		log.Fatal(err)
+	}
+
+	if len(users) < 1 {
+		return nil, errors.New("user not found")
+	}
+
+	return &users[0], nil
+}
+
+func FindUserByEmail(mail string) (*User, error) {
+	var users []User
+	users = []User{}
+
+	var user *User
+	iter := session.
+		Query(`SELECT * FROM users_by_email WHERE email = ?`, mail).
+		Iter()
+
+	var id gocql.UUID
 	var username string
 	var email string
-	var dob time.Time
-	var pass string
-	var company string
-	var gender bool
-	for iter.Scan(&id, &company, &dob, &email, &gender, &pass, &username) {
-		println("Scanned")
+
+	for iter.Scan(&email, &id, &username) {
+		user = &User {
+			Id: id,
+			Username: username,
+			Email: email,
+		}
+		users = append(users, *user)
 	}
-	user := &User{
-		Id:       id,
-		Username: username,
-		Email:    email,
-		Dob:      dob,
-		Pass:     pass,
-		Company:  company,
-		Gender:   gender,
-	}
+
 	var err error
 	if err = iter.Close(); err != nil {
 		log.Fatal(err)
 	}
-	return user, err
+
+	if len(users) < 1 {
+		return nil, errors.New("user not found")
+	}
+
+	return &users[0], nil
 }
 
-func FindUserByUsername(username string) (*User, error) {
-	iter := session.
-		Query(`SELECT * FROM userbyuid WHERE username = ? `, username).
-		Consistency(gocql.One).
-		Iter()
-	var id gocql.UUID
-	var email string
-	var dob time.Time
-	var pass string
-	var company string
-	var gender bool
-	for iter.Scan(&id, &company, &dob, &email, &gender, &pass, &username) {
-		println("DATA: ", username)
-	}
-	user := &User{
-		Id:       id,
-		Username: username,
-		Email:    email,
-		Dob:      dob,
-		Pass:     pass,
-		Company:  company,
-		Gender:   gender,
-	}
-	var err error
-	if err = iter.Close(); err != nil {
-		log.Fatal(err)
-	}
-	return user, err
+func UpdateUser() {
+	
 }
 
-func (u *User) Save() error {
-	return nil
-}
+func RemoveUserById(uid gocql.UUID) error {
+	user, err := FindUserById(uid)
 
-func UpdateUser(u *User) error {
+	if user == nil && err != nil {
+		return err
+	}
+
+	query := session.
+		Query(`DELETE FROM users_by_id WHERE id = ?`, uid)
+	if err := query.Exec(); err != nil {
+		return err
+	}
+
+	query = session.
+		Query(`DELETE FROM users_by_username WHERE id = ?`, uid)
+	if err := query.Exec(); err != nil {
+		return err
+	}
+
+	query = session.
+		Query(`DELETE FROM user_data_by_id WHERE id = ?`, uid)
+	if err := query.Exec(); err != nil {
+		return err
+	}
+
 	return nil
 }
