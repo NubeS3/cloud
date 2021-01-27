@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"time"
+
 	"github.com/gocql/gocql"
 )
 
@@ -25,19 +26,22 @@ type User struct {
 	UpdatedAt time.Time
 }
 
-type UserById struct {
-	Id           gocql.UUID
-	Username     string
-	Pass         string
-}
-
-func SaveUser(firstname string, lastname string, username string, password string, email string, dob time.Time, company string, gender bool) (*User, error) {
+func SaveUser(
+	firstname string, 
+	lastname string, 
+	username string, 
+	password string, 
+	email string, 
+	dob time.Time, 
+	company string, 
+	gender bool) (*User, error) {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return nil, err
 	}
+
 	query := session.
-		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?) IF NOT EXIST`,
+		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?)`,
 			id,
 			company,
 			dob,
@@ -51,7 +55,7 @@ func SaveUser(firstname string, lastname string, username string, password strin
 	}
 
 	query = session.
-		Query(`INSERT INTO users_by_username VALUES (?, ?, ?) IF NOT EXIST`,
+		Query(`INSERT INTO users_by_username VALUES (?, ?, ?)`,
 			username,
 			id,
 			password,
@@ -73,24 +77,16 @@ func SaveUser(firstname string, lastname string, username string, password strin
 		return nil, err
 	}
 
-	user := &User {
-		Id: id,
-		Firstname: firstname,
-		Lastname: lastname,
-		Username: username,
-		Pass: password,
-		Email: email,
-		Dob: dob,
-		Company: company,
-		Gender: gender,
+	user, err := FindUserById(id)
+	if err != nil {
+		return nil, err
 	}
 
-	return user, nil
+	return user, err
 }
 
 func FindUserById(uid gocql.UUID) (*User, error) {
-	var users []User
-	users = []User{}
+	var users []User = []User{}
 
 	var user *User
 	iter := session.
@@ -116,19 +112,18 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 	}
 
 	if len(users) < 1 {
-		return nil, errors.New("user not found")
+		return nil, errors.New("User not found")
 	}
 
 	return &users[0], nil
 }
 
 func FindUserByUsername(uname string) (*User, error) {
-	var users []User
-	users = []User{}
+	var users []User = []User{}
 
 	var user *User
 	iter := session.
-		Query(`SELECT * FROM users_by_username WHERE username = ? `, uname).
+		Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
 		Iter()
 
 	var username string
@@ -150,15 +145,14 @@ func FindUserByUsername(uname string) (*User, error) {
 	}
 
 	if len(users) < 1 {
-		return nil, errors.New("user not found")
+		return nil, errors.New("User not found")
 	}
 
 	return &users[0], nil
 }
 
 func FindUserByEmail(mail string) (*User, error) {
-	var users []User
-	users = []User{}
+	var users []User = []User{}
 
 	var user *User
 	iter := session.
@@ -184,40 +178,72 @@ func FindUserByEmail(mail string) (*User, error) {
 	}
 
 	if len(users) < 1 {
-		return nil, errors.New("user not found")
+		return nil, errors.New("User not found")
 	}
 
 	return &users[0], nil
 }
 
-func UpdateUser() {
-	
-}
+func UpdateUser(
+	uid gocql.UUID,
+	firstname string, 
+	lastname string, 
+	dob time.Time, 
+	company string, 
+	gender bool) (*User, error) {
+	_, err := FindUserById(uid)
+	if err != nil {
+		return nil, err
+	}
 
-func RemoveUserById(uid gocql.UUID) error {
+	query := session.
+		Query(`UPDATE user_data_by_id SET firstname = ?, lastname = ?, dob = ?, company = ?, gender = ? WHERE id = ?`,
+			firstname, 
+			lastname, 
+			dob,
+			company, 
+			gender, 
+			uid,
+		)
+
+	if err := query.Exec(); err != nil {
+		return nil, err
+	}
+
 	user, err := FindUserById(uid)
 
-	if user == nil && err != nil {
-		return err
+	return user, err
+}
+
+func RemoveUserById(uid gocql.UUID) []error {
+	var errors []error = []error{}	
+	_, err := FindUserById(uid)
+
+	if err != nil {
+		errors = append(errors, err)
 	}
 
 	query := session.
 		Query(`DELETE FROM users_by_id WHERE id = ?`, uid)
 	if err := query.Exec(); err != nil {
-		return err
+		errors = append(errors, err)
 	}
 
 	query = session.
 		Query(`DELETE FROM users_by_username WHERE id = ?`, uid)
 	if err := query.Exec(); err != nil {
-		return err
+		errors = append(errors, err)
 	}
 
 	query = session.
 		Query(`DELETE FROM user_data_by_id WHERE id = ?`, uid)
 	if err := query.Exec(); err != nil {
-		return err
+		errors = append(errors, err)
 	}
 
-	return nil
+	if len(errors) < 1 {
+		return nil
+	}
+
+	return errors 
 }

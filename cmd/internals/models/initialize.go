@@ -89,7 +89,7 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_email (id uuid, username ascii," +
-			" email ascii PRIMARY KEY)").
+			" password ascii, email ascii PRIMARY KEY)").
 		Exec()
 	if err != nil {
 		return err
