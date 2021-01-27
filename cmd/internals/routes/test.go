@@ -17,7 +17,8 @@ func TestRoute(r *gin.Engine) {
 		})
 	})
 	r.GET("/testUser", func(c *gin.Context) {
-		user, err := models.FindUserByUsername("test")
+		var user models.User
+		err := user.FindUserByUsername("test")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": errors.New("read fail"),

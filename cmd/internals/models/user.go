@@ -26,7 +26,7 @@ type User struct {
 
 func FindUserById(id gocql.UUID) (*User, error) {
 	iter := session.
-		Query(`SELECT * FROM userbyuid WHERE username = ?`, id).
+		Query(`SELECT * FROM user_by_id WHERE username = ?`, id).
 		Consistency(gocql.One).
 		Iter()
 	var username string
@@ -54,7 +54,7 @@ func FindUserById(id gocql.UUID) (*User, error) {
 	return user, err
 }
 
-func FindUserByUsername(username string) (*User, error) {
+func (u *User) FindUserByUsername(username string) error {
 	iter := session.
 		Query(`SELECT * FROM userbyuid WHERE username = ? `, username).
 		Consistency(gocql.One).
@@ -68,20 +68,20 @@ func FindUserByUsername(username string) (*User, error) {
 	for iter.Scan(&id, &company, &dob, &email, &gender, &pass, &username) {
 		println("DATA: ", username)
 	}
-	user := &User{
-		Id:       id,
-		Username: username,
-		Email:    email,
-		Dob:      dob,
-		Pass:     pass,
-		Company:  company,
-		Gender:   gender,
-	}
+
+	u.Id = id
+	u.Username = username
+	u.Pass = pass
+	u.Email = email
+	u.Dob = dob
+	u.Gender = gender
+	u.Company = company
+
 	var err error
 	if err = iter.Close(); err != nil {
 		log.Fatal(err)
 	}
-	return user, err
+	return err
 }
 
 func (u *User) Save() error {
