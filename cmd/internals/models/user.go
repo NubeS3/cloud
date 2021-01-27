@@ -247,3 +247,8 @@ func RemoveUserById(uid gocql.UUID) []error {
 
 	return errors 
 }
+
+// FOR TESTING
+func Save() (*User, error) {
+	return nil, nil
+}

@@ -1,0 +1,115 @@
+package routes
+
+import (
+	"github.com/NubeS3/cloud/cmd/internals/middlewares"
+	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/gin-gonic/gin"
+	"github.com/gocql/gocql"
+	"log"
+	"net/http"
+)
+
+func BucketRoutes(r *gin.Engine) {
+	ar := r.Group("/buckets", middlewares.UserAuthenticate)
+	{
+		ar.GET("/all", func(c *gin.Context) {
+			uid, ok := c.Get("id")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /buckets/all:")
+				log.Println("uid not found in authenticated route")
+				return
+			}
+
+			res, err := models.FindBucketByUid(uid.(gocql.UUID))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at buckets/all:")
+				log.Println(err)
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+		ar.POST("/create", func(c *gin.Context) {
+			type createBucket struct {
+				Name   string `json:"name" binding:"required"`
+				Region string `json:"region" binding:"required"`
+			}
+
+			var curCreateBucket createBucket
+			if err := c.ShouldBind(&curCreateBucket); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /buckets/create:")
+				log.Println("uid not found in authenticated route")
+				return
+			}
+			if err := models.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at buckets/create:")
+				log.Println(err)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"message": "create success.",
+			})
+		})
+
+		ar.DELETE("/delete", middlewares.UserAuthenticate, func(c *gin.Context) {
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /buckets/delete:")
+				log.Println("uid not found in authenticated route")
+				return
+			}
+			bucketId := c.Param("id")
+			id, err := gocql.ParseUUID(bucketId)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /buckets/delete:")
+				log.Println("parse bucket_id failed")
+				return
+			}
+
+			if err := models.Remove(uid.(gocql.UUID), id); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /buckets/delete:")
+				log.Println(err)
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"message": "delete success.",
+			})
+		})
+	}
+
+}

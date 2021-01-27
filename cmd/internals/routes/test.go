@@ -7,6 +7,7 @@ import (
 	"github.com/linxGnu/goseaweedfs"
 	"io"
 	"net/http"
+	"strings"
 )
 
 func TestRoute(r *gin.Engine) {
@@ -60,29 +61,20 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, res)
 	})
 
-	r.POST("/download", func(c *gin.Context) {
-		path := c.PostForm("path")
-		//Get bucket name via bucket_id
-		bucketName := c.PostForm("bucket_id") + "Name"
-		fileName := c.PostForm("file_name")
-		newPath := bucketName + path + fileName
-		err := models.TestDownload(newPath, fileName, func(r io.Reader) error {
-			response, err := http.Get("http://localhost:8888/" + newPath)
-			if err != nil || response.StatusCode != http.StatusOK {
-				c.Status(http.StatusServiceUnavailable)
-				return err
-			}
+	r.GET("/download", func(c *gin.Context) {
+		path := c.Query("path")
+		tokens := strings.Split(path, "/")
+		err := models.TestDownload(path, func(r io.Reader) error {
 
-			reader := response.Body
-			defer reader.Close()
-			contentLength := response.ContentLength
-			contentType := response.Header.Get("Content-Type")
+			contentLength := int64(7443)
+			contentType := "Content-type : image/jpeg"
 
 			extraHeaders := map[string]string{
-				"Content-Disposition": `attachment; filename=` + fileName,
+				"Content-Disposition": `attachment; filename=` + tokens[len(tokens)-1],
 			}
 			c.DataFromReader(http.StatusOK, contentLength, contentType, r, extraHeaders)
-			return err
+			return nil
+
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
