@@ -20,7 +20,7 @@ func (kt KeyType) String() string {
 	return [...]string{"Full", "Write", "Read"}[kt]
 }
 
-func ParseKeyType(t string) KeyType {
+func parseKeyType(t string) KeyType {
 	switch t {
 	case "Full":
 		return Full
@@ -33,17 +33,40 @@ func ParseKeyType(t string) KeyType {
 	}
 }
 
+type accessKey struct {
+	Key         string
+	BucketId    gocql.UUID
+	ExpiredDate time.Time
+	Type        KeyType
+	Uid         gocql.UUID
+}
+
+func (a *accessKey) toAccessKey() *AccessKey {
+	return &AccessKey{
+		Key:         a.Key,
+		BucketId:    a.BucketId,
+		ExpiredDate: a.ExpiredDate,
+		Type:        a.Type.String(),
+		Uid:         a.Uid,
+	}
+}
+
 type AccessKey struct {
 	Key         string     `json:"key"`
 	BucketId    gocql.UUID `json:"bucket_id"`
 	ExpiredDate time.Time  `json:"expired_date"`
-	Type        KeyType    `json:"type"`
+	Type        string     `json:"type"`
 	Uid         gocql.UUID `json:"uid"`
 }
 
 func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
-	keyType KeyType, expiredDate time.Time) (*AccessKey, error) {
+	sKeyType string, expiredDate time.Time) (*AccessKey, error) {
 	key := randstr.GetString(16)
+	keyType := parseKeyType(sKeyType)
+	if keyType == Invalid {
+		return nil, errors.New("invalid key type")
+	}
+
 	queryTableByKey := session.Query("INSERT INTO access_keys_by_key"+
 		" (key, bucket_id, expired_date, type, uid)"+
 		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, keyType, uid)
@@ -66,20 +89,20 @@ func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
 		Key:         key,
 		BucketId:    bId,
 		ExpiredDate: expiredDate,
-		Type:        keyType,
+		Type:        keyType.String(),
 		Uid:         uid,
 	}, nil
 }
 
 func FindAccessKeyByKey(key string) (*AccessKey, error) {
-	var accessKeys []AccessKey
-	accessKeys = []AccessKey{}
+	var accessKeys []accessKey
+	accessKeys = []accessKey{}
 
 	iter := session.
 		Query("SELECT FROM access_keys_by_key WHERE key = ? LIMIT 1", key).
 		Iter()
 
-	queryAccessKey := AccessKey{}
+	queryAccessKey := accessKey{}
 	for iter.Scan(&queryAccessKey.Key, &queryAccessKey.BucketId,
 		&queryAccessKey.ExpiredDate, &queryAccessKey.Type, &queryAccessKey.Uid) {
 		accessKeys = append(accessKeys, queryAccessKey)
@@ -89,7 +112,7 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 		return nil, errors.New("access key not found")
 	}
 
-	return &accessKeys[0], nil
+	return accessKeys[0].toAccessKey(), nil
 }
 
 func FindAccessKeyByUidBid(uid gocql.UUID, bid gocql.UUID) ([]AccessKey, error) {
@@ -101,11 +124,29 @@ func FindAccessKeyByUidBid(uid gocql.UUID, bid gocql.UUID) ([]AccessKey, error) 
 			" WHERE uid = ? AND bid = ?", uid, bid).
 		Iter()
 
-	queryAccessKey := AccessKey{}
+	queryAccessKey := accessKey{}
 	for iter.Scan(&queryAccessKey.Key, &queryAccessKey.BucketId,
 		&queryAccessKey.ExpiredDate, &queryAccessKey.Type, &queryAccessKey.Uid) {
-		accessKeys = append(accessKeys, queryAccessKey)
+		accessKeys = append(accessKeys, *queryAccessKey.toAccessKey())
 	}
 
 	return accessKeys, nil
+}
+
+func DeleteAccessKey(uid gocql.UUID, bid gocql.UUID, key string) error {
+	deleteKeyQuery := session.
+		Query(`DELETE FROM access_keys_by_key WHERE key = ? AND bucket_id = ?`, key, bid)
+
+	if err := deleteKeyQuery.Exec(); err != nil {
+		return err
+	}
+
+	deleteKeyUidQuery := session.
+		Query(`DELETE FROM access_keys_by_uid_bid WHERE uid = ? AND bucket_id = ? AND key = ?`, uid, bid, key)
+
+	if err := deleteKeyUidQuery.Exec(); err != nil {
+		return err
+	}
+
+	return nil
 }
