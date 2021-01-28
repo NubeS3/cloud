@@ -73,8 +73,7 @@ func BucketRoutes(r *gin.Engine) {
 				"message": "create success.",
 			})
 		})
-
-		ar.DELETE("/delete", middlewares.UserAuthenticate, func(c *gin.Context) {
+		ar.DELETE("/delete/:bucket_id", middlewares.UserAuthenticate, func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -85,7 +84,8 @@ func BucketRoutes(r *gin.Engine) {
 				log.Println("uid not found in authenticated route")
 				return
 			}
-			bucketId := c.Param("id")
+
+			bucketId := c.Param("bucket_id")
 			id, err := gocql.ParseUUID(bucketId)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
