@@ -87,7 +87,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 			type createAKeyData struct {
 				BucketId    gocql.UUID `json:"bucket_id"`
 				ExpiredDate time.Time  `json:"expired_date"`
-				Type        string     `json:"type"`
+				Permissions []string   `json:"permissions"`
 			}
 
 			var keyData createAKeyData
@@ -109,7 +109,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := models.InsertAccessKey(keyData.BucketId, uid.(gocql.UUID), keyData.Type, keyData.ExpiredDate)
+			res, err := models.InsertAccessKey(keyData.BucketId, uid.(gocql.UUID), keyData.Permissions, keyData.ExpiredDate)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),

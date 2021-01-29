@@ -7,29 +7,52 @@ import (
 	"time"
 )
 
-type KeyType int
+type Permission int
 
 const (
-	Invalid KeyType = iota - 1
-	Full
-	Write
-	Read
+	GetFileList Permission = iota
+	GetFileListHidden
+	Download
+	DownloadHidden
+	Upload
+	UploadHidden
+	DeleteFile
+	RecoverFile
 )
 
-func (kt KeyType) String() string {
-	return [...]string{"Full", "Write", "Read"}[kt]
+func (perm Permission) String() string {
+	return [...]string{
+		"GetFileList",
+		"GetFileListHidden",
+		"Download",
+		"DownloadHidden",
+		"Upload",
+		"UploadHidden",
+		"DeleteFile",
+		"RecoverFile",
+	}[perm]
 }
 
-func parseKeyType(t string) KeyType {
-	switch t {
-	case "Full":
-		return Full
-	case "Write":
-		return Write
-	case "Read":
-		return Read
+func parsePerm(p string) (Permission, error) {
+	switch p {
+	case "GetFileList":
+		return GetFileList, nil
+	case "GetFileListHidden":
+		return GetFileListHidden, nil
+	case "Download":
+		return Download, nil
+	case "DownloadHidden":
+		return DownloadHidden, nil
+	case "Upload":
+		return Upload, nil
+	case "UploadHidden":
+		return UploadHidden, nil
+	case "DeleteFile":
+		return DeleteFile, nil
+	case "RecoverFile":
+		return RecoverFile, nil
 	default:
-		return Invalid
+		return -1, errors.New("invalid permission type")
 	}
 }
 
@@ -37,16 +60,21 @@ type accessKey struct {
 	Key         string
 	BucketId    gocql.UUID
 	ExpiredDate time.Time
-	Type        KeyType
+	Permissions []Permission
 	Uid         gocql.UUID
 }
 
 func (a *accessKey) toAccessKey() *AccessKey {
+	var perms []string
+	for _, perm := range a.Permissions {
+		perms = append(perms, perm.String())
+	}
+
 	return &AccessKey{
 		Key:         a.Key,
 		BucketId:    a.BucketId,
 		ExpiredDate: a.ExpiredDate,
-		Type:        a.Type.String(),
+		Permissions: perms,
 		Uid:         a.Uid,
 	}
 }
@@ -55,21 +83,26 @@ type AccessKey struct {
 	Key         string     `json:"key"`
 	BucketId    gocql.UUID `json:"bucket_id"`
 	ExpiredDate time.Time  `json:"expired_date"`
-	Type        string     `json:"type"`
+	Permissions []string   `json:"permissions"`
 	Uid         gocql.UUID `json:"uid"`
 }
 
 func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
-	sKeyType string, expiredDate time.Time) (*AccessKey, error) {
+	perms []string, expiredDate time.Time) (*AccessKey, error) {
 	key := randstr.GetString(16)
-	keyType := parseKeyType(sKeyType)
-	if keyType == Invalid {
-		return nil, errors.New("invalid key type")
+
+	var permissions []Permission
+	for _, perm := range perms {
+		permission, err := parsePerm(perm)
+		if err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, permission)
 	}
 
 	queryTableByKey := session.Query("INSERT INTO access_keys_by_key"+
 		" (key, bucket_id, expired_date, type, uid)"+
-		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, keyType, uid)
+		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, permissions, uid)
 
 	if err := queryTableByKey.Exec(); err != nil {
 		return nil, err
@@ -77,7 +110,7 @@ func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
 
 	queryTableByUidBid := session.Query("INSERT INTO access_keys_by_uid_bid"+
 		" (key, bucket_id, expired_date, type, uid)"+
-		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, keyType, uid)
+		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, permissions, uid)
 
 	if err := queryTableByUidBid.Exec(); err != nil {
 		deleteQuery := session.Query("DELETE FROM access_keys_by_key WHERE key = ?", key)
@@ -89,7 +122,7 @@ func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
 		Key:         key,
 		BucketId:    bId,
 		ExpiredDate: expiredDate,
-		Type:        keyType.String(),
+		Permissions: perms,
 		Uid:         uid,
 	}, nil
 }
@@ -104,7 +137,7 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 
 	queryAccessKey := accessKey{}
 	for iter.Scan(&queryAccessKey.Key, &queryAccessKey.BucketId,
-		&queryAccessKey.ExpiredDate, &queryAccessKey.Type, &queryAccessKey.Uid) {
+		&queryAccessKey.ExpiredDate, &queryAccessKey.Permissions, &queryAccessKey.Uid) {
 		accessKeys = append(accessKeys, queryAccessKey)
 	}
 
@@ -126,7 +159,7 @@ func FindAccessKeyByUidBid(uid gocql.UUID, bid gocql.UUID) ([]AccessKey, error) 
 
 	queryAccessKey := accessKey{}
 	for iter.Scan(&queryAccessKey.Key, &queryAccessKey.BucketId,
-		&queryAccessKey.ExpiredDate, &queryAccessKey.Type, &queryAccessKey.Uid) {
+		&queryAccessKey.ExpiredDate, &queryAccessKey.Permissions, &queryAccessKey.Uid) {
 		accessKeys = append(accessKeys, *queryAccessKey.toAccessKey())
 	}
 
