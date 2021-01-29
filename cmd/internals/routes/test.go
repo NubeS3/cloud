@@ -36,7 +36,6 @@ func TestRoute(r *gin.Engine) {
 
 	r.POST("/upload", func(c *gin.Context) {
 		someFile, err := c.FormFile("upload")
-
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": errors.New("upload fail"),
