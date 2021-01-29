@@ -127,8 +127,9 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" file_metadata_by_bid" +
-			" (id uuid, bucket_id uuid, name text, type ascii," +
-			" length int, upload_date timestamp," +
+			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
+			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
+			" upload_date timestamp, expired_date timestamp" +
 			" PRIMARY KEY ((bucket_id), upload_date, id))" +
 			" with clustering order by (upload_date desc, id asc)").
 		Exec()
@@ -139,8 +140,9 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" file_metadata_by_id" +
-			" (id uuid, bucket_id uuid, name text, type ascii," +
-			" length int, upload_date timestamp," +
+			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
+			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
+			" upload_date timestamp, expired_date timestamp" +
 			" PRIMARY KEY ((id), upload_date, bucket_id))" +
 			" with clustering order by (upload_date desc, bucket_id asc)").
 		Exec()
@@ -148,17 +150,6 @@ func initDbTables() error {
 		return err
 	}
 
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" file_metadata_by_id" +
-			" (id uuid, bucket_id uuid, name text, type ascii," +
-			" length int, upload_date timestamp," +
-			" PRIMARY KEY ((id), upload_date, bucket_id))" +
-			" with clustering order by (upload_date desc, bucket_id asc)").
-		Exec()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
