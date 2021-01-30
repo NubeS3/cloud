@@ -1,7 +1,9 @@
 package models
 
 import (
+	"fmt"
 	"github.com/gocql/gocql"
+	"io"
 	"time"
 )
 
@@ -34,7 +36,8 @@ func InsertFileMetadata(bid gocql.UUID,
 
 	queryBid := session.Query("INSERT INTO file_metadata_by_bid "+
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
-		"is_deleted, deleted_date, upload_date, expired_date)",
+		"is_deleted, deleted_date, upload_date, expired_date)"+
+		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryBid.Exec(); err != nil {
@@ -43,7 +46,8 @@ func InsertFileMetadata(bid gocql.UUID,
 
 	queryId := session.Query("INSERT INTO file_metadata_by_id "+
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
-		"is_deleted, deleted_date, upload_date, expired_date)",
+		"is_deleted, deleted_date, upload_date, expired_date)"+
+		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryId.Exec(); err != nil {
@@ -81,6 +85,10 @@ func GetFileMetadataById(bucketId gocql.UUID, id gocql.UUID) *FileMetadata {
 
 	}
 
+	if metadata.IsDeleted {
+		return nil
+	}
+
 	return &metadata
 }
 
@@ -99,4 +107,33 @@ func GetFileMetadataByBucketId(bucketId gocql.UUID) []FileMetadata {
 	}
 
 	return metadata
+}
+
+func MarkDeletedFileMetadata(bucketId gocql.UUID, id gocql.UUID) error {
+	deletedDate := time.Now()
+
+	query := session.
+		Query("UPDATE file_metadata_by_id"+
+			" SET is_deleted = ? AND deleted_date = ?"+
+			" WHERE bucket_id = ? AND id = ?", true, deletedDate, bucketId, id)
+
+	if err := query.Exec(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
+	path string, name string, isHidden bool,
+	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
+	f, err := swFiler.Upload(reader, size, bucketName+path+name, bucketName, "")
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(f.FileID)
+	fmt.Println(bucketName + path + name)
+
+	return InsertFileMetadata(bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
 }

@@ -12,6 +12,7 @@ var (
 	session *gocql.Session
 	sw      *goseaweedfs.Seaweed
 	filer   []string
+	swFiler *goseaweedfs.Filer
 )
 
 const (
@@ -64,7 +65,12 @@ func InitFs() error {
 	var err error
 	sw, err = goseaweedfs.NewSeaweed(masterUrl, filer, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	swFiler = sw.Filers()[0]
+	return nil
 }
 
 func initDbTables() error {
@@ -108,7 +114,7 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" access_keys_by_uid_bid" +
 			" (uid uuid, bucket_id uuid, key ascii, permissions set<int>," +
-			" expired_date date, PRIMARY KEY ((uid), bucket_id, key))").
+			" expired_date timestamp, PRIMARY KEY ((uid), bucket_id, key))").
 		Exec()
 	if err != nil {
 		return err
@@ -118,7 +124,7 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" access_keys_by_key" +
 			" (uid uuid, bucket_id uuid, key ascii, permissions set<int>," +
-			" expired_date date, PRIMARY KEY ((key), bucket_id))").
+			" expired_date timestamp, PRIMARY KEY ((key), bucket_id))").
 		Exec()
 	if err != nil {
 		return err
@@ -129,7 +135,7 @@ func initDbTables() error {
 			" file_metadata_by_bid" +
 			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
 			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
-			" upload_date timestamp, expired_date timestamp" +
+			" upload_date timestamp, expired_date timestamp, " +
 			" PRIMARY KEY ((bucket_id), upload_date, id))" +
 			" with clustering order by (upload_date desc, id asc)").
 		Exec()
@@ -142,7 +148,7 @@ func initDbTables() error {
 			" file_metadata_by_id" +
 			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
 			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
-			" upload_date timestamp, expired_date timestamp" +
+			" upload_date timestamp, expired_date timestamp," +
 			" PRIMARY KEY ((id), upload_date, bucket_id))" +
 			" with clustering order by (upload_date desc, bucket_id asc)").
 		Exec()
