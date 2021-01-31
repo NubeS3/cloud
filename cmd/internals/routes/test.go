@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
+	"github.com/m1ome/randstr"
 	"io"
 	"net/http"
 	"strings"
@@ -33,6 +34,11 @@ func TestRoute(r *gin.Engine) {
 	})
 	r.GET("/testInsertDB", func(c *gin.Context) {
 		res := models.TestDb()
+		c.JSON(http.StatusOK, res)
+	})
+
+	r.GET("/testRedis", func(c *gin.Context) {
+		res := models.TestRedis()
 		c.JSON(http.StatusOK, res)
 	})
 
@@ -108,7 +114,8 @@ func TestRoute(r *gin.Engine) {
 		file, _ := c.FormFile("file")
 		f, _ := file.Open()
 		testUuid, _ := gocql.RandomUUID()
-		mt, err := models.SaveFile(f, testUuid, "test", "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+		rands := randstr.GetString(5)
+		mt, err := models.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return

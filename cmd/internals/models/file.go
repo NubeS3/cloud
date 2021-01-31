@@ -1,14 +1,13 @@
 package models
 
 import (
-	"fmt"
 	"github.com/gocql/gocql"
 	"io"
 	"time"
 )
 
 type FileMetadata struct {
-	Id       gocql.UUID
+	Id       string
 	BucketId gocql.UUID
 	Path     string
 	Name     string
@@ -24,21 +23,16 @@ type FileMetadata struct {
 	ExpiredDate  time.Time
 }
 
-func InsertFileMetadata(bid gocql.UUID,
+func InsertFileMetadata(fid string, bid gocql.UUID,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return nil, err
-	}
-
 	uploadedDate := time.Now()
 
-	queryBid := session.Query("INSERT INTO file_metadata_by_bid "+
+	queryBid := session.Query("INSERT INTO file_metadata_by_pathname "+
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
 		"is_deleted, deleted_date, upload_date, expired_date)"+
 		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
+		fid, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryBid.Exec(); err != nil {
 		return nil, err
@@ -48,17 +42,17 @@ func InsertFileMetadata(bid gocql.UUID,
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
 		"is_deleted, deleted_date, upload_date, expired_date)"+
 		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
+		fid, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryId.Exec(); err != nil {
 		deleteQuery := session.Query("DELETE FROM file_metadata_by_bid"+
-			" WHERE bid = ? AND upload_date = ? AND id = ?", bid, uploadedDate, id)
+			" WHERE bid = ? AND upload_date = ? AND id = ?", bid, uploadedDate, fid)
 		_ = deleteQuery.Exec()
 		return nil, err
 	}
 
 	return &FileMetadata{
-		Id:           id,
+		Id:           fid,
 		BucketId:     bid,
 		Path:         path,
 		Name:         name,
@@ -127,13 +121,10 @@ func MarkDeletedFileMetadata(bucketId gocql.UUID, id gocql.UUID) error {
 func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
-	f, err := swFiler.Upload(reader, size, bucketName+path+name, bucketName, "")
+	f, err := sw.Upload(reader, name, size, "", "")
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Println(f.FileID)
-	fmt.Println(bucketName + path + name)
-
-	return InsertFileMetadata(bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
+	return InsertFileMetadata(f.FileID, bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
 }
