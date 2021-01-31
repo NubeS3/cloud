@@ -6,6 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 func FileRoutes(r *gin.Engine) {
@@ -59,7 +61,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("bucket not found")
 				return
 			}
-			newPath := bucket.Name + path + fileName
+			//newPath := bucket.Name + path + fileName
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -71,7 +73,18 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 			fileSize := uploadFile.Size
-			res, err := models.UploadFile(fileContent, fileSize, newPath, "", "")
+			ttl_str := c.PostForm("ttl")
+			ttl, err := strconv.ParseInt(ttl_str, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+			}
+
+			res, err := models.SaveFile(fileContent, bucket.Id,
+				bucket.Name, path, fileName, false,
+				uploadFile.Header.Get("Content-type"),
+				fileSize, time.Duration(ttl))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
