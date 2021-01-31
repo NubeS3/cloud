@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
+	"github.com/mediocregopher/radix/v3"
 	"io"
 	"log"
 	"mime/multipart"
@@ -50,4 +51,13 @@ func TestDownload(path string, callback func(r io.Reader) error) error {
 	filer := filers[0]
 	err := filer.Download(path, nil, callback)
 	return err
+}
+
+func TestRedis() string {
+	var res string
+	if err := redisClient.Do(radix.Cmd(&res, "PING")); err != nil {
+		panic(err)
+	}
+
+	return res
 }

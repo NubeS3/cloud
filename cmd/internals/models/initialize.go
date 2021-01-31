@@ -3,16 +3,18 @@ package models
 import (
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
+	"github.com/mediocregopher/radix/v3"
 	"github.com/spf13/viper"
 	"net/http"
 	"time"
 )
 
 var (
-	session *gocql.Session
-	sw      *goseaweedfs.Seaweed
-	filer   []string
-	swFiler *goseaweedfs.Filer
+	session     *gocql.Session
+	sw          *goseaweedfs.Seaweed
+	filer       []string
+	swFiler     *goseaweedfs.Filer
+	redisClient *radix.Pool
 )
 
 const (
@@ -52,7 +54,16 @@ func InitDb() error {
 	//iter := session.Query(_query).Iter()
 	//fmt.Printf("Testing: %d rows returned", iter.NumRows())
 
-	return initDbTables()
+	if err := initDbTables(); err != nil {
+		return err
+	}
+
+	redisClient, err = radix.NewPool("tcp", "127.0.0.1:6379", 10)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func InitFs() error {
@@ -131,13 +142,10 @@ func initDbTables() error {
 	}
 
 	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" file_metadata_by_bid" +
-			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
-			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
-			" upload_date timestamp, expired_date timestamp, " +
-			" PRIMARY KEY ((bucket_id), upload_date, id))" +
-			" with clustering order by (upload_date desc, id asc)").
+		Query("create table if not exists folders" +
+			" (bucket_id uuid, path text, name text," +
+			" primary key ((bucket_id), path, name))" +
+			" with clustering order by (path asc, name asc) ").
 		Exec()
 	if err != nil {
 		return err
@@ -146,11 +154,24 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" file_metadata_by_id" +
-			" (id uuid, bucket_id uuid, path text, name text, content_type ascii," +
+			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
 			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
 			" upload_date timestamp, expired_date timestamp," +
 			" PRIMARY KEY ((id), upload_date, bucket_id))" +
 			" with clustering order by (upload_date desc, bucket_id asc)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" file_metadata_by_pathname" +
+			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
+			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
+			" upload_date timestamp, expired_date timestamp," +
+			" PRIMARY KEY ((bucket_id), path, name, upload_date))" +
+			" with clustering order by (path asc, name asc, upload_date desc)").
 		Exec()
 	if err != nil {
 		return err
@@ -165,5 +186,8 @@ func CleanUp() {
 	}
 	if session != nil {
 		session.Close()
+	}
+	if redisClient != nil {
+		_ = redisClient.Close()
 	}
 }
