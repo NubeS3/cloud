@@ -121,7 +121,7 @@ func MarkDeletedFileMetadata(bucketId gocql.UUID, id gocql.UUID) error {
 func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
-	f, err := sw.Upload(reader, name, size, bucketName, "")
+	f, err := sw.Upload(reader, name, size, "", "")
 	if err != nil {
 		return nil, err
 	}
