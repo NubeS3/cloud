@@ -4,10 +4,12 @@ import (
 	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/gin-gonic/gin"
+	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func TestRoute(r *gin.Engine) {
@@ -101,5 +103,17 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "delete success",
 		})
+	})
+
+	r.POST("/uploadFile", func(c *gin.Context) {
+		file, _ := c.FormFile("file")
+		f, _ := file.Open()
+		testUuid, _ := gocql.RandomUUID()
+		mt, err := models.SaveFile(f, testUuid, "test", "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.JSON(http.StatusOK, mt)
 	})
 }
