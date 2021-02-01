@@ -88,19 +88,3 @@ func UserAuthenticate(c *gin.Context) {
 	c.Set("id", userClaims.Id)
 	c.Next()
 }
-
-func ApiKeyAuthenticate(c *gin.Context) {
-	accessKey := c.Param("accessKey")
-
-	if accessKey == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "unauthorized",
-		})
-		c.Abort()
-		return
-	}
-
-	//TODO Query User By AccessKey and Set user info
-
-	c.Next()
-}
