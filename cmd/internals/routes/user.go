@@ -32,6 +32,16 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
+			if !user.IsActive {
+				err = models.UpdateOTP(user.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+				}
+				return
+			}
+
 			err = scrypt.CompareHashAndPassword([]byte(user.Pass), []byte(curSigninUser.Password))
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
@@ -63,19 +73,6 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if _, err := models.FindUserByUsername(user.Username); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
-			if _, err := models.FindUserByEmail(user.Email); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
-
 			if _, err := models.SaveUser(
 				user.Firstname,
 				user.Lastname,
@@ -92,7 +89,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			err := models.GenerateOTP(user.Id)
+			err := models.GenerateOTP(user.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -103,35 +100,64 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, user)
 		})
 
-		userRoutesGroup.POST("/confirm", func(c *gin.Context) {
-			type otpValidate struct {
+		userRoutesGroup.POST("/resend-otp", func(c *gin.Context) {
+			type curUser struct {
 				Username string `json:"username"`
-				Otp      string `json:"otp"`
+			}
+			var user *curUser
+			if err := c.ShouldBind(&user); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+			}
+			
+			_, err := models.GetUserOTP(user.Username)
+			if err != nil {
+				err = models.GenerateOTP(user.Username)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+				return
+				}
 			}
 
-			var otpVal otpValidate
-			if err := c.ShouldBind(&otpVal); err != nil {
+			err = models.UpdateOTP(user.Username)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "otp resent",
+			})
+
+		})
+
+		userRoutesGroup.POST("/confirm-otp", func(c *gin.Context) {
+			type otpValidate struct {
+				Username	string `json:"username"`
+				Otp     	string `json:"otp"`
+			}
+			var curSigninUser *otpValidate
+			if err := c.ShouldBind(&curSigninUser); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
 				})
 				return
 			}
 
-			//curValidationUser := models.User{}
-			//if err := curValidationUser.ConfirmOtp(otpVal.Username, otpVal.Otp); err != nil {
-			//	c.JSON(http.StatusBadRequest, gin.H{
-			//		"error": err.Error(),
-			//	})
-			//	return
-			//}
-			//
-			//if err := curValidationUser.GenerateRfToken(); err != nil {
-			//	c.JSON(http.StatusInternalServerError, gin.H{
-			//		"error": err.Error(),
-			//	})
-			//	return
-			//}
-
+			_, err := models.GetOTPByUsername(curSigninUser.Username)
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			
+			
 			c.JSON(http.StatusOK, gin.H{
 				"message": "otp confirmed",
 			})

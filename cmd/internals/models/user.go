@@ -20,7 +20,7 @@ type User struct {
 	Gender       bool
 	RefreshToken string
 	ExpiredRf    time.Time
-	IsActivated  bool
+	IsActive 	   bool
 	IsBanned     bool
 	// DB Info
 	CreatedAt time.Time
@@ -279,10 +279,3 @@ func RemoveUserById(uid gocql.UUID) []error {
 
 	return errors
 }
-
-// func ConfirmOTP(username string, otp string) (string, error) {
-// 	user, err := FindUserByUsername(username)
-// 	if err != nil {
-// 		return "", err
-// 	}
-// }
