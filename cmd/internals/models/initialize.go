@@ -126,7 +126,7 @@ func initDbTables() error {
 
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_otp (uid uuid PRIMARY KEY," +
+			" user_otp (username ascii PRIMARY KEY," +
 			" otp ascii, is_validated boolean, last_updated date, expired_time timestamp)").
 		Exec()
 	if err != nil {
