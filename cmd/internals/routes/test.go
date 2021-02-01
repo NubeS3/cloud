@@ -4,10 +4,13 @@ import (
 	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/gin-gonic/gin"
+	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
+	"github.com/m1ome/randstr"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func TestRoute(r *gin.Engine) {
@@ -30,6 +33,11 @@ func TestRoute(r *gin.Engine) {
 	})
 	r.GET("/testInsertDB", func(c *gin.Context) {
 		res := models.TestDb()
+		c.JSON(http.StatusOK, res)
+	})
+
+	r.GET("/testRedis", func(c *gin.Context) {
+		res := models.TestRedis()
 		c.JSON(http.StatusOK, res)
 	})
 
@@ -100,5 +108,18 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "delete success",
 		})
+	})
+
+	r.POST("/uploadFile", func(c *gin.Context) {
+		file, _ := c.FormFile("file")
+		f, _ := file.Open()
+		testUuid, _ := gocql.RandomUUID()
+		rands := randstr.GetString(5)
+		mt, err := models.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+		c.JSON(http.StatusOK, mt)
 	})
 }

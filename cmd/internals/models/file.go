@@ -2,11 +2,12 @@ package models
 
 import (
 	"github.com/gocql/gocql"
+	"io"
 	"time"
 )
 
 type FileMetadata struct {
-	Id       gocql.UUID
+	Id       string
 	BucketId gocql.UUID
 	Path     string
 	Name     string
@@ -22,20 +23,16 @@ type FileMetadata struct {
 	ExpiredDate  time.Time
 }
 
-func InsertFileMetadata(bid gocql.UUID,
+func InsertFileMetadata(fid string, bid gocql.UUID,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return nil, err
-	}
-
 	uploadedDate := time.Now()
 
-	queryBid := session.Query("INSERT INTO file_metadata_by_bid "+
+	queryBid := session.Query("INSERT INTO file_metadata_by_pathname "+
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
-		"is_deleted, deleted_date, upload_date, expired_date)",
-		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
+		"is_deleted, deleted_date, upload_date, expired_date)"+
+		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		fid, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryBid.Exec(); err != nil {
 		return nil, err
@@ -43,18 +40,19 @@ func InsertFileMetadata(bid gocql.UUID,
 
 	queryId := session.Query("INSERT INTO file_metadata_by_id "+
 		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
-		"is_deleted, deleted_date, upload_date, expired_date)",
-		id, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
+		"is_deleted, deleted_date, upload_date, expired_date)"+
+		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		fid, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
 
 	if err := queryId.Exec(); err != nil {
 		deleteQuery := session.Query("DELETE FROM file_metadata_by_bid"+
-			" WHERE bid = ? AND upload_date = ? AND id = ?", bid, uploadedDate, id)
+			" WHERE bid = ? AND upload_date = ? AND id = ?", bid, uploadedDate, fid)
 		_ = deleteQuery.Exec()
 		return nil, err
 	}
 
 	return &FileMetadata{
-		Id:           id,
+		Id:           fid,
 		BucketId:     bid,
 		Path:         path,
 		Name:         name,
@@ -81,6 +79,10 @@ func GetFileMetadataById(bucketId gocql.UUID, id gocql.UUID) *FileMetadata {
 
 	}
 
+	if metadata.IsDeleted {
+		return nil
+	}
+
 	return &metadata
 }
 
@@ -99,4 +101,30 @@ func GetFileMetadataByBucketId(bucketId gocql.UUID) []FileMetadata {
 	}
 
 	return metadata
+}
+
+func MarkDeletedFileMetadata(bucketId gocql.UUID, id gocql.UUID) error {
+	deletedDate := time.Now()
+
+	query := session.
+		Query("UPDATE file_metadata_by_id"+
+			" SET is_deleted = ? AND deleted_date = ?"+
+			" WHERE bucket_id = ? AND id = ?", true, deletedDate, bucketId, id)
+
+	if err := query.Exec(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
+	path string, name string, isHidden bool,
+	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
+	f, err := sw.Upload(reader, name, size, "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	return InsertFileMetadata(f.FileID, bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
 }
