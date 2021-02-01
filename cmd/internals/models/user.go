@@ -20,7 +20,7 @@ type User struct {
 	Gender       bool
 	RefreshToken string
 	ExpiredRf    time.Time
-	IsValidated  bool
+	IsActivated  bool
 	IsBanned     bool
 	// DB Info
 	CreatedAt time.Time
@@ -28,31 +28,29 @@ type User struct {
 }
 
 func SaveUser(
-	firstname string, 
-	lastname string, 
-	username string, 
-	password string, 
-	email string, 
-	dob time.Time, 
-	company string, 
+	firstname string,
+	lastname string,
+	username string,
+	password string,
+	email string,
+	dob time.Time,
+	company string,
 	gender bool,
-	isbanned bool,
-	createdAt time.Time,
-	updatedAt time.Time,
-	) (*User, error) {
+) (*User, error) {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return nil, err
 	}
 
 	query := session.
-		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?)`,
+		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?, ?)`,
 			id,
 			company,
 			dob,
 			email,
 			firstname,
 			gender,
+			false,
 			lastname,
 		)
 	if err := query.Exec(); err != nil {
@@ -103,10 +101,10 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 	var password string
 
 	for iter.Scan(&id, &password, &username) {
-		user = &User {
-			Id: id,
+		user = &User{
+			Id:       id,
 			Username: username,
-			Pass: password,
+			Pass:     password,
 		}
 		users = append(users, *user)
 	}
@@ -124,7 +122,7 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 }
 
 func FindUserByUsername(uname string) (*User, error) {
-	var users []User = []User{}
+	var users []User
 
 	var user *User
 	iter := session.
@@ -136,10 +134,10 @@ func FindUserByUsername(uname string) (*User, error) {
 	var password string
 
 	for iter.Scan(&username, &id, &password) {
-		user = &User {
-			Id: id,
+		user = &User{
+			Id:       id,
 			Username: username,
-			Pass: password,
+			Pass:     password,
 		}
 		users = append(users, *user)
 	}
@@ -157,7 +155,7 @@ func FindUserByUsername(uname string) (*User, error) {
 }
 
 func FindUserByEmail(mail string) (*User, error) {
-	var users []User = []User{}
+	var users []User
 
 	var user *User
 	iter := session.
@@ -169,10 +167,10 @@ func FindUserByEmail(mail string) (*User, error) {
 	var email string
 
 	for iter.Scan(&email, &id, &username) {
-		user = &User {
-			Id: id,
+		user = &User{
+			Id:       id,
 			Username: username,
-			Email: email,
+			Email:    email,
 		}
 		users = append(users, *user)
 	}
@@ -189,16 +187,12 @@ func FindUserByEmail(mail string) (*User, error) {
 	return &users[0], nil
 }
 
-func GenerateOtp() (string, error) {
-	return "", nil
-}
-
 func UpdateUserData(
 	uid gocql.UUID,
-	firstname string, 
-	lastname string, 
-	dob time.Time, 
-	company string, 
+	firstname string,
+	lastname string,
+	dob time.Time,
+	company string,
 	gender bool) (*User, error) {
 	_, err := FindUserById(uid)
 	if err != nil {
@@ -207,11 +201,11 @@ func UpdateUserData(
 
 	query := session.
 		Query(`UPDATE user_data_by_id SET firstname = ?, lastname = ?, dob = ?, company = ?, gender = ? WHERE id = ?`,
-			firstname, 
-			lastname, 
+			firstname,
+			lastname,
 			dob,
-			company, 
-			gender, 
+			company,
+			gender,
 			uid,
 		)
 
@@ -254,7 +248,7 @@ func UpdateUserPassword(uid gocql.UUID, password string) (*User, error) {
 }
 
 func RemoveUserById(uid gocql.UUID) []error {
-	var errors []error = []error{}	
+	var errors []error
 	_, err := FindUserById(uid)
 
 	if err != nil {
@@ -283,12 +277,12 @@ func RemoveUserById(uid gocql.UUID) []error {
 		return nil
 	}
 
-	return errors 
+	return errors
 }
 
 // func ConfirmOTP(username string, otp string) (string, error) {
 // 	user, err := FindUserByUsername(username)
 // 	if err != nil {
 // 		return "", err
-// 	}	
+// 	}
 // }

@@ -1,25 +1,32 @@
 package models
 
-import {
-	"error"
-	"time"
-
+import (
 	"github.com/gocql/gocql"
-}
+	"github.com/thanhpk/randstr"
+	"strings"
+	"time"
+)
 
 type Otp struct {
-	Username   		string
-	Otp 					string
-	IsConfirmed 	bool
-	LastUpdated 	time.Time
-	ExpiredTime 	time.Time
+	Uid         gocql.UUID
+	Otp         string
+	IsConfirmed bool
+	LastUpdated time.Time
+	ExpiredTime time.Time
 }
 
-func SaveOTP(username string, otp string) (string, error) {
-	user, err := models.FindUserByUsername(username)
-	if err != nil {
+func GenerateOTP(uid gocql.UUID) error {
+	newOtp := strings.ToUpper(randstr.Hex(6))
+	query := session.
+		Query(`INSERT INTO user_otp VALUES (?, ?, ?, ?, ?)`,
+			uid,
+			newOtp,
+			false,
+			time.Now(),
+			time.Now().Add(time.Minute*5),
+		)
+	if err := query.Exec(); err != nil {
 		return err
 	}
-
-	return username, otp
+	return nil
 }
