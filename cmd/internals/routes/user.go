@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"time"
-
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	scrypt "github.com/elithrar/simple-scrypt"
@@ -79,19 +77,24 @@ func UserRoutes(route *gin.Engine) {
 			}
 
 			if _, err := models.SaveUser(
-					user.Firstname, 
-					user.Lastname, 
-					user.Username, 
-					user.Pass, 
-					user.Email, 
-					user.Dob, 
-					user.Company, 
-					user.Gender,
-					false,
-					time.Now(),
-					time.Now(),
-					); err != nil {
+				user.Firstname,
+				user.Lastname,
+				user.Username,
+				user.Pass,
+				user.Email,
+				user.Dob,
+				user.Company,
+				user.Gender,
+			); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			err := models.GenerateOTP(user.Id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
 				return
@@ -102,36 +105,36 @@ func UserRoutes(route *gin.Engine) {
 
 		userRoutesGroup.POST("/confirm", func(c *gin.Context) {
 			type otpValidate struct {
-        Username string `json:"username"`
-        Otp      string `json:"otp"`
-      }
+				Username string `json:"username"`
+				Otp      string `json:"otp"`
+			}
 
-      var otpVal otpValidate
-      if err := c.ShouldBind(&otpVal); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-          "error": err.Error(),
-        })
-        return
-      }
+			var otpVal otpValidate
+			if err := c.ShouldBind(&otpVal); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
 
-      curValidationUser := models.User{}
-      if err := curValidationUser.ConfirmOtp(otpVal.Username, otpVal.Otp); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-          "error": err.Error(),
-        })
-        return
-      }
+			//curValidationUser := models.User{}
+			//if err := curValidationUser.ConfirmOtp(otpVal.Username, otpVal.Otp); err != nil {
+			//	c.JSON(http.StatusBadRequest, gin.H{
+			//		"error": err.Error(),
+			//	})
+			//	return
+			//}
+			//
+			//if err := curValidationUser.GenerateRfToken(); err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": err.Error(),
+			//	})
+			//	return
+			//}
 
-      if err := curValidationUser.GenerateRfToken(); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{
-          "error": err.Error(),
-        })
-        return
-      }
-
-      c.JSON(http.StatusOK, gin.H{
-        "message": "otp confirmed",
-      })
+			c.JSON(http.StatusOK, gin.H{
+				"message": "otp confirmed",
+			})
 		})
 	}
 }
