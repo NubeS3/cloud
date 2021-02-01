@@ -20,6 +20,7 @@ type User struct {
 	Gender       bool
 	RefreshToken string
 	ExpiredRf    time.Time
+	IsValidated  bool
 	IsBanned     bool
 	// DB Info
 	CreatedAt time.Time
@@ -34,7 +35,11 @@ func SaveUser(
 	email string, 
 	dob time.Time, 
 	company string, 
-	gender bool) (*User, error) {
+	gender bool,
+	isbanned bool,
+	createdAt time.Time,
+	updatedAt time.Time,
+	) (*User, error) {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return nil, err
@@ -184,6 +189,10 @@ func FindUserByEmail(mail string) (*User, error) {
 	return &users[0], nil
 }
 
+func GenerateOtp() (string, error) {
+	return "", nil
+}
+
 func UpdateUserData(
 	uid gocql.UUID,
 	firstname string, 
@@ -277,7 +286,9 @@ func RemoveUserById(uid gocql.UUID) []error {
 	return errors 
 }
 
-// FOR TESTING
-func Save() (*User, error) {
-	return nil, nil
-}
+// func ConfirmOTP(username string, otp string) (string, error) {
+// 	user, err := FindUserByUsername(username)
+// 	if err != nil {
+// 		return "", err
+// 	}	
+// }
