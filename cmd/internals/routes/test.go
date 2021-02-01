@@ -122,4 +122,10 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, mt)
 	})
+
+	r.POST("/downloadFile", func(c *gin.Context) {
+		//models.GetFile(nil, )
+		//
+		//c.JSON(http.StatusOK, mt)
+	})
 }
