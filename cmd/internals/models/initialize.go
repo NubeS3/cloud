@@ -1,12 +1,13 @@
 package models
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"github.com/mediocregopher/radix/v3"
 	"github.com/spf13/viper"
-	"net/http"
-	"time"
 )
 
 var (
@@ -87,7 +88,8 @@ func InitFs() error {
 func initDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" users_by_id (id uuid PRIMARY KEY, username ascii, password ascii)").
+			" users_by_id (id uuid PRIMARY KEY, username ascii," +
+			" password ascii, refresh_token string, is_active boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -95,8 +97,18 @@ func initDbTables() error {
 
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_by_username (id uuid, username ascii PRIMARY KEY," +
-			" password ascii)").
+			" users_by_username (id uuid, username ascii PRIMARY KEY," +
+			" password ascii, is_active boolean)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" users_by_email (id uuid, username ascii," +
+			" password ascii, email ascii PRIMARY KEY," +
+			" is_active boolean").
 		Exec()
 	if err != nil {
 		return err
@@ -106,7 +118,16 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
 			" gender boolean, company ascii, firstname text," +
-			" lastname text, dob date)").
+			" lastname text, dob date, is_active boolean)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXIST" +
+			" user_otp (username ascii PRIMARY KEY, email ascii," +
+			" otp ascii, is_validated boolean, last_updated date, expired_time timestamp)").
 		Exec()
 	if err != nil {
 		return err
