@@ -3,6 +3,7 @@ package models
 import (
 	"github.com/gocql/gocql"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -86,9 +87,28 @@ func GetFileMetadataById(bucketId gocql.UUID, id gocql.UUID) *FileMetadata {
 	return &metadata
 }
 
+func GetFileMetadataByPathname(bucketId gocql.UUID, path, name string) *FileMetadata {
+	iter := session.
+		Query("SELECT FROM file_metadata_by_pathname"+
+			" WHERE bucket_id = ? AND path = ? AND name = ? LIMIT 1", bucketId, path, name).
+		Iter()
+
+	metadata := FileMetadata{}
+	for iter.Scan(&metadata.Id, &metadata.BucketId, &metadata.Path, &metadata.Name,
+		&metadata.ContentType, &metadata.Size, &metadata.IsHidden, &metadata.IsDeleted,
+		&metadata.DeletedDate, &metadata.UploadedDate, &metadata.ExpiredDate) {
+	}
+
+	if metadata.IsDeleted {
+		return nil
+	}
+
+	return &metadata
+}
+
 func GetFileMetadataByBucketId(bucketId gocql.UUID) []FileMetadata {
 	iter := session.
-		Query("SELECT FROM file_metadata_by_id"+
+		Query("SELECT FROM file_metadata_by_pathname"+
 			" WHERE bucket_id = ?", bucketId).
 		Iter()
 
@@ -121,10 +141,26 @@ func MarkDeletedFileMetadata(bucketId gocql.UUID, id gocql.UUID) error {
 func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
-	f, err := sw.Upload(reader, name, size, "", "")
+	pathNormalized := strings.ReplaceAll(path, "/", "_")
+	f, err := sw.Upload(reader, bucketName+pathNormalized+name, size, "", "")
 	if err != nil {
 		return nil, err
 	}
 
 	return InsertFileMetadata(f.FileID, bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
 }
+
+func GetFile(bid gocql.UUID, path, name string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
+	meta := GetFileMetadataByPathname(bid, path, name)
+
+	var err error
+	_, err = sw.Download(meta.Id, nil, func(reader io.Reader) error {
+		return callback(reader, meta)
+	})
+
+	return err
+}
+
+//func GetFileById(bid gocql.UUID, fid gocql.UUID) (io.Reader, error) {
+//
+//}

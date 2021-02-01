@@ -97,7 +97,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			if err := models.Remove(uid.(gocql.UUID), id); err != nil {
+			if err := models.RemoveBucket(uid.(gocql.UUID), id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})

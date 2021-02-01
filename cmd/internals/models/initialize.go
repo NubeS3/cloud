@@ -58,10 +58,10 @@ func InitDb() error {
 		return err
 	}
 
-	redisClient, err = radix.NewPool("tcp", "127.0.0.1:6379", 10)
-	if err != nil {
-		return err
-	}
+	//redisClient, err = radix.NewPool("tcp", "127.0.0.1:6379", 10)
+	//if err != nil {
+	//	return err
+	//}
 
 	return nil
 }

@@ -107,7 +107,7 @@ func FindBucketByUid(uid gocql.UUID) ([]Bucket, error) {
 	return buckets, err
 }
 
-func Remove(uid gocql.UUID, id gocql.UUID) error {
+func RemoveBucket(uid gocql.UUID, id gocql.UUID) error {
 	query := session.
 		Query(`DELETE FROM buckets WHERE uid = ? AND id = ?`, uid, id)
 
