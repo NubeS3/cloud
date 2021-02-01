@@ -3,9 +3,12 @@ package routes
 import (
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
+	"github.com/sendgrid/sendgrid-go"
+	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 )
 
 func UserRoutes(route *gin.Engine) {
@@ -33,13 +36,19 @@ func UserRoutes(route *gin.Engine) {
 			}
 
 			if !user.IsActive {
-				err = models.UpdateOTP(user.Username)
+				otp, err := models.UpdateOTP(user.Username)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"error": err.Error(),
 					})
+					return
 				}
-				return
+				if err = SendOTP(user.Username, user.Email, otp); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+					return
+				}
 			}
 
 			err = scrypt.CompareHashAndPassword([]byte(user.Pass), []byte(curSigninUser.Password))
@@ -89,7 +98,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			err := models.GenerateOTP(user.Username)
+			otp, err := models.GenerateOTP(user.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -97,37 +106,63 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, user)
-		})
-
-		userRoutesGroup.POST("/resend-otp", func(c *gin.Context) {
-			type curUser struct {
-				Username string `json:"username"`
-			}
-			var user *curUser
-			if err := c.ShouldBind(&user); err != nil {
+			if err := SendOTP(user.Username, user.Email, otp); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
 			}
 			
-			_, err := models.GetUserOTP(user.Username)
+
+			c.JSON(http.StatusOK, user)
+		})
+
+		userRoutesGroup.POST("/resend-otp", func(c *gin.Context) {
+			type resendUser struct {
+				Username string `json:"username"`
+			}
+			var curUser *resendUser
+			if err := c.ShouldBind(&curUser); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+			}
+			
+			user, err := models.FindUserByUsername(curUser.Username)
 			if err != nil {
-				err = models.GenerateOTP(user.Username)
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "user not found",
+				})
+				return
+			}
+			_, err = models.GetUserOTP(user.Username)
+			if err != nil {
+				otp, err := models.GenerateOTP(user.Username)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"error": err.Error(),
 					})
-				return
+					return
+				}
+				if err = SendOTP(user.Username, user.Email, otp); err != nil{
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+					return
 				}
 			}
 
-			err = models.UpdateOTP(user.Username)
+			otp, err := models.UpdateOTP(user.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
 				return
+			}
+			if err = SendOTP(user.Username, user.Email, otp); err != nil{
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+					return
 			}
 
 			c.JSON(http.StatusOK, gin.H{
@@ -163,4 +198,18 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 	}
+}
+
+func SendOTP(username string, email string, otp string) error {
+	from := mail.NewEmail("NubeS3 Team", "nubes3.storage@gmail.com")
+	subject := "Verification with OTP"
+	to := mail.NewEmail(username, email)
+	plainTextContent := "Your OTP will be expired in 5 minutes. Do not share it.\r\n OTP: "+otp 
+	message := mail.NewSingleEmail(from, subject, to, plainTextContent, "")
+	client := sendgrid.NewSendClient(os.Getenv("SENDGRID_API_KEY"))
+	_, err := client.Send(message)
+	if err != nil {
+		return err
+	}
+	return nil
 }

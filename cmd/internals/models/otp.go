@@ -14,7 +14,7 @@ type Otp struct {
 	ExpiredTime time.Time
 }
 
-func GenerateOTP(username string) error {
+func GenerateOTP(username string) (string, error) {
 	newOtp := strings.ToUpper(randstr.Hex(6))
 	query := session.
 		Query(`INSERT INTO user_otp VALUES (?, ?, ?, ?)`,
@@ -24,9 +24,9 @@ func GenerateOTP(username string) error {
 			time.Now().Add(time.Minute*5),
 		)
 	if err := query.Exec(); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return newOtp, nil
 }
 
 func GetOTPByUsername(uname string) (string, error) {
@@ -121,7 +121,7 @@ func OTPConfirm(uname string, otp string) error {
 	return nil
 }
 
-func UpdateOTP(username string) error {
+func UpdateOTP(username string) (string, error) {
 	newOtp := strings.ToUpper(randstr.Hex(6))
 	query := session.
 		Query(`UPDATE user_otp SET otp = ?, is_confirmed = ?, last_updated = ?, expired_time = ?`, 
@@ -130,7 +130,7 @@ func UpdateOTP(username string) error {
 		time.Now().Add(time.Minute * 5),
 	)
 	if err := query.Exec(); err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return newOtp, nil
 }
