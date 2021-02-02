@@ -10,6 +10,7 @@ import (
 
 func Routing(r *gin.Engine) {
 	routes.TestRoute(r)
+	routes.UserRoutes(r)
 }
 
 func Run() {

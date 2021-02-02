@@ -9,23 +9,22 @@ import (
 )
 
 type User struct {
-	field.DefaultField 			`json:",inline" bson:",inline"`
-	Id           gocql.UUID `json:"id" bson:"id" binding:"required"`
-	Firstname    string 		`json:"firstname" bson:"firstname" binding:"required"`
-	Lastname     string 		`json:"lastname" bson:"lastname" binding:"required"`
-	Username     string 		`json:"username" bson:"username" binding:"required"`
-	Pass         string 		`json:"pass" bson:"pass" binding:"required"`
-	Email        string 		`json:"email" bson:"email" binding:"required"`
-	Dob          time.Time 	`json:"dob" bson:"dob"`
-	Company      string 		`json:"company" bson:"company"`
-	Gender       bool 			`json:"gender" bson:"gender"`
-	RefreshToken string 		`json:"refreshToken" bson:"refreshToken" binding:"required"`
-	ExpiredRf    time.Time 	`json:"expiredRf" bson:"expiredRf" binding:"required"`
-	IsActive 	   bool 			`json:"isActive" bson:"isActive" binding:"required"`
-	IsBanned     bool 			`json:"isBanned" bson:"isBanned" binding:"required"`
+	Id           gocql.UUID
+	Firstname    string    `json:"firstname" binding:"required"`
+	Lastname     string    `json:"lastname" binding:"required"`
+	Username     string    `json:"username" binding:"required"`
+	Pass         string    `json:"pass" binding:"required"`
+	Email        string    `json:"email" binding:"required"`
+	Dob          time.Time `json:"dob" binding:"required"`
+	Company      string    `json:"company" binding:"required"`
+	Gender       bool      `json:"gender" binding:"required"`
+	RefreshToken string
+	ExpiredRf    time.Time
+	IsActive     bool
+	IsBanned     bool
 	// DB Info
-	CreatedAt time.Time 		`json:"createdAt" bson:"createdAt" binding:"required"`
-	UpdatedAt time.Time 		`json:"updatedAt" bson:"updatedAt " binding:"required"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 func SaveUser(

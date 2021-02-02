@@ -1,15 +1,15 @@
 package models
 
 import (
+	"errors"
 	"github.com/thanhpk/randstr"
 	"strings"
 	"time"
-	"errors"
 )
 
 type Otp struct {
-	Username 		string
-	Otp         string
+	Username    string `json:"username" binding:"required"`
+	Otp         string `json:"otp" binding:"required"`
 	LastUpdated time.Time
 	ExpiredTime time.Time
 }
@@ -93,7 +93,7 @@ func OTPConfirm(uname string, otp string) error {
 	if err = query.Exec(); err != nil {
 		return err
 	}
-	
+
 	query = session.
 		Query(`UPDATE user_data_by_id SET is_active = ?`, true)
 	if err = query.Exec(); err != nil {
@@ -124,11 +124,11 @@ func OTPConfirm(uname string, otp string) error {
 func UpdateOTP(username string) (string, error) {
 	newOtp := strings.ToUpper(randstr.Hex(6))
 	query := session.
-		Query(`UPDATE user_otp SET otp = ?, is_confirmed = ?, last_updated = ?, expired_time = ?`, 
-		newOtp, 
-		time.Now(), 
-		time.Now().Add(time.Minute * 5),
-	)
+		Query(`UPDATE user_otp SET otp = ?, is_confirmed = ?, last_updated = ?, expired_time = ?`,
+			newOtp,
+			time.Now(),
+			time.Now().Add(time.Minute*5),
+		)
 	if err := query.Exec(); err != nil {
 		return "", err
 	}
