@@ -1,30 +1,28 @@
 package models
 
 import (
-	"errors"
-	"log"
 	"time"
 
 	"github.com/gocql/gocql"
 )
 
 type User struct {
-	Id           gocql.UUID
-	Firstname    string    `json:"firstname" binding:"required"`
-	Lastname     string    `json:"lastname" binding:"required"`
-	Username     string    `json:"username" binding:"required"`
-	Pass         string    `json:"pass" binding:"required"`
-	Email        string    `json:"email" binding:"required"`
-	Dob          time.Time `json:"dob" binding:"required"`
-	Company      string    `json:"company" binding:"required"`
-	Gender       bool      `json:"gender" binding:"required"`
-	RefreshToken string
-	ExpiredRf    time.Time
-	IsActive     bool
-	IsBanned     bool
-	// DB Info
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Id           	gocql.UUID `json:"id"`
+	Firstname    	string 		`json:"firstname" binding:"required"`
+	Lastname     	string 		`json:"lastname" binding:"required"`
+	Username     	string 		`json:"username" binding:"required"`
+	Pass         	string 		`json:"pass" binding:"required"`
+	Email        	string 		`json:"email" binding:"required"`
+	Dob          	time.Time	`json:"dob" binding:"required"`
+	Company      	string 		`json:"company" binding:"required"`
+	Gender       	bool 			`json:"gender" binding:"required"`
+	RefreshToken 	string
+	ExpiredRf    	time.Time
+	IsActive 	   	bool
+	IsBanned     	bool
+	// DB Info	
+	CreatedAt 	 	time.Time
+	UpdatedAt 	 	time.Time
 }
 
 func SaveUser(
@@ -43,40 +41,98 @@ func SaveUser(
 	}
 
 	query := session.
-		Query(`INSERT INTO user_data_by_id VALUES (?, ? ,?, ?, ?, ?, ?, ?)`,
+		Query(`INSERT INTO user_data_by_id (
+				id, 
+				company, 
+				created_at, 
+				dob, 
+				email, 
+				firstname, 
+				gender, 
+				is_active, 
+				is_banned, 
+				lastname, 
+				updated_at) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id,
 			company,
+			time.Now(),
 			dob,
 			email,
 			firstname,
 			gender,
 			false,
+			false,
 			lastname,
+			time.Now(),
 		)
 	if err := query.Exec(); err != nil {
 		return nil, err
 	}
 
 	query = session.
-		Query(`INSERT INTO users_by_username VALUES (?, ?, ?)`,
-			username,
+		Query(`INSERT INTO users_by_email (
+				email, 
+				id, 
+				is_active, 
+				is_banned, 
+				password, 
+				username) 
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			email,
 			id,
+			false,
+			false,
 			password,
+			username,
 		)
 	if err := query.Exec(); err != nil {
-		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id)
+		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
 		return nil, err
 	}
 
 	query = session.
-		Query(`INSERT INTO users_by_id VALUES (?, ?, ?)`,
+		Query(`INSERT INTO users_by_username (
+				username, 
+				id, 
+				is_active, 
+				is_banned, 
+				password) 
+			VALUES (?, ?, ?, ?, ?)`,
+			username,
 			id,
+			false,
+			false,
 			password,
+		)
+	if err := query.Exec(); err != nil {
+		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
+		session.Query(`DELETE FROM users_by_email WHERE id = ?`, id).Exec()
+		return nil, err
+	}
+
+	query = session.
+		Query(`INSERT INTO users_by_id (
+				id, 
+				expired_rf, 
+				is_active, 
+				is_banned, 
+				password, 
+				refresh_token, 
+				username) 
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			id,
+			nil,
+			false,
+			false,
+			password,
+			nil,
 			username,
 		)
 	if err := query.Exec(); err != nil {
-		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id)
-		session.Query(`DELETE FROM users_by_username WHERE id = ?`, id)
+		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
+		session.Query(`DELETE FROM users_by_email WHERE id = ?`, id).Exec()
+		session.Query(`DELETE FROM users_by_username WHERE id = ?`, id).Exec()
 		return nil, err
 	}
 
@@ -89,102 +145,156 @@ func SaveUser(
 }
 
 func FindUserById(uid gocql.UUID) (*User, error) {
-	var users []User = []User{}
-
-	var user *User
-	iter := session.
-		Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
-		Iter()
-
 	var id gocql.UUID
+	var firstname string
+	var lastname string
 	var username string
-	var password string
+	var pass string
+	var email string
+	var dob time.Time
+	var company string
+	var gender bool
+	var refreshToken string
+	var expiredRf time.Time
+	var isActive bool
+	var isBanned bool
+	var createdAt time.Time
+	var updatedAt time.Time
 
-	for iter.Scan(&id, &password, &username) {
-		user = &User{
-			Id:       id,
-			Username: username,
-			Pass:     password,
-		}
-		users = append(users, *user)
+	err := session.
+	Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
+	Scan(&id, &expiredRf, &isActive, &isBanned, &pass, &refreshToken, &username)
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
-	if err = iter.Close(); err != nil {
-		log.Fatal(err)
+	err = session.
+		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, uid).
+		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(users) < 1 {
-		return nil, errors.New("User not found")
-	}
-
-	return &users[0], nil
+	return &User {
+		Id: uid,
+		Firstname: firstname,
+		Lastname: lastname,
+		Username: username,
+		Pass: pass,
+		Email: email,
+		Dob: dob,
+		Company: company,
+		Gender: gender,
+		RefreshToken: refreshToken,
+		ExpiredRf: expiredRf,
+		IsActive: isActive,
+		IsBanned: isBanned,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}, nil
+	
 }
 
 func FindUserByUsername(uname string) (*User, error) {
-	var users []User
-
-	var user *User
-	iter := session.
-		Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
-		Iter()
-
-	var username string
 	var id gocql.UUID
-	var password string
+	var firstname string
+	var lastname string
+	var username string
+	var pass string
+	var email string
+	var dob time.Time
+	var company string
+	var gender bool
+	var refreshToken string
+	var expiredRf time.Time
+	var isActive bool
+	var isBanned bool
+	var createdAt time.Time
+	var updatedAt time.Time
 
-	for iter.Scan(&username, &id, &password) {
-		user = &User{
-			Id:       id,
-			Username: username,
-			Pass:     password,
-		}
-		users = append(users, *user)
+	err := session.
+	Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
+	Scan(&username, &id, &isActive, &isBanned, &pass)
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
-	if err = iter.Close(); err != nil {
-		log.Fatal(err)
+	err = session.
+		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, id).
+		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(users) < 1 {
-		return nil, errors.New("User not found")
-	}
+	return &User {
+		Id: id,
+		Firstname: firstname,
+		Lastname: lastname,
+		Username: username,
+		Pass: pass,
+		Email: email,
+		Dob: dob,
+		Company: company,
+		Gender: gender,
+		RefreshToken: refreshToken,
+		ExpiredRf: expiredRf,
+		IsActive: isActive,
+		IsBanned: isBanned,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}, nil
 
-	return &users[0], nil
 }
 
 func FindUserByEmail(mail string) (*User, error) {
-	var users []User
-
-	var user *User
-	iter := session.
-		Query(`SELECT * FROM users_by_email WHERE email = ?`, mail).
-		Iter()
-
 	var id gocql.UUID
+	var firstname string
+	var lastname string
 	var username string
+	var pass string
 	var email string
+	var dob time.Time
+	var company string
+	var gender bool
+	var refreshToken string
+	var expiredRf time.Time
+	var isActive bool
+	var isBanned bool
+	var createdAt time.Time
+	var updatedAt time.Time
 
-	for iter.Scan(&email, &id, &username) {
-		user = &User{
-			Id:       id,
-			Username: username,
-			Email:    email,
-		}
-		users = append(users, *user)
+	err := session.
+	Query(`SELECT * FROM users_by_email WHERE username = ?`, mail).
+	Scan(&email, &id, &isActive, &isBanned, &pass, &username)
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
-	if err = iter.Close(); err != nil {
-		log.Fatal(err)
+	err = session.
+		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, id).
+		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
+	if err != nil {
+		return nil, err
 	}
 
-	if len(users) < 1 {
-		return nil, errors.New("User not found")
-	}
+	return &User {
+		Id: id,
+		Firstname: firstname,
+		Lastname: lastname,
+		Username: username,
+		Pass: pass,
+		Email: email,
+		Dob: dob,
+		Company: company,
+		Gender: gender,
+		RefreshToken: refreshToken,
+		ExpiredRf: expiredRf,
+		IsActive: isActive,
+		IsBanned: isBanned,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+	}, nil
 
-	return &users[0], nil
 }
 
 func UpdateUserData(
@@ -214,6 +324,9 @@ func UpdateUserData(
 	}
 
 	user, err := FindUserById(uid)
+	if err != nil {
+		return nil, err
+	}
 
 	return user, err
 }

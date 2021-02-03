@@ -14,63 +14,62 @@ type Otp struct {
 	ExpiredTime time.Time
 }
 
-func GenerateOTP(username string) (string, error) {
-	newOtp := strings.ToUpper(randstr.Hex(6))
+func GenerateOTP(username string) (*Otp, error) {
+	newOtp := strings.ToUpper(randstr.Hex(4))
 	query := session.
-		Query(`INSERT INTO user_otp VALUES (?, ?, ?, ?)`,
+		Query(`INSERT INTO user_otp (username, expired_time, last_updated, otp) VALUES (?, ?, ?, ?)`,
 			username,
-			newOtp,
-			time.Now(),
 			time.Now().Add(time.Minute*5),
+			time.Now(),
+			newOtp,
 		)
 	if err := query.Exec(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return newOtp, nil
+
+	otp, err := GetUserOTP(username)
+	if err != nil {
+		return nil, err
+	}
+
+	return otp, nil
 }
 
 func GetOTPByUsername(uname string) (string, error) {
-	var otps []Otp = []Otp{}
-	var otp *Otp
+	var username string
+	var expiredTime time.Time
+	var lastUpdated time.Time
+	var otp string
 
-	iter := session.
+	err := session.
 		Query(`SELECT * FROM user_otp WHERE username = ?`, uname).
-		Iter()
-
-	for iter.Scan(&uname) {
-		otp = &Otp{
-			Username: uname,
-		}
-		otps = append(otps, *otp)
+		Scan(&username, &expiredTime, &lastUpdated, &otp)		
+	if err != nil {
+		return "", err
 	}
 
-	if err := iter.Close(); err != nil {
-		return "", errors.New("otp not found")
-	}
-
-	return *&otps[0].Otp, nil
+	return otp, nil
 }
 
 func GetUserOTP(uname string) (*Otp, error) {
-	var otps []Otp = []Otp{}
-	var otp *Otp
+	var username string
+	var expiredTime time.Time
+	var lastUpdated time.Time
+	var otp string
 
-	iter := session.
+	err := session.
 		Query(`SELECT * FROM user_otp WHERE username = ?`, uname).
-		Iter()
-
-	for iter.Scan(&uname) {
-		otp = &Otp{
-			Username: uname,
-		}
-		otps = append(otps, *otp)
+		Scan(&username, &expiredTime, &lastUpdated, &otp)		
+	if err != nil {
+		return nil, err
 	}
 
-	if err := iter.Close(); err != nil {
-		return nil, errors.New("otp not found")
-	}
-
-	return &otps[0], nil
+	return &Otp{
+		Username: username,
+		ExpiredTime: expiredTime,
+		LastUpdated: lastUpdated,
+		Otp: otp,
+	}, nil
 }
 
 func OTPConfirm(uname string, otp string) error {
@@ -121,7 +120,7 @@ func OTPConfirm(uname string, otp string) error {
 	return nil
 }
 
-func UpdateOTP(username string) (string, error) {
+func UpdateOTP(username string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(6))
 	query := session.
 		Query(`UPDATE user_otp SET otp = ?, is_confirmed = ?, last_updated = ?, expired_time = ?`,
@@ -130,7 +129,14 @@ func UpdateOTP(username string) (string, error) {
 			time.Now().Add(time.Minute*5),
 		)
 	if err := query.Exec(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return newOtp, nil
+
+	otp, err := GetUserOTP(username)
+	if err != nil {
+		return nil, err
+	}
+
+
+	return otp, nil
 }

@@ -89,7 +89,8 @@ func initDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_id (id uuid PRIMARY KEY, username ascii," +
-			" password ascii, refresh_token ascii, is_active boolean)").
+			" password ascii, refresh_token ascii, expired_rf timestamp," + 
+			" is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -98,7 +99,7 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_username (id uuid, username ascii PRIMARY KEY," +
-			" password ascii, is_active boolean)").
+			" password ascii, is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -108,7 +109,7 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_email (id uuid, username ascii," +
 			" password ascii, email ascii PRIMARY KEY," +
-			" is_active boolean)").
+			" is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -118,7 +119,9 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
 			" gender boolean, company ascii, firstname text," +
-			" lastname text, dob date, is_active boolean)").
+			" lastname text, dob date, is_active boolean," + 
+			" created_at timestamp, updated_at timestamp," +
+			" is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -127,7 +130,7 @@ func initDbTables() error {
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" user_otp (username ascii PRIMARY KEY," +
-			" otp ascii, last_updated date, expired_time timestamp)").
+			" otp ascii, last_updated timestamp, expired_time timestamp)").
 		Exec()
 	if err != nil {
 		return err
