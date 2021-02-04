@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -81,19 +82,19 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if _, err := models.FindUserByUsername(user.Username); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "username already used",
-				})
-				return
-			}
+			// if _, err := models.FindUserByUsername(user.Username); err != nil {
+			// 	c.JSON(http.StatusBadRequest, gin.H{
+			// 		"error": "username already used",
+			// 	})
+			// 	return
+			// }
 
-			if _, err := models.FindUserByEmail(user.Email); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "email already used",
-				})
-				return
-			}
+			// if _, err := models.FindUserByEmail(user.Email); err != nil {
+			// 	c.JSON(http.StatusBadRequest, gin.H{
+			// 		"error": "email already used",
+			// 	})
+			// 	return
+			// }
 
 			var curUser, err = models.SaveUser(
 				user.Firstname,
@@ -215,12 +216,13 @@ func UserRoutes(route *gin.Engine) {
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
+	fmt.Println(time.Now())
 	err := ultis.SendMail(
 		username, 
 		email,
 		"Verify email",
-		"Enter the OTP we sent you via email to continue.\r\n" + otp + "\r\n" +
-		"The OTP will be expired at " + expiredTime.Format("2006-01-02 15:04:05") + ". Do not share it to public.",
+		"Enter the OTP we sent you via email to continue.\r\n\r\n" + otp + "\r\n\r\n" +
+		"The OTP will be expired at " + expiredTime.Local().Format("02-01-2006 15:04") + ". Do not share it to public.",
 	)
 
 	return err

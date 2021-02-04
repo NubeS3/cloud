@@ -185,8 +185,6 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 		Dob: dob,
 		Company: company,
 		Gender: gender,
-		RefreshToken: refreshToken,
-		ExpiredRf: expiredRf,
 		IsActive: isActive,
 		IsBanned: isBanned,
 		CreatedAt: createdAt,
