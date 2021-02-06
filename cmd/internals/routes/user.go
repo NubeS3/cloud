@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -35,13 +36,17 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			fmt.Println(user.Pass)
-			fmt.Println([]byte(user.Pass))
-			fmt.Println([]byte(curSigninUser.Password))
 			err = scrypt.CompareHashAndPassword([]byte(user.Pass), []byte(curSigninUser.Password))
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": err.Error(),
+				})
+				return
+			}
+
+			if !user.IsActive {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": errors.New("user have not verified account via otp"),
 				})
 				return
 			}
