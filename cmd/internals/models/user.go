@@ -1,8 +1,10 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
+	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gocql/gocql"
 )
 
@@ -39,6 +41,12 @@ func SaveUser(
 	if err != nil {
 		return nil, err
 	}
+
+	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(passwordHashed)
 
 	query := session.
 		Query(`INSERT INTO user_data_by_id (
@@ -83,7 +91,7 @@ func SaveUser(
 			id,
 			false,
 			false,
-			password,
+			passwordHashed,
 			username,
 		)
 	if err := query.Exec(); err != nil {
@@ -103,7 +111,7 @@ func SaveUser(
 			id,
 			false,
 			false,
-			password,
+			passwordHashed,
 		)
 	if err := query.Exec(); err != nil {
 		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
@@ -125,7 +133,7 @@ func SaveUser(
 			nil,
 			false,
 			false,
-			password,
+			passwordHashed,
 			nil,
 			username,
 		)
@@ -141,6 +149,7 @@ func SaveUser(
 		return nil, err
 	}
 
+	fmt.Println(user.Pass)
 	return user, err
 }
 

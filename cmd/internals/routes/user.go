@@ -35,26 +35,13 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if !user.IsActive {
-				otp, err := models.UpdateOTP(user.Username)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
-					})
-					return
-				}
-				if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
-					})
-					return
-				}
-			}
-
+			fmt.Println(user.Pass)
+			fmt.Println([]byte(user.Pass))
+			fmt.Println([]byte(curSigninUser.Password))
 			err = scrypt.CompareHashAndPassword([]byte(user.Pass), []byte(curSigninUser.Password))
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "invalid password",
+					"error": err.Error(),
 				})
 				return
 			}
