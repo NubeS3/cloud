@@ -13,14 +13,14 @@ type UserClaims struct {
 }
 
 func CreateToken(oid gocql.UUID) (string, error) {
-	userClaims := UserClaims{
+	userClaims := &UserClaims{
 		Id: oid,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 3600).Unix(),
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, userClaims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, userClaims)
 	signed, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return "", err
