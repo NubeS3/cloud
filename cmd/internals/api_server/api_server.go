@@ -2,10 +2,12 @@ package api_server
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/routes"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 func Routing(r *gin.Engine) {
@@ -24,6 +26,8 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
+
+	ultis.InitMailService()
 
 	defer models.CleanUp()
 

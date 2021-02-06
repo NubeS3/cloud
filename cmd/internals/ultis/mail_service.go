@@ -6,10 +6,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	sgSender string
+	sgEmail string
+)
+
+func InitMailService() {
+	sgSender = viper.GetString("SG_SENDER")
+	sgEmail = viper.GetString("SG_EMAIL")
+}
+
 func SendMail(receiver string, receiverEmail string, subject string, content string) error {
-	sender := viper.GetString("SG_SENDER")
-	senderEmail := viper.GetString("SG_EMAIL")
-	from := mail.NewEmail(sender, senderEmail)
+	from := mail.NewEmail(sgSender, sgEmail)
 	to := mail.NewEmail(receiver, receiverEmail)
 	message := mail.NewSingleEmail(from, subject, to, content, "")
 	client := sendgrid.NewSendClient(viper.GetString("SG_KEY"))

@@ -2,9 +2,11 @@ package models
 
 import (
 	"errors"
-	"github.com/thanhpk/randstr"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/thanhpk/randstr"
 )
 
 type Otp struct {
@@ -86,34 +88,39 @@ func OTPConfirm(uname string, otp string) error {
 		return errors.New("otp not match")
 	}
 
+	user, err := FindUserByUsername(uname)
+	if err != nil {
+		return err
+	}
+
 	query := session.
 		Query(`DELETE FROM user_otp WHERE username = ?`, uname)
-
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE user_data_by_id SET is_active = ?`, true)
+		Query(`UPDATE user_data_by_id SET is_active = ? WHERE id = ?`, true, user.Id)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE user_by_id SET is_active = ?`, true)
+		Query(`UPDATE users_by_id SET is_active = ? WHERE id = ?`, true, user.Id)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE user_by_username SET is_active = ?`, true)
+		Query(`UPDATE users_by_username SET is_active = ? WHERE username = ?`, true, user.Username)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE user_by_email SET is_active = ?`, true)
+		Query(`UPDATE users_by_email SET is_active = ? WHERE email = ?`, true, user.Email)
 	if err = query.Exec(); err != nil {
+		fmt.Println(err.Error())
 		return err
 	}
 
@@ -121,7 +128,7 @@ func OTPConfirm(uname string, otp string) error {
 }
 
 func UpdateOTP(username string) (*Otp, error) {
-	newOtp := strings.ToUpper(randstr.Hex(6))
+	newOtp := strings.ToUpper(randstr.Hex(4))
 	query := session.
 		Query(`UPDATE user_otp SET otp = ?, last_updated = ?, expired_time = ? WHERE username = ?`,
 			newOtp,

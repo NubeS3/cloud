@@ -118,11 +118,11 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, curUser)
 		})
 
-		userRoutesGroup.POST("/resend-otp", func(c *gin.Context) {
+		userRoutesGroup.PUT("/resend-otp", func(c *gin.Context) {
 			type resendUser struct {
 				Username string `json:"username"`
 			}
-			var curUser *resendUser
+			var curUser resendUser
 			if err := c.ShouldBind(&curUser); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
@@ -173,12 +173,12 @@ func UserRoutes(route *gin.Engine) {
 
 		})
 
-		userRoutesGroup.POST("/confirm-otp", func(c *gin.Context) {
+		userRoutesGroup.PUT("/confirm-otp", func(c *gin.Context) {
 			type otpValidate struct {
 				Username	string `json:"username"`
 				Otp     	string `json:"otp"`
 			}
-			var curSigninUser *otpValidate
+			var curSigninUser otpValidate
 			if err := c.ShouldBind(&curSigninUser); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -194,7 +194,14 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 			
-			
+			err = models.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
 			c.JSON(http.StatusOK, gin.H{
 				"message": "otp confirmed",
 			})
