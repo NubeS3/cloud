@@ -23,14 +23,7 @@ const (
 )
 
 func InitDb() error {
-	viper.SetConfigName("config") // name of config file (without extension)
-	viper.SetConfigType("json")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
+	var err error
 	//_cqlshrc_port :=
 	cqlshrcHost := viper.GetString("DB_URL")
 	_username := viper.GetString("DB_USERNAME")
@@ -89,7 +82,7 @@ func initDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_id (id uuid PRIMARY KEY, username ascii," +
-			" password ascii, refresh_token ascii, expired_rf timestamp," + 
+			" password ascii, refresh_token ascii, expired_rf timestamp," +
 			" is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
@@ -119,7 +112,7 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
 			" gender boolean, company ascii, firstname text," +
-			" lastname text, dob date, is_active boolean," + 
+			" lastname text, dob date, is_active boolean," +
 			" created_at timestamp, updated_at timestamp," +
 			" is_banned boolean)").
 		Exec()

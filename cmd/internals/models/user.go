@@ -9,22 +9,22 @@ import (
 )
 
 type User struct {
-	Id           	gocql.UUID `json:"id"`
-	Firstname    	string 		`json:"firstname" binding:"required"`
-	Lastname     	string 		`json:"lastname" binding:"required"`
-	Username     	string 		`json:"username" binding:"required"`
-	Pass         	string 		`json:"pass" binding:"required"`
-	Email        	string 		`json:"email" binding:"required"`
-	Dob          	time.Time	`json:"dob" binding:"required"`
-	Company      	string 		`json:"company" binding:"required"`
-	Gender       	bool 			`json:"gender" binding:"required"`
-	RefreshToken 	string
-	ExpiredRf    	time.Time
-	IsActive 	   	bool
-	IsBanned     	bool
-	// DB Info	
-	CreatedAt 	 	time.Time
-	UpdatedAt 	 	time.Time
+	Id           gocql.UUID `json:"id"`
+	Firstname    string     `json:"firstname" binding:"required"`
+	Lastname     string     `json:"lastname" binding:"required"`
+	Username     string     `json:"username" binding:"required"`
+	Pass         string     `json:"password" binding:"required"`
+	Email        string     `json:"email" binding:"required"`
+	Dob          time.Time  `json:"dob" binding:"required"`
+	Company      string     `json:"company" binding:"required"`
+	Gender       bool       `json:"gender" binding:"required"`
+	RefreshToken string
+	ExpiredRf    time.Time
+	IsActive     bool
+	IsBanned     bool
+	// DB Info
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func SaveUser(
@@ -171,8 +171,8 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-	Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
-	Scan(&id, &expiredRf, &isActive, &isBanned, &pass, &refreshToken, &username)
+		Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
+		Scan(&id, &expiredRf, &isActive, &isBanned, &pass, &refreshToken, &username)
 	if err != nil {
 		return nil, err
 	}
@@ -184,22 +184,22 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 		return nil, err
 	}
 
-	return &User {
-		Id: uid,
+	return &User{
+		Id:        uid,
 		Firstname: firstname,
-		Lastname: lastname,
-		Username: username,
-		Pass: pass,
-		Email: email,
-		Dob: dob,
-		Company: company,
-		Gender: gender,
-		IsActive: isActive,
-		IsBanned: isBanned,
+		Lastname:  lastname,
+		Username:  username,
+		Pass:      pass,
+		Email:     email,
+		Dob:       dob,
+		Company:   company,
+		Gender:    gender,
+		IsActive:  isActive,
+		IsBanned:  isBanned,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}, nil
-	
+
 }
 
 func FindUserByUsername(uname string) (*User, error) {
@@ -220,8 +220,8 @@ func FindUserByUsername(uname string) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-	Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
-	Scan(&username, &id, &isActive, &isBanned, &pass)
+		Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
+		Scan(&username, &id, &isActive, &isBanned, &pass)
 	if err != nil {
 		return nil, err
 	}
@@ -233,22 +233,22 @@ func FindUserByUsername(uname string) (*User, error) {
 		return nil, err
 	}
 
-	return &User {
-		Id: id,
-		Firstname: firstname,
-		Lastname: lastname,
-		Username: username,
-		Pass: pass,
-		Email: email,
-		Dob: dob,
-		Company: company,
-		Gender: gender,
+	return &User{
+		Id:           id,
+		Firstname:    firstname,
+		Lastname:     lastname,
+		Username:     username,
+		Pass:         pass,
+		Email:        email,
+		Dob:          dob,
+		Company:      company,
+		Gender:       gender,
 		RefreshToken: refreshToken,
-		ExpiredRf: expiredRf,
-		IsActive: isActive,
-		IsBanned: isBanned,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ExpiredRf:    expiredRf,
+		IsActive:     isActive,
+		IsBanned:     isBanned,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 	}, nil
 
 }
@@ -271,8 +271,8 @@ func FindUserByEmail(mail string) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-	Query(`SELECT * FROM users_by_email WHERE username = ?`, mail).
-	Scan(&email, &id, &isActive, &isBanned, &pass, &username)
+		Query(`SELECT * FROM users_by_email WHERE username = ?`, mail).
+		Scan(&email, &id, &isActive, &isBanned, &pass, &username)
 	if err != nil {
 		return nil, err
 	}
@@ -284,22 +284,22 @@ func FindUserByEmail(mail string) (*User, error) {
 		return nil, err
 	}
 
-	return &User {
-		Id: id,
-		Firstname: firstname,
-		Lastname: lastname,
-		Username: username,
-		Pass: pass,
-		Email: email,
-		Dob: dob,
-		Company: company,
-		Gender: gender,
+	return &User{
+		Id:           id,
+		Firstname:    firstname,
+		Lastname:     lastname,
+		Username:     username,
+		Pass:         pass,
+		Email:        email,
+		Dob:          dob,
+		Company:      company,
+		Gender:       gender,
 		RefreshToken: refreshToken,
-		ExpiredRf: expiredRf,
-		IsActive: isActive,
-		IsBanned: isBanned,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ExpiredRf:    expiredRf,
+		IsActive:     isActive,
+		IsBanned:     isBanned,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 	}, nil
 
 }
