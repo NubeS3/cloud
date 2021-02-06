@@ -9,19 +9,17 @@ import (
 )
 
 type User struct {
-	Id           gocql.UUID `json:"id"`
-	Firstname    string     `json:"firstname" binding:"required"`
-	Lastname     string     `json:"lastname" binding:"required"`
-	Username     string     `json:"username" binding:"required"`
-	Pass         string     `json:"password" binding:"required"`
-	Email        string     `json:"email" binding:"required"`
-	Dob          time.Time  `json:"dob" binding:"required"`
-	Company      string     `json:"company" binding:"required"`
-	Gender       bool       `json:"gender" binding:"required"`
-	RefreshToken string
-	ExpiredRf    time.Time
-	IsActive     bool
-	IsBanned     bool
+	Id        gocql.UUID `json:"id"`
+	Firstname string     `json:"firstname" binding:"required"`
+	Lastname  string     `json:"lastname" binding:"required"`
+	Username  string     `json:"username" binding:"required"`
+	Pass      string     `json:"password" binding:"required"`
+	Email     string     `json:"email" binding:"required"`
+	Dob       time.Time  `json:"dob" binding:"required"`
+	Company   string     `json:"company" binding:"required"`
+	Gender    bool       `json:"gender" binding:"required"`
+	IsActive  bool
+	IsBanned  bool
 	// DB Info
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -121,20 +119,16 @@ func SaveUser(
 
 	query = session.
 		Query(`INSERT INTO users_by_id (
-				id, 
-				expired_rf, 
+				id,
 				is_active, 
 				is_banned, 
-				password, 
-				refresh_token, 
+				password,
 				username) 
-			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, ?, ?)`,
 			id,
-			nil,
 			false,
 			false,
 			passwordHashed,
-			nil,
 			username,
 		)
 	if err := query.Exec(); err != nil {
@@ -163,8 +157,6 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 	var dob time.Time
 	var company string
 	var gender bool
-	var refreshToken string
-	var expiredRf time.Time
 	var isActive bool
 	var isBanned bool
 	var createdAt time.Time
@@ -172,7 +164,7 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 
 	err := session.
 		Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
-		Scan(&id, &expiredRf, &isActive, &isBanned, &pass, &refreshToken, &username)
+		Scan(&id, &isActive, &isBanned, &pass, &username)
 	if err != nil {
 		return nil, err
 	}
@@ -212,8 +204,6 @@ func FindUserByUsername(uname string) (*User, error) {
 	var dob time.Time
 	var company string
 	var gender bool
-	var refreshToken string
-	var expiredRf time.Time
 	var isActive bool
 	var isBanned bool
 	var createdAt time.Time
@@ -234,21 +224,19 @@ func FindUserByUsername(uname string) (*User, error) {
 	}
 
 	return &User{
-		Id:           id,
-		Firstname:    firstname,
-		Lastname:     lastname,
-		Username:     username,
-		Pass:         pass,
-		Email:        email,
-		Dob:          dob,
-		Company:      company,
-		Gender:       gender,
-		RefreshToken: refreshToken,
-		ExpiredRf:    expiredRf,
-		IsActive:     isActive,
-		IsBanned:     isBanned,
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
+		Id:        id,
+		Firstname: firstname,
+		Lastname:  lastname,
+		Username:  username,
+		Pass:      pass,
+		Email:     email,
+		Dob:       dob,
+		Company:   company,
+		Gender:    gender,
+		IsActive:  isActive,
+		IsBanned:  isBanned,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}, nil
 
 }
@@ -263,8 +251,6 @@ func FindUserByEmail(mail string) (*User, error) {
 	var dob time.Time
 	var company string
 	var gender bool
-	var refreshToken string
-	var expiredRf time.Time
 	var isActive bool
 	var isBanned bool
 	var createdAt time.Time
@@ -285,21 +271,19 @@ func FindUserByEmail(mail string) (*User, error) {
 	}
 
 	return &User{
-		Id:           id,
-		Firstname:    firstname,
-		Lastname:     lastname,
-		Username:     username,
-		Pass:         pass,
-		Email:        email,
-		Dob:          dob,
-		Company:      company,
-		Gender:       gender,
-		RefreshToken: refreshToken,
-		ExpiredRf:    expiredRf,
-		IsActive:     isActive,
-		IsBanned:     isBanned,
-		CreatedAt:    createdAt,
-		UpdatedAt:    updatedAt,
+		Id:        id,
+		Firstname: firstname,
+		Lastname:  lastname,
+		Username:  username,
+		Pass:      pass,
+		Email:     email,
+		Dob:       dob,
+		Company:   company,
+		Gender:    gender,
+		IsActive:  isActive,
+		IsBanned:  isBanned,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}, nil
 
 }

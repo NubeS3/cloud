@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -46,7 +45,7 @@ func UserRoutes(route *gin.Engine) {
 
 			if !user.IsActive {
 				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": errors.New("user have not verified account via otp"),
+					"error": "user have not verified account via otp",
 				})
 				return
 			}
@@ -59,9 +58,17 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
+			rfToken, err := models.FindRfTokenByUid(user.Id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
 			c.JSON(http.StatusOK, gin.H{
 				"accessToken":  accessToken,
-				"refreshToken": user.RefreshToken,
+				"refreshToken": rfToken.RfToken,
 			})
 		})
 
@@ -118,7 +125,6 @@ func UserRoutes(route *gin.Engine) {
 					"error": err.Error(),
 				})
 			}
-			
 
 			c.JSON(http.StatusOK, curUser)
 		})
@@ -133,7 +139,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": err.Error(),
 				})
 			}
-			
+
 			user, err := models.FindUserByUsername(curUser.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -150,7 +156,7 @@ func UserRoutes(route *gin.Engine) {
 					})
 					return
 				}
-				if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil{
+				if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"error": err.Error(),
 					})
@@ -165,11 +171,11 @@ func UserRoutes(route *gin.Engine) {
 				})
 				return
 			}
-			if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil{
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
-					})
-					return
+			if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
 			}
 
 			c.JSON(http.StatusOK, gin.H{
@@ -180,8 +186,8 @@ func UserRoutes(route *gin.Engine) {
 
 		userRoutesGroup.PUT("/confirm-otp", func(c *gin.Context) {
 			type otpValidate struct {
-				Username	string `json:"username"`
-				Otp     	string `json:"otp"`
+				Username string `json:"username"`
+				Otp      string `json:"otp"`
 			}
 			var curSigninUser otpValidate
 			if err := c.ShouldBind(&curSigninUser); err != nil {
@@ -198,9 +204,24 @@ func UserRoutes(route *gin.Engine) {
 				})
 				return
 			}
-			
+
 			err = models.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
 			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			user, err := models.FindUserByUsername(curSigninUser.Username)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "user not found",
+				})
+				return
+			}
+
+			if err := models.GenerateRfToken(user.Id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
@@ -217,11 +238,11 @@ func UserRoutes(route *gin.Engine) {
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
 	fmt.Println(time.Now())
 	err := ultis.SendMail(
-		username, 
+		username,
 		email,
 		"Verify email",
-		"Enter the OTP we sent you via email to continue.\r\n\r\n" + otp + "\r\n\r\n" +
-		"The OTP will be expired at " + expiredTime.Local().Format("02-01-2006 15:04") + ". Do not share it to public.",
+		"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
+			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
 	)
 
 	return err

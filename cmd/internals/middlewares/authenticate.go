@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -36,18 +37,7 @@ func UserAuthenticate(c *gin.Context) {
 				return
 			}
 
-			//TODO Wait for Model
-
-			//var rfUser models.User
-			//if err := rfUser.FindByIdAndRfToken(userClaims.Id, rfToken); err != nil {
-			//	c.JSON(http.StatusUnauthorized, gin.H{
-			//		"error": "unauthorized",
-			//	})
-			//	c.Abort()
-			//	return
-			//}
-
-			//newAccessToken, newRfToken, err := "access", "refresh", errors.New("")
+			refreshToken, err := models.FindRfTokenByUid(userClaims.Id)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "unauthorized",
@@ -56,10 +46,25 @@ func UserAuthenticate(c *gin.Context) {
 				return
 			}
 
-			//END TODO
+			if refreshToken.RfToken != rfToken {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "unauthorized",
+				})
+				c.Abort()
+				return
+			}
 
-			//c.Writer.Header().Set("AccessToken", *newAccessToken)
-			//c.Writer.Header().Set("RefreshToken", *newRfToken)
+			newAccessToken, newRfToken, err := models.UpdateToken(refreshToken.Uid)
+			if err != nil {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "unauthorized",
+				})
+				c.Abort()
+				return
+			}
+
+			c.Writer.Header().Set("AccessToken", *newAccessToken)
+			c.Writer.Header().Set("RefreshToken", *newRfToken)
 		}
 
 		if err == jwt.ErrSignatureInvalid {
