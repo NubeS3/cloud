@@ -1,12 +1,13 @@
 package models
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"github.com/mediocregopher/radix/v3"
 	"github.com/spf13/viper"
-	"net/http"
-	"time"
 )
 
 var (
@@ -22,14 +23,7 @@ const (
 )
 
 func InitDb() error {
-	viper.SetConfigName("config") // name of config file (without extension)
-	viper.SetConfigType("json")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
+	var err error
 	//_cqlshrc_port :=
 	cqlshrcHost := viper.GetString("DB_URL")
 	_username := viper.GetString("DB_USERNAME")
@@ -87,7 +81,9 @@ func InitFs() error {
 func initDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" users_by_id (id uuid PRIMARY KEY, username ascii, password ascii)").
+			" users_by_id (id uuid PRIMARY KEY, username ascii," +
+			" password ascii, " +
+			" is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -95,8 +91,18 @@ func initDbTables() error {
 
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_by_username (id uuid, username ascii PRIMARY KEY," +
-			" password ascii)").
+			" users_by_username (id uuid, username ascii PRIMARY KEY," +
+			" password ascii, is_active boolean, is_banned boolean)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" users_by_email (id uuid, username ascii," +
+			" password ascii, email ascii PRIMARY KEY," +
+			" is_active boolean, is_banned boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -106,7 +112,27 @@ func initDbTables() error {
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
 			" gender boolean, company ascii, firstname text," +
-			" lastname text, dob date)").
+			" lastname text, dob date, is_active boolean," +
+			" created_at timestamp, updated_at timestamp," +
+			" is_banned boolean)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" user_otp (username ascii PRIMARY KEY," +
+			" otp ascii, last_updated timestamp, expired_time timestamp)").
+		Exec()
+	if err != nil {
+		return err
+	}
+
+	err = session.
+		Query("CREATE TABLE IF NOT EXISTS" +
+			" refresh_token (uid uuid, rf_token ascii, expired_rf timestamp," +
+			" PRIMARY KEY (uid))").
 		Exec()
 	if err != nil {
 		return err

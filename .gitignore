@@ -23,4 +23,5 @@ config.json
 .idea/**/tasks.xml
 .idea/**/usage.statistics.xml
 .idea/**/dictionaries
-.idea/**/shelf
+.idea/**/shelfsendgrid.env
+sendgrid.env

@@ -2,17 +2,34 @@ package api_server
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/routes"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
-	"net/http"
+	"github.com/spf13/viper"
 )
+
+func init() {
+	viper.SetConfigName("config") // name of config file (without extension)
+	viper.SetConfigType("json")
+	viper.AddConfigPath(".")
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func Routing(r *gin.Engine) {
 	routes.TestRoute(r)
+	routes.UserRoutes(r)
 }
 
 func Run() {
+	fmt.Println("Initializing utilities...")
+	ultis.InitUtilities()
+
 	fmt.Println("Initialize DB connection")
 	err := models.InitDb()
 	if err != nil {
@@ -23,6 +40,8 @@ func Run() {
 	if err != nil {
 		panic(err)
 	}
+
+	ultis.InitMailService()
 
 	defer models.CleanUp()
 

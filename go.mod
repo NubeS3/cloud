@@ -11,5 +11,8 @@ require (
 	github.com/linxGnu/goseaweedfs v0.1.5
 	github.com/m1ome/randstr v0.0.0-20170328115817-50e7f2dc0288
 	github.com/mediocregopher/radix/v3 v3.7.0
+	github.com/sendgrid/rest v2.6.2+incompatible // indirect
+	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/spf13/viper v1.7.1
+	github.com/thanhpk/randstr v1.0.4
 )
