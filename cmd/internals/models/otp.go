@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -28,7 +27,7 @@ func GenerateOTP(username string) (*Otp, error) {
 	if err := query.Exec(); err != nil {
 		return nil, err
 	}
-
+	
 	otp, err := GetUserOTP(username)
 	if err != nil {
 		return nil, err
@@ -120,7 +119,6 @@ func OTPConfirm(uname string, otp string) error {
 	query = session.
 		Query(`UPDATE users_by_email SET is_active = ? WHERE email = ?`, true, user.Email)
 	if err = query.Exec(); err != nil {
-		fmt.Println(err.Error())
 		return err
 	}
 

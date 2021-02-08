@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -236,7 +235,6 @@ func UserRoutes(route *gin.Engine) {
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
-	fmt.Println(time.Now())
 	err := ultis.SendMail(
 		username,
 		email,
