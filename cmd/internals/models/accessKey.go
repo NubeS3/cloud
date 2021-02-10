@@ -101,7 +101,7 @@ func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
 	}
 
 	queryTableByKey := session.Query("INSERT INTO access_keys_by_key"+
-		" (key, bucket_id, expired_date, type, uid)"+
+		" (key, bucket_id, expired_date, permissions, uid)"+
 		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, permissions, uid)
 
 	if err := queryTableByKey.Exec(); err != nil {
@@ -109,7 +109,7 @@ func InsertAccessKey(bId gocql.UUID, uid gocql.UUID,
 	}
 
 	queryTableByUidBid := session.Query("INSERT INTO access_keys_by_uid_bid"+
-		" (key, bucket_id, expired_date, type, uid)"+
+		" (key, bucket_id, expired_date, permissions, uid)"+
 		" VALUES (?, ?, ?, ?, ?)", key, bId, expiredDate, permissions, uid)
 
 	if err := queryTableByUidBid.Exec(); err != nil {
@@ -132,7 +132,7 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 	accessKeys = []accessKey{}
 
 	iter := session.
-		Query("SELECT FROM access_keys_by_key WHERE key = ? LIMIT 1", key).
+		Query("SELECT * FROM access_keys_by_key WHERE key = ? LIMIT 1", key).
 		Iter()
 
 	queryAccessKey := accessKey{}
