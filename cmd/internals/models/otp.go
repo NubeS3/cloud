@@ -5,31 +5,43 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/thanhpk/randstr"
 )
 
 type Otp struct {
 	Username    string `json:"username" binding:"required"`
+	Id 					gocql.UUID
 	Otp         string `json:"otp" binding:"required"`
+	Email 			string
+	IsValidated bool
 	LastUpdated time.Time
 	ExpiredTime time.Time
 }
 
-func GenerateOTP(username string) (*Otp, error) {
+func GenerateOTP(username string, id gocql.UUID, email string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
+	now := time.Now()
+	otp := &Otp{
+		Username: username,
+		Id: id,
+		Otp: newOtp,
+		Email: email,
+		LastUpdated: now,
+		ExpiredTime: now.Add(time.Minute * 5),
+		IsValidated: false,
+	}
 	query := session.
-		Query(`INSERT INTO user_otp (username, expired_time, last_updated, otp) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
-			username,
-			time.Now().Add(time.Minute*5),
-			time.Now(),
-			newOtp,
+		Query(`INSERT INTO user_otp (username, email, expired_time, id, is_validated, last_updated, otp) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
+			otp.Username,
+			otp.Email,
+			otp.ExpiredTime,
+			otp.Id,
+			otp.IsValidated,
+			otp.LastUpdated,
+			otp.Otp,
 		)
 	if err := query.Exec(); err != nil {
-		return nil, err
-	}
-	
-	otp, err := GetUserOTP(username)
-	if err != nil {
 		return nil, err
 	}
 
@@ -38,13 +50,16 @@ func GenerateOTP(username string) (*Otp, error) {
 
 func GetOTPByUsername(uname string) (string, error) {
 	var username string
+	var email string
 	var expiredTime time.Time
+	var id string
+	var isValidated string
 	var lastUpdated time.Time
 	var otp string
 
 	err := session.
-		Query(`SELECT * FROM user_otp WHERE username = ?`, uname).
-		Scan(&username, &expiredTime, &lastUpdated, &otp)		
+		Query(`SELECT * FROM user_otp WHERE username = ? LIMIT 1`, uname).
+		Scan(&username, &email, &expiredTime, &id, &isValidated, &lastUpdated, &otp)
 	if err != nil {
 		return "", err
 	}
@@ -54,13 +69,16 @@ func GetOTPByUsername(uname string) (string, error) {
 
 func GetUserOTP(uname string) (*Otp, error) {
 	var username string
+	var email string
 	var expiredTime time.Time
+	var id gocql.UUID
+	var isValidated bool
 	var lastUpdated time.Time
 	var otp string
 
 	err := session.
-		Query(`SELECT * FROM user_otp WHERE username = ?`, uname).
-		Scan(&username, &expiredTime, &lastUpdated, &otp)		
+		Query(`SELECT * FROM user_otp WHERE username = ? LIMIT 1`, uname).
+		Scan(&username, &email, &expiredTime, &id, &isValidated, &lastUpdated, &otp)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +86,11 @@ func GetUserOTP(uname string) (*Otp, error) {
 	return &Otp{
 		Username: username,
 		ExpiredTime: expiredTime,
+		Id: id,
+		Email: email,
 		LastUpdated: lastUpdated,
 		Otp: otp,
+		IsValidated: isValidated,
 	}, nil
 }
 
@@ -87,37 +108,32 @@ func OTPConfirm(uname string, otp string) error {
 		return errors.New("otp not match")
 	}
 
-	user, err := FindUserByUsername(uname)
-	if err != nil {
-		return err
-	}
-
 	query := session.
-		Query(`DELETE FROM user_otp WHERE username = ?`, uname)
+		Query(`UPDATE user_otp SET is_validated = ? WHERE username = ?`, true, uname)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE user_data_by_id SET is_active = ? WHERE id = ?`, true, user.Id)
+		Query(`UPDATE user_data_by_id SET is_active = ? WHERE id = ?`, true, userOtp.Id)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE users_by_id SET is_active = ? WHERE id = ?`, true, user.Id)
+		Query(`UPDATE users_by_id SET is_active = ? WHERE id = ?`, true, userOtp.Id)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE users_by_username SET is_active = ? WHERE username = ?`, true, user.Username)
+		Query(`UPDATE users_by_username SET is_active = ? WHERE username = ?`, true, uname)
 	if err = query.Exec(); err != nil {
 		return err
 	}
 
 	query = session.
-		Query(`UPDATE users_by_email SET is_active = ? WHERE email = ?`, true, user.Email)
+		Query(`UPDATE users_by_email SET is_active = ? WHERE email = ?`, true, userOtp.Email)
 	if err = query.Exec(); err != nil {
 		return err
 	}
@@ -125,13 +141,14 @@ func OTPConfirm(uname string, otp string) error {
 	return nil
 }
 
-func UpdateOTP(username string) (*Otp, error) {
+func ReGenerateOTP(username string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
+	now := time.Now()
 	query := session.
 		Query(`UPDATE user_otp SET otp = ?, last_updated = ?, expired_time = ? WHERE username = ?`,
 			newOtp,
-			time.Now(),
-			time.Now().Add(time.Minute*5),
+			now,
+			now.Add(time.Minute*5),
 			username,
 		)
 	if err := query.Exec(); err != nil {
@@ -142,7 +159,6 @@ func UpdateOTP(username string) (*Otp, error) {
 	if err != nil {
 		return nil, err
 	}
-
 
 	return otp, nil
 }

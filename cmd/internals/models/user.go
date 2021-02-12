@@ -1,7 +1,6 @@
 package models
 
 import (
-	"fmt"
 	"time"
 
 	scrypt "github.com/elithrar/simple-scrypt"
@@ -44,25 +43,26 @@ func SaveUser(
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(passwordHashed)
+
+	now := time.Now()
 
 	query := session.
 		Query(`INSERT INTO user_data_by_id (
-				id, 
-				company, 
-				created_at, 
-				dob, 
-				email, 
-				firstname, 
-				gender, 
-				is_active, 
-				is_banned, 
-				lastname, 
-				updated_at) 
+			id, 
+			company, 
+			created_at, 
+			dob, 
+			email, 
+			firstname, 
+			gender, 
+			is_active, 
+			is_banned, 
+			lastname, 
+			updated_at) 
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			id,
 			company,
-			time.Now(),
+			now,
 			dob,
 			email,
 			firstname,
@@ -70,20 +70,20 @@ func SaveUser(
 			false,
 			false,
 			lastname,
-			time.Now(),
+			now,
 		)
 	if err := query.Exec(); err != nil {
 		return nil, err
 	}
-
+	
 	query = session.
 		Query(`INSERT INTO users_by_email (
-				email, 
-				id, 
-				is_active, 
-				is_banned, 
-				password, 
-				username) 
+			email, 
+			id, 
+			is_active, 
+			is_banned, 
+			password, 
+			username) 
 			VALUES (?, ?, ?, ?, ?, ?)`,
 			email,
 			id,
@@ -96,14 +96,14 @@ func SaveUser(
 		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-
+	
 	query = session.
 		Query(`INSERT INTO users_by_username (
-				username, 
-				id, 
-				is_active, 
-				is_banned, 
-				password) 
+			username, 
+			id, 
+			is_active, 
+			is_banned, 
+			password) 
 			VALUES (?, ?, ?, ?, ?)`,
 			username,
 			id,
@@ -116,14 +116,14 @@ func SaveUser(
 		session.Query(`DELETE FROM users_by_email WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-
+	
 	query = session.
 		Query(`INSERT INTO users_by_id (
-				id,
-				is_active, 
-				is_banned, 
-				password,
-				username) 
+			id,
+			is_active, 
+			is_banned, 
+			password,
+			username) 
 			VALUES (?, ?, ?, ?, ?)`,
 			id,
 			false,
@@ -137,13 +137,19 @@ func SaveUser(
 		session.Query(`DELETE FROM users_by_username WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-
-	user, err := FindUserById(id)
-	if err != nil {
-		return nil, err
+	
+	user := &User{
+		Id:					id,
+		Firstname:	firstname,
+		Lastname: 	lastname,
+		Username: 	username,
+		Pass:				string(passwordHashed),
+		Email:			email,
+		Dob: 				dob,
+		Company: 		company,
+		Gender: 		gender,
 	}
 
-	fmt.Println(user.Pass)
 	return user, err
 }
 
@@ -163,14 +169,14 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-		Query(`SELECT * FROM users_by_id WHERE id = ?`, uid).
+		Query(`SELECT * FROM users_by_id WHERE id = ? LIMIT 1`, uid).
 		Scan(&id, &isActive, &isBanned, &pass, &username)
 	if err != nil {
 		return nil, err
 	}
 
 	err = session.
-		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, uid).
+		Query(`SELECT * FROM user_data_by_id WHERE id = ? LIMIT 1`, uid).
 		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -186,10 +192,10 @@ func FindUserById(uid gocql.UUID) (*User, error) {
 		Dob:       dob,
 		Company:   company,
 		Gender:    gender,
-		IsActive:  isActive,
-		IsBanned:  isBanned,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		// IsActive:  isActive,
+		// IsBanned:  isBanned,
+		// CreatedAt: createdAt,
+		// UpdatedAt: updatedAt,
 	}, nil
 
 }
@@ -210,14 +216,14 @@ func FindUserByUsername(uname string) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-		Query(`SELECT * FROM users_by_username WHERE username = ?`, uname).
+		Query(`SELECT * FROM users_by_username WHERE username = ? LIMIT 1`, uname).
 		Scan(&username, &id, &isActive, &isBanned, &pass)
 	if err != nil {
 		return nil, err
 	}
 
 	err = session.
-		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, id).
+		Query(`SELECT * FROM user_data_by_id WHERE id = ? LIMIT 1`, id).
 		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -233,10 +239,10 @@ func FindUserByUsername(uname string) (*User, error) {
 		Dob:       dob,
 		Company:   company,
 		Gender:    gender,
-		IsActive:  isActive,
-		IsBanned:  isBanned,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		// IsActive:  isActive,
+		// IsBanned:  isBanned,
+		// CreatedAt: createdAt,
+		// UpdatedAt: updatedAt,
 	}, nil
 
 }
@@ -257,14 +263,14 @@ func FindUserByEmail(mail string) (*User, error) {
 	var updatedAt time.Time
 
 	err := session.
-		Query(`SELECT * FROM users_by_email WHERE username = ?`, mail).
+		Query(`SELECT * FROM users_by_email WHERE email = ? LIMIT 1`, mail).
 		Scan(&email, &id, &isActive, &isBanned, &pass, &username)
 	if err != nil {
 		return nil, err
 	}
 
 	err = session.
-		Query(`SELECT * FROM user_data_by_id WHERE id = ?`, id).
+		Query(`SELECT * FROM user_data_by_id WHERE id = ? LIMIT 1`, id).
 		Scan(&id, &company, &createdAt, &dob, &email, &firstname, &gender, &isActive, &isBanned, &lastname, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -280,10 +286,10 @@ func FindUserByEmail(mail string) (*User, error) {
 		Dob:       dob,
 		Company:   company,
 		Gender:    gender,
-		IsActive:  isActive,
-		IsBanned:  isBanned,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		// IsActive:  isActive,
+		// IsBanned:  isBanned,
+		// CreatedAt: createdAt,
+		// UpdatedAt: updatedAt,
 	}, nil
 
 }
