@@ -60,6 +60,7 @@ func GetOTPByUsername(uname string) (string, error) {
 	err := session.
 		Query(`SELECT * FROM user_otp WHERE username = ? LIMIT 1`, uname).
 		Scan(&username, &email, &expiredTime, &id, &isValidated, &lastUpdated, &otp)
+
 	if err != nil {
 		return "", err
 	}
@@ -79,12 +80,13 @@ func GetUserOTP(uname string) (*Otp, error) {
 	err := session.
 		Query(`SELECT * FROM user_otp WHERE username = ? LIMIT 1`, uname).
 		Scan(&username, &email, &expiredTime, &id, &isValidated, &lastUpdated, &otp)
+
 	if err != nil {
 		return nil, err
 	}
 
 	return &Otp{
-		Username: username,
+		Username:    username,
 		ExpiredTime: expiredTime,
 		Id: id,
 		Email: email,
