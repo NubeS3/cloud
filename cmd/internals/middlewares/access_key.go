@@ -7,7 +7,7 @@ import (
 )
 
 func ApiKeyAuthenticate(c *gin.Context) {
-	key := c.Param("accessKey")
+	key := c.Query("accessKey")
 
 	if key == "" {
 		c.JSON(http.StatusForbidden, gin.H{

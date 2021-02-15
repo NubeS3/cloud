@@ -30,10 +30,10 @@ func InsertFileMetadata(fid string, bid gocql.UUID,
 	uploadedDate := time.Now()
 
 	queryBid := session.Query("INSERT INTO file_metadata_by_pathname "+
-		"(id, bucket_id, path, name, content_type, size, is_hidden, "+
-		"is_deleted, deleted_date, upload_date, expired_date)"+
+		"(bucket_id, path, name, upload_date, content_type, deleted_date, expired_date, "+
+		"id, is_deleted, is_hidden, size)"+
 		" VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		fid, bid, path, name, contentType, size, isHidden, false, time.Time{}, uploadedDate, expiredDate)
+		bid, path, name, uploadedDate, contentType, time.Time{}, expiredDate, fid, false, isHidden, size)
 
 	if err := queryBid.Exec(); err != nil {
 		return nil, err

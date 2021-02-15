@@ -24,7 +24,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("accessKey not found in authenticate")
 				return
 			}
-			accessKey := key.(models.AccessKey)
+			accessKey := key.(*models.AccessKey)
 			var isUploadPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "Upload" {
@@ -50,6 +50,9 @@ func FileRoutes(r *gin.Engine) {
 			//TODO Validate path format
 
 			//END TODO
+			if path == "" {
+				path = "/"
+			}
 			fileName := c.PostForm("name")
 			bucket, err := models.FindBucketById(accessKey.Uid, accessKey.BucketId)
 			if err != nil {
