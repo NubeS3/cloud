@@ -27,11 +27,11 @@ type Bucket struct {
 //	return nil
 //}
 
-func InsertBucket(uid gocql.UUID, name string, region string) error {
+func InsertBucket(uid gocql.UUID, name string, region string) (*Bucket, error) {
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		log.Println("gen id failed")
-		return err
+		return nil, err
 	}
 	query := session.
 		Query(`INSERT INTO buckets (id, uid, name, region) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
@@ -41,9 +41,14 @@ func InsertBucket(uid gocql.UUID, name string, region string) error {
 			region,
 		)
 	if err := query.Exec(); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return &Bucket{
+		Id:     id,
+		Uid:    uid,
+		Name:   name,
+		Region: region,
+	}, nil
 }
 
 func FindBucketById(uid gocql.UUID, bucketId gocql.UUID) (*Bucket, error) {
@@ -84,7 +89,7 @@ func FindBucketByUid(uid gocql.UUID) ([]Bucket, error) {
 	buckets = []Bucket{}
 	var bucket *Bucket
 	iter := session.
-		Query(`SELECT * FROM buckets WHERE uid = ? AND id = ? LIMIT 1`, uid).
+		Query(`SELECT * FROM buckets WHERE uid = ?`, uid).
 		Iter()
 
 	var id gocql.UUID

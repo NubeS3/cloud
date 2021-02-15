@@ -24,7 +24,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			uid, ok := c.Get("id")
+			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -51,13 +51,13 @@ func AccessKeyRoutes(r *gin.Engine) {
 		ar.GET("/info/:access_key", func(c *gin.Context) {
 			key := c.Param("access_key")
 
-			uid, ok := c.Get("id")
+			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/all:")
+				log.Println("at /accessKey/info/:access_key:")
 				log.Println("uid not found in authenticated route")
 				return
 			}
@@ -68,7 +68,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/all:")
+				log.Println("at /accessKey/info/:access_key:")
 				log.Println(err)
 				return
 			}
