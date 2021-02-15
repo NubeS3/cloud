@@ -34,7 +34,7 @@ func InsertBucket(uid gocql.UUID, name string, region string) error {
 		return err
 	}
 	query := session.
-		Query(`INSERT INTO buckets (id, uid, name, region) VALUES (?, ?, ?, ?) IF NOT EXIST`,
+		Query(`INSERT INTO buckets (id, uid, name, region) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
 			id,
 			uid,
 			name,

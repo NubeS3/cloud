@@ -13,7 +13,7 @@ func BucketRoutes(r *gin.Engine) {
 	ar := r.Group("/buckets", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all", func(c *gin.Context) {
-			uid, ok := c.Get("id")
+			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
