@@ -13,7 +13,7 @@ func BucketRoutes(r *gin.Engine) {
 	ar := r.Group("/buckets", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all", func(c *gin.Context) {
-			uid, ok := c.Get("id")
+			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -60,7 +60,9 @@ func BucketRoutes(r *gin.Engine) {
 				log.Println("uid not found in authenticated route")
 				return
 			}
-			if err := models.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region); err != nil {
+
+			bucket, err := models.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region)
+			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
 				})
@@ -69,9 +71,7 @@ func BucketRoutes(r *gin.Engine) {
 				log.Println(err)
 				return
 			}
-			c.JSON(http.StatusOK, gin.H{
-				"message": "create success.",
-			})
+			c.JSON(http.StatusOK, bucket)
 		})
 		ar.DELETE("/delete/:bucket_id", middlewares.UserAuthenticate, func(c *gin.Context) {
 			uid, ok := c.Get("uid")

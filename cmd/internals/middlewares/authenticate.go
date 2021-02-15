@@ -90,6 +90,6 @@ func UserAuthenticate(c *gin.Context) {
 		}
 	}
 
-	c.Set("id", userClaims.Id)
+	c.Set("uid", userClaims.Id)
 	c.Next()
 }
