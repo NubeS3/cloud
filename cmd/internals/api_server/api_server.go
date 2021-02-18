@@ -34,7 +34,7 @@ func Run() {
 	ultis.InitUtilities()
 
 	fmt.Println("Initialize DB connection")
-	err := models.InitDb()
+	err := models.InitCassandraDb()
 	if err != nil {
 		panic(err)
 	}

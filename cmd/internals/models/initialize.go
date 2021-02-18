@@ -1,9 +1,12 @@
 package models
 
 import (
+	"context"
 	"net/http"
 	"time"
 
+	arangoDriver "github.com/arangodb/go-driver"
+	arangoHttp "github.com/arangodb/go-driver/http"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"github.com/mediocregopher/radix/v3"
@@ -11,18 +14,58 @@ import (
 )
 
 var (
-	session     *gocql.Session
-	sw          *goseaweedfs.Seaweed
-	filer       []string
-	swFiler     *goseaweedfs.Filer
-	redisClient *radix.Pool
+	session          *gocql.Session
+	sw               *goseaweedfs.Seaweed
+	filer            []string
+	swFiler          *goseaweedfs.Filer
+	redisClient      *radix.Pool
+	arangoConnection arangoDriver.Connection
+	arangoClient     arangoDriver.Client
+	arangoDb         arangoDriver.Database
 )
 
 const (
 	CHUNK_SIZE = 8096
 )
 
-func InitDb() error {
+func InitArangoDb() error {
+	var err error
+	//_cqlshrc_port :=
+	hostUrl := viper.GetString("ARANGODB_HOST")
+	_username := viper.GetString("ARANGODB_USER")
+	_password := viper.GetString("ARANGODB_PASSWORD")
+	arangoConnection, err = arangoHttp.NewConnection(arangoHttp.ConnectionConfig{
+		Endpoints: []string{hostUrl},
+	})
+
+	if err != nil {
+		return err
+	}
+
+	arangoClient, err = arangoDriver.NewClient(arangoDriver.ClientConfig{
+		Connection: arangoConnection,
+		//Authentication: arangoDriver.BasicAuthentication(_username, _password),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
+	defer cancel()
+	arangoDb, _ = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
+		Users: []arangoDriver.CreateDatabaseUserOptions{
+			{
+				UserName: _username,
+				Password: _password,
+			},
+		},
+	})
+
+	return nil
+}
+
+func InitCassandraDb() error {
 	var err error
 	//_cqlshrc_port :=
 	cqlshrcHost := viper.GetString("DB_URL")
@@ -48,7 +91,7 @@ func InitDb() error {
 	//iter := session.Query(_query).Iter()
 	//fmt.Printf("Testing: %d rows returned", iter.NumRows())
 
-	if err := initDbTables(); err != nil {
+	if err := initCassandraDbTables(); err != nil {
 		return err
 	}
 
@@ -78,7 +121,50 @@ func InitFs() error {
 	return nil
 }
 
-func initDbTables() error {
+func initArangoDb() error {
+	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
+	defer cancel()
+
+	// INIT DB
+	_, _ = arangoDb.CreateCollection(ctx, "users", &arangoDriver.CreateCollectionOptions{})
+	//_, _ = arangoDb.CreateCollection(ctx, "userHasBuckets", &arangoDriver.CreateCollectionOptions{})
+	_, _ = arangoDb.CreateCollection(ctx, "buckets", &arangoDriver.CreateCollectionOptions{})
+	//_, _ = arangoDb.CreateCollection(ctx, "bucketHasApiKeys", &arangoDriver.CreateCollectionOptions{})
+	_, _ = arangoDb.CreateCollection(ctx, "apiKeys", &arangoDriver.CreateCollectionOptions{})
+	//_, _ = arangoDb.CreateCollection(ctx, "bucketHasFileMetadata", &arangoDriver.CreateCollectionOptions{})
+	_, _ = arangoDb.CreateCollection(ctx, "fileMetadata", &arangoDriver.CreateCollectionOptions{})
+	// INIT GRAPH
+	edgeDefinition := arangoDriver.EdgeDefinition{
+		Collection: "userHasBuckets",
+		To:         []string{"buckets"},
+		From:       []string{"users"},
+	}
+	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
+		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
+	})
+
+	edgeDefinition = arangoDriver.EdgeDefinition{
+		Collection: "bucketHasApiKeys",
+		To:         []string{"apiKeys"},
+		From:       []string{"buckets"},
+	}
+	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
+		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
+	})
+
+	edgeDefinition = arangoDriver.EdgeDefinition{
+		Collection: "bucketHasFileMetadata",
+		To:         []string{"fileMetadata"},
+		From:       []string{"buckets"},
+	}
+	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
+		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
+	})
+
+	return nil
+}
+
+func initCassandraDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
 			" users_by_id (id uuid PRIMARY KEY, username ascii," +
@@ -216,4 +302,5 @@ func CleanUp() {
 	if redisClient != nil {
 		_ = redisClient.Close()
 	}
+
 }
