@@ -1,4 +1,4 @@
-package models
+package cassandra
 
 import (
 	"time"
@@ -75,7 +75,7 @@ func SaveUser(
 	if err := query.Exec(); err != nil {
 		return nil, err
 	}
-	
+
 	query = session.
 		Query(`INSERT INTO users_by_email (
 			email, 
@@ -96,7 +96,7 @@ func SaveUser(
 		session.Query(`DELETE FROM user_data_by_id WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-	
+
 	query = session.
 		Query(`INSERT INTO users_by_username (
 			username, 
@@ -116,7 +116,7 @@ func SaveUser(
 		session.Query(`DELETE FROM users_by_email WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-	
+
 	query = session.
 		Query(`INSERT INTO users_by_id (
 			id,
@@ -137,17 +137,17 @@ func SaveUser(
 		session.Query(`DELETE FROM users_by_username WHERE id = ?`, id).Exec()
 		return nil, err
 	}
-	
+
 	user := &User{
-		Id:					id,
-		Firstname:	firstname,
-		Lastname: 	lastname,
-		Username: 	username,
-		Pass:				string(passwordHashed),
-		Email:			email,
-		Dob: 				dob,
-		Company: 		company,
-		Gender: 		gender,
+		Id:        id,
+		Firstname: firstname,
+		Lastname:  lastname,
+		Username:  username,
+		Pass:      string(passwordHashed),
+		Email:     email,
+		Dob:       dob,
+		Company:   company,
+		Gender:    gender,
 	}
 
 	return user, err

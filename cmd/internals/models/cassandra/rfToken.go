@@ -1,4 +1,4 @@
-package models
+package cassandra
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/ultis"

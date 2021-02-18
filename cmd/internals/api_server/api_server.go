@@ -2,9 +2,10 @@ package api_server
 
 import (
 	"fmt"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"net/http"
 
-	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/routes"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
@@ -34,25 +35,25 @@ func Run() {
 	ultis.InitUtilities()
 
 	fmt.Println("Initialize Log DB connection")
-	err := models.InitCassandraDb()
+	err := cassandra.InitCassandraDb()
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("Initialize DB connection")
-	err = models.InitArangoDb()
+	err = arango.InitArangoDb()
 	if err != nil {
 		panic(err)
 	}
 
-	err = models.InitFs()
+	err = cassandra.InitFs()
 	if err != nil {
 		panic(err)
 	}
 
 	ultis.InitMailService()
 
-	defer models.CleanUp()
+	defer cassandra.CleanUp()
 
 	fmt.Println("Starting Cloud Server")
 	r := gin.Default()

@@ -1,12 +1,9 @@
-package models
+package cassandra
 
 import (
-	"context"
 	"net/http"
 	"time"
 
-	arangoDriver "github.com/arangodb/go-driver"
-	arangoHttp "github.com/arangodb/go-driver/http"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
 	"github.com/mediocregopher/radix/v3"
@@ -14,66 +11,16 @@ import (
 )
 
 var (
-	session          *gocql.Session
-	sw               *goseaweedfs.Seaweed
-	filer            []string
-	swFiler          *goseaweedfs.Filer
-	redisClient      *radix.Pool
-	arangoConnection arangoDriver.Connection
-	arangoClient     arangoDriver.Client
-	arangoDb         arangoDriver.Database
+	session     *gocql.Session
+	sw          *goseaweedfs.Seaweed
+	filer       []string
+	swFiler     *goseaweedfs.Filer
+	redisClient *radix.Pool
 )
 
 const (
 	CHUNK_SIZE = 8096
 )
-
-func InitArangoDb() error {
-	var err error
-	//_cqlshrc_port :=
-	hostUrl := viper.GetString("ARANGODB_HOST")
-	_username := viper.GetString("ARANGODB_USER")
-	_password := viper.GetString("ARANGODB_PASSWORD")
-	arangoConnection, err = arangoHttp.NewConnection(arangoHttp.ConnectionConfig{
-		Endpoints: []string{hostUrl},
-	})
-
-	if err != nil {
-		return err
-	}
-
-	arangoClient, err = arangoDriver.NewClient(arangoDriver.ClientConfig{
-		Connection:     arangoConnection,
-		Authentication: arangoDriver.BasicAuthentication(_username, _password),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	dbExist, err := arangoClient.DatabaseExists(ctx, "nubes3")
-	if err != nil {
-		return err
-	}
-
-	if !dbExist {
-		arangoDb, _ = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
-			Users: []arangoDriver.CreateDatabaseUserOptions{
-				{
-					UserName: _username,
-					Password: _password,
-				},
-			},
-		})
-	} else {
-		arangoDb, _ = arangoClient.Database(ctx, "nubes3")
-	}
-
-	return initArangoDb()
-}
 
 func InitCassandraDb() error {
 	var err error
@@ -128,49 +75,6 @@ func InitFs() error {
 	}
 
 	swFiler = sw.Filers()[0]
-	return nil
-}
-
-func initArangoDb() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// INIT DB
-	_, _ = arangoDb.CreateCollection(ctx, "users", &arangoDriver.CreateCollectionOptions{})
-	//_, _ = arangoDb.CreateCollection(ctx, "userHasBuckets", &arangoDriver.CreateCollectionOptions{})
-	_, _ = arangoDb.CreateCollection(ctx, "buckets", &arangoDriver.CreateCollectionOptions{})
-	//_, _ = arangoDb.CreateCollection(ctx, "bucketHasApiKeys", &arangoDriver.CreateCollectionOptions{})
-	_, _ = arangoDb.CreateCollection(ctx, "apiKeys", &arangoDriver.CreateCollectionOptions{})
-	//_, _ = arangoDb.CreateCollection(ctx, "bucketHasFileMetadata", &arangoDriver.CreateCollectionOptions{})
-	_, _ = arangoDb.CreateCollection(ctx, "fileMetadata", &arangoDriver.CreateCollectionOptions{})
-	// INIT GRAPH
-	edgeDefinition := arangoDriver.EdgeDefinition{
-		Collection: "userHasBuckets",
-		To:         []string{"buckets"},
-		From:       []string{"users"},
-	}
-	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
-		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
-	})
-
-	edgeDefinition = arangoDriver.EdgeDefinition{
-		Collection: "bucketHasApiKeys",
-		To:         []string{"apiKeys"},
-		From:       []string{"buckets"},
-	}
-	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
-		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
-	})
-
-	edgeDefinition = arangoDriver.EdgeDefinition{
-		Collection: "bucketHasFileMetadata",
-		To:         []string{"fileMetadata"},
-		From:       []string{"buckets"},
-	}
-	_, _ = arangoDb.CreateGraph(nil, "bucketsMetadata", &arangoDriver.CreateGraphOptions{
-		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
-	})
-
 	return nil
 }
 

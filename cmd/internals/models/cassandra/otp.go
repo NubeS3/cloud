@@ -1,4 +1,4 @@
-package models
+package cassandra
 
 import (
 	"errors"
@@ -11,9 +11,9 @@ import (
 
 type Otp struct {
 	Username    string `json:"username" binding:"required"`
-	Id 					gocql.UUID
+	Id          gocql.UUID
 	Otp         string `json:"otp" binding:"required"`
-	Email 			string
+	Email       string
 	IsValidated bool
 	LastUpdated time.Time
 	ExpiredTime time.Time
@@ -23,10 +23,10 @@ func GenerateOTP(username string, id gocql.UUID, email string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
 	now := time.Now()
 	otp := &Otp{
-		Username: username,
-		Id: id,
-		Otp: newOtp,
-		Email: email,
+		Username:    username,
+		Id:          id,
+		Otp:         newOtp,
+		Email:       email,
 		LastUpdated: now,
 		ExpiredTime: now.Add(time.Minute * 5),
 		IsValidated: false,
@@ -88,10 +88,10 @@ func GetUserOTP(uname string) (*Otp, error) {
 	return &Otp{
 		Username:    username,
 		ExpiredTime: expiredTime,
-		Id: id,
-		Email: email,
+		Id:          id,
+		Email:       email,
 		LastUpdated: lastUpdated,
-		Otp: otp,
+		Otp:         otp,
 		IsValidated: isValidated,
 	}, nil
 }

@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/gin-gonic/gin"
 	"io"
 	"log"
@@ -25,7 +25,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("accessKey not found in authenticate")
 				return
 			}
-			accessKey := key.(*models.AccessKey)
+			accessKey := key.(*cassandra.AccessKey)
 			var isUploadPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "Upload" {
@@ -55,7 +55,7 @@ func FileRoutes(r *gin.Engine) {
 				path = "/"
 			}
 			fileName := c.PostForm("name")
-			bucket, err := models.FindBucketById(accessKey.Uid, accessKey.BucketId)
+			bucket, err := cassandra.FindBucketById(accessKey.Uid, accessKey.BucketId)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -85,7 +85,7 @@ func FileRoutes(r *gin.Engine) {
 				})
 			}
 
-			res, err := models.SaveFile(fileContent, bucket.Id,
+			res, err := cassandra.SaveFile(fileContent, bucket.Id,
 				bucket.Name, path, fileName, false,
 				uploadFile.Header.Get("Content-type"),
 				fileSize, time.Duration(ttl))
@@ -111,7 +111,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("accessKey not found in authenticate")
 				return
 			}
-			accessKey := key.(*models.AccessKey)
+			accessKey := key.(*cassandra.AccessKey)
 			var isDownloadPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "Download" {
@@ -127,7 +127,7 @@ func FileRoutes(r *gin.Engine) {
 			}
 			fid := c.Param("file_id")
 
-			err := models.GetFile(accessKey.BucketId, fid, func(r io.Reader, metadata *models.FileMetadata) error {
+			err := cassandra.GetFile(accessKey.BucketId, fid, func(r io.Reader, metadata *cassandra.FileMetadata) error {
 				contentLength := metadata.Size
 				contentType := metadata.ContentType
 

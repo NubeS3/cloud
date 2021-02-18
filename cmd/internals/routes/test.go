@@ -2,7 +2,9 @@ package routes
 
 import (
 	"errors"
-	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
@@ -20,7 +22,7 @@ func TestRoute(r *gin.Engine) {
 		})
 	})
 	r.GET("/testUser", func(c *gin.Context) {
-		user, err := models.FindUserByUsername("test")
+		user, err := cassandra.FindUserByUsername("test")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": errors.New("read fail"),
@@ -31,13 +33,54 @@ func TestRoute(r *gin.Engine) {
 			"user": user,
 		})
 	})
+	r.GET("/arango/test/user/create", func(c *gin.Context) {
+		user, err := arango.SaveUser("test", "user",
+			"test123", "1234",
+			"abc@abc.com", time.Now(),
+			"meow", true)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/user/findId", func(c *gin.Context) {
+		user, err := arango.FindUserById("14112")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "user not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/user/findUname", func(c *gin.Context) {
+		user, err := arango.FindUserByUsername("test123")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": errors.New("read fail"),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	})
+
 	r.GET("/testInsertDB", func(c *gin.Context) {
-		res := models.TestDb()
+		res := cassandra.TestDb()
 		c.JSON(http.StatusOK, res)
 	})
 
 	r.GET("/testRedis", func(c *gin.Context) {
-		res := models.TestRedis()
+		res := cassandra.TestRedis()
 		c.JSON(http.StatusOK, res)
 	})
 
@@ -57,7 +100,7 @@ func TestRoute(r *gin.Engine) {
 		fileSize := someFile.Size
 
 		var res *goseaweedfs.FilerUploadResult
-		res, err = models.TestUpload(fileContent, fileSize, newPath, "", "")
+		res, err = cassandra.TestUpload(fileContent, fileSize, newPath, "", "")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),
@@ -71,7 +114,7 @@ func TestRoute(r *gin.Engine) {
 	r.GET("/download", func(c *gin.Context) {
 		path := c.Query("path")
 		tokens := strings.Split(path, "/")
-		err := models.TestDownload(path, func(r io.Reader) error {
+		err := cassandra.TestDownload(path, func(r io.Reader) error {
 
 			contentLength := int64(7443)
 			contentType := "Content-type : image/jpeg"
@@ -97,7 +140,7 @@ func TestRoute(r *gin.Engine) {
 
 	r.DELETE("/delete", func(c *gin.Context) {
 		path := c.Query("path")
-		err := models.TestDelete(path)
+		err := cassandra.TestDelete(path)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"error": err.Error(),
@@ -114,7 +157,7 @@ func TestRoute(r *gin.Engine) {
 		f, _ := file.Open()
 		testUuid, _ := gocql.RandomUUID()
 		rands := randstr.GetString(5)
-		mt, err := models.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+		mt, err := cassandra.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return

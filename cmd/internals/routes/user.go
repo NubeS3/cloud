@@ -2,10 +2,10 @@ package routes
 
 import (
 	"fmt"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"net/http"
 	"time"
 
-	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gin-gonic/gin"
@@ -27,7 +27,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			user, err := models.FindUserByUsername(curSigninUser.Username)
+			user, err := cassandra.FindUserByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "invalid username",
@@ -59,7 +59,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			rfToken, err := models.FindRfTokenByUid(user.Id)
+			rfToken, err := cassandra.FindRfTokenByUid(user.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
@@ -69,14 +69,14 @@ func UserRoutes(route *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, gin.H{
-				"id": user.Id,
+				"id":           user.Id,
 				"accessToken":  accessToken,
 				"refreshToken": rfToken.RfToken,
 			})
 		})
 
 		userRoutesGroup.POST("/signup", func(c *gin.Context) {
-			var user models.User
+			var user cassandra.User
 			if err := c.ShouldBind(&user); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -98,7 +98,7 @@ func UserRoutes(route *gin.Engine) {
 			// 	return
 			// }
 
-			var curUser, err = models.SaveUser(
+			var curUser, err = cassandra.SaveUser(
 				user.Firstname,
 				user.Lastname,
 				user.Username,
@@ -115,7 +115,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			otp, err := models.GenerateOTP(user.Username, curUser.Id, curUser.Email)
+			otp, err := cassandra.GenerateOTP(user.Username, curUser.Id, curUser.Email)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
@@ -148,16 +148,16 @@ func UserRoutes(route *gin.Engine) {
 				})
 			}
 
-			user, err := models.FindUserByUsername(curUser.Username)
+			user, err := cassandra.FindUserByUsername(curUser.Username)
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
 				})
 				return
 			}
-			_, err = models.GetUserOTP(user.Username)
+			_, err = cassandra.GetUserOTP(user.Username)
 			if err != nil {
-				otp, err := models.GenerateOTP(user.Username, user.Id, user.Email)
+				otp, err := cassandra.GenerateOTP(user.Username, user.Id, user.Email)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"error": "internal server error",
@@ -174,7 +174,7 @@ func UserRoutes(route *gin.Engine) {
 				}
 			}
 
-			otp, err := models.ReGenerateOTP(user.Username)
+			otp, err := cassandra.ReGenerateOTP(user.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
@@ -209,7 +209,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			_, err := models.GetOTPByUsername(curSigninUser.Username)
+			_, err := cassandra.GetOTPByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": err.Error(),
@@ -217,7 +217,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			err = models.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
+			err = cassandra.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "interal server error",
@@ -226,7 +226,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			user, err := models.FindUserByUsername(curSigninUser.Username)
+			user, err := cassandra.FindUserByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
@@ -234,7 +234,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if err := models.GenerateRfToken(user.Id); err != nil {
+			if err := cassandra.GenerateRfToken(user.Id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
