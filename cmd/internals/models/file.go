@@ -106,6 +106,25 @@ func GetFileMetadataByPathname(bucketId gocql.UUID, path, name string) *FileMeta
 	return &metadata
 }
 
+func GetFileMetadataByFileId(bucketId gocql.UUID, fileId string) *FileMetadata {
+	iter := session.
+		Query("SELECT * FROM file_metadata_by_id"+
+			" WHERE bucket_id = ? AND id = ? LIMIT 1", bucketId, fileId).
+		Iter()
+
+	metadata := FileMetadata{}
+	for iter.Scan(&metadata.Id, &metadata.UploadedDate, &metadata.BucketId, &metadata.ContentType,
+		&metadata.DeletedDate, &metadata.ExpiredDate, &metadata.IsDeleted, &metadata.IsHidden,
+		&metadata.Name, &metadata.Path, &metadata.Size) {
+	}
+
+	if metadata.IsDeleted {
+		return nil
+	}
+
+	return &metadata
+}
+
 func GetFileMetadataByBucketId(bucketId gocql.UUID) []FileMetadata {
 	iter := session.
 		Query("SELECT FROM file_metadata_by_pathname"+
@@ -150,8 +169,8 @@ func SaveFile(reader io.Reader, bid gocql.UUID, bucketName string,
 	return InsertFileMetadata(f.FileID, bid, path, name, isHidden, contentType, size, time.Now().Add(ttl))
 }
 
-func GetFile(bid gocql.UUID, path, name string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
-	meta := GetFileMetadataByPathname(bid, path, name)
+func GetFile(bid gocql.UUID, fileId string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
+	meta := GetFileMetadataByFileId(bid, fileId)
 
 	var err error
 	_, err = sw.Download(meta.Id, nil, func(reader io.Reader) error {
