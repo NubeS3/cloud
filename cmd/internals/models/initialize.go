@@ -208,8 +208,8 @@ func initCassandraDbTables() error {
 
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_otp (username ascii PRIMARY KEY," +
-			" otp ascii, last_updated timestamp, expired_time timestamp)").
+			" user_otp (username ascii PRIMARY KEY, id uuid, email ascii" +
+			" otp ascii, last_updated timestamp, expired_time timestamp, is_validated boolean)").
 		Exec()
 	if err != nil {
 		return err
@@ -269,8 +269,8 @@ func initCassandraDbTables() error {
 			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
 			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
 			" upload_date timestamp, expired_date timestamp," +
-			" PRIMARY KEY ((id), upload_date, bucket_id))" +
-			" with clustering order by (upload_date desc, bucket_id asc)").
+			" PRIMARY KEY ((id), bucket_id, upload_date))" +
+			" with clustering order by (bucket_id asc, upload_date desc)").
 		Exec()
 	if err != nil {
 		return err

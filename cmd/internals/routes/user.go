@@ -53,20 +53,23 @@ func UserRoutes(route *gin.Engine) {
 			accessToken, err := ultis.CreateToken(user.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/sign in/access token: " + err.Error())
 				return
 			}
 
 			rfToken, err := models.FindRfTokenByUid(user.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/sign in/find refresh token: " + err.Error())
 				return
 			}
 
 			c.JSON(http.StatusOK, gin.H{
+				"id": user.Id,
 				"accessToken":  accessToken,
 				"refreshToken": rfToken.RfToken,
 			})
@@ -112,21 +115,26 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			otp, err := models.GenerateOTP(user.Username)
+			otp, err := models.GenerateOTP(user.Username, curUser.Id, curUser.Email)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/sign up/generate otp: ", err.Error())
 				return
 			}
 
 			if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/sign up/send otp: " + err.Error())
+				return
 			}
 
-			c.JSON(http.StatusOK, curUser)
+			c.JSON(http.StatusOK, gin.H{
+				"message": "verify account via otp sent to your email",
+			})
 		})
 
 		userRoutesGroup.PUT("/resend-otp", func(c *gin.Context) {
@@ -142,39 +150,43 @@ func UserRoutes(route *gin.Engine) {
 
 			user, err := models.FindUserByUsername(curUser.Username)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
+				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
 				})
 				return
 			}
 			_, err = models.GetUserOTP(user.Username)
 			if err != nil {
-				otp, err := models.GenerateOTP(user.Username)
+				otp, err := models.GenerateOTP(user.Username, user.Id, user.Email)
 				if err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
+						"error": "internal server error",
 					})
+					fmt.Println("user route/resend otp/gennerate otp: " + err.Error())
 					return
 				}
 				if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
 					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
+						"error": "internal server error",
 					})
+					fmt.Println("user route/resend otp/send otp:" + err.Error())
 					return
 				}
 			}
 
-			otp, err := models.UpdateOTP(user.Username)
+			otp, err := models.ReGenerateOTP(user.Username)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/resend otp/regenerate otp: " + err.Error())
 				return
 			}
 			if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/resend otp/resend otp: " + err.Error())
 				return
 			}
 
@@ -184,7 +196,7 @@ func UserRoutes(route *gin.Engine) {
 
 		})
 
-		userRoutesGroup.PUT("/confirm-otp", func(c *gin.Context) {
+		userRoutesGroup.POST("/confirm-otp", func(c *gin.Context) {
 			type otpValidate struct {
 				Username string `json:"username"`
 				Otp      string `json:"otp"`
@@ -208,14 +220,15 @@ func UserRoutes(route *gin.Engine) {
 			err = models.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "interal server error",
 				})
+				fmt.Println("user route/confirm otp/models otp confirm: " + err.Error())
 				return
 			}
 
 			user, err := models.FindUserByUsername(curSigninUser.Username)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
+				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
 				})
 				return
@@ -223,8 +236,9 @@ func UserRoutes(route *gin.Engine) {
 
 			if err := models.GenerateRfToken(user.Id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
+					"error": "internal server error",
 				})
+				fmt.Println("user route/confirm otp/generate refresh token: " + err.Error())
 				return
 			}
 
@@ -236,7 +250,6 @@ func UserRoutes(route *gin.Engine) {
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
-	fmt.Println(time.Now())
 	err := ultis.SendMail(
 		username,
 		email,

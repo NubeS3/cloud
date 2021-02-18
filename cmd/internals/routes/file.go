@@ -4,6 +4,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/gin-gonic/gin"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -24,7 +25,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("accessKey not found in authenticate")
 				return
 			}
-			accessKey := key.(models.AccessKey)
+			accessKey := key.(*models.AccessKey)
 			var isUploadPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "Upload" {
@@ -50,6 +51,9 @@ func FileRoutes(r *gin.Engine) {
 			//TODO Validate path format
 
 			//END TODO
+			if path == "" {
+				path = "/"
+			}
 			fileName := c.PostForm("name")
 			bucket, err := models.FindBucketById(accessKey.Uid, accessKey.BucketId)
 			if err != nil {
@@ -93,9 +97,52 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, gin.H{
-				"message": "update successful.",
-				"file":    res,
+				"file": res,
 			})
+		})
+		ar.GET("/download/:file_id", func(c *gin.Context) {
+			key, ok := c.Get("accessKey")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /files/download:")
+				log.Println("accessKey not found in authenticate")
+				return
+			}
+			accessKey := key.(*models.AccessKey)
+			var isDownloadPerm bool
+			for _, perm := range accessKey.Permissions {
+				if perm == "Download" {
+					isDownloadPerm = true
+					break
+				}
+			}
+			if !isDownloadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+			fid := c.Param("file_id")
+
+			err := models.GetFile(accessKey.BucketId, fid, func(r io.Reader, metadata *models.FileMetadata) error {
+				contentLength := metadata.Size
+				contentType := metadata.ContentType
+
+				extraHeaders := map[string]string{
+					"Content-Disposition": `attachment; filename=` + metadata.Name,
+				}
+				c.DataFromReader(http.StatusOK, contentLength, contentType, r, extraHeaders)
+				return nil
+			})
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
 		})
 	}
 }
