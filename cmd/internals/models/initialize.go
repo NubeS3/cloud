@@ -183,8 +183,8 @@ func initDbTables() error {
 			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
 			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
 			" upload_date timestamp, expired_date timestamp," +
-			" PRIMARY KEY ((id), upload_date, bucket_id))" +
-			" with clustering order by (upload_date desc, bucket_id asc)").
+			" PRIMARY KEY ((id), bucket_id, upload_date))" +
+			" with clustering order by (bucket_id asc, upload_date desc)").
 		Exec()
 	if err != nil {
 		return err

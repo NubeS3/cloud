@@ -34,9 +34,9 @@ func InsertBucket(uid gocql.UUID, name string, region string) (*Bucket, error) {
 		return nil, err
 	}
 	query := session.
-		Query(`INSERT INTO buckets (id, uid, name, region) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
-			id,
+		Query(`INSERT INTO buckets (uid, id, name, region) VALUES (?, ?, ?, ?) IF NOT EXISTS`,
 			uid,
+			id,
 			name,
 			region,
 		)
@@ -44,8 +44,8 @@ func InsertBucket(uid gocql.UUID, name string, region string) (*Bucket, error) {
 		return nil, err
 	}
 	return &Bucket{
-		Id:     id,
 		Uid:    uid,
+		Id:     id,
 		Name:   name,
 		Region: region,
 	}, nil
@@ -63,10 +63,10 @@ func FindBucketById(uid gocql.UUID, bucketId gocql.UUID) (*Bucket, error) {
 	var name string
 	var region string
 
-	for iter.Scan(&id, &uid, &name, &region) {
+	for iter.Scan(&uid, &id, &name, &region) {
 		bucket = &Bucket{
-			Id:     id,
 			Uid:    uid,
+			Id:     id,
 			Name:   name,
 			Region: region,
 		}
@@ -96,10 +96,10 @@ func FindBucketByUid(uid gocql.UUID) ([]Bucket, error) {
 	var name string
 	var region string
 
-	for iter.Scan(&id, &uid, &name, &region) {
+	for iter.Scan(&uid, &id, &name, &region) {
 		bucket = &Bucket{
-			Id:     id,
 			Uid:    uid,
+			Id:     id,
 			Name:   name,
 			Region: region,
 		}
