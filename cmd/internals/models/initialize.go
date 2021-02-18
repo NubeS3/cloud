@@ -43,26 +43,36 @@ func InitArangoDb() error {
 	}
 
 	arangoClient, err = arangoDriver.NewClient(arangoDriver.ClientConfig{
-		Connection: arangoConnection,
-		//Authentication: arangoDriver.BasicAuthentication(_username, _password),
+		Connection:     arangoConnection,
+		Authentication: arangoDriver.BasicAuthentication(_username, _password),
 	})
 
 	if err != nil {
 		return err
 	}
 
-	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	arangoDb, _ = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
-		Users: []arangoDriver.CreateDatabaseUserOptions{
-			{
-				UserName: _username,
-				Password: _password,
-			},
-		},
-	})
 
-	return nil
+	dbExist, err := arangoClient.DatabaseExists(ctx, "nubes3")
+	if err != nil {
+		return err
+	}
+
+	if !dbExist {
+		arangoDb, _ = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
+			Users: []arangoDriver.CreateDatabaseUserOptions{
+				{
+					UserName: _username,
+					Password: _password,
+				},
+			},
+		})
+	} else {
+		arangoDb, _ = arangoClient.Database(ctx, "nubes3")
+	}
+
+	return initArangoDb()
 }
 
 func InitCassandraDb() error {
@@ -122,7 +132,7 @@ func InitFs() error {
 }
 
 func initArangoDb() error {
-	ctx, cancel := context.WithTimeout(nil, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// INIT DB
@@ -157,7 +167,7 @@ func initArangoDb() error {
 		To:         []string{"fileMetadata"},
 		From:       []string{"buckets"},
 	}
-	_, _ = arangoDb.CreateGraph(nil, "usersBuckets", &arangoDriver.CreateGraphOptions{
+	_, _ = arangoDb.CreateGraph(nil, "bucketsMetadata", &arangoDriver.CreateGraphOptions{
 		EdgeDefinitions: []arangoDriver.EdgeDefinition{edgeDefinition},
 	})
 
@@ -208,7 +218,7 @@ func initCassandraDbTables() error {
 
 	err = session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_otp (username ascii PRIMARY KEY, id uuid, email ascii" +
+			" user_otp (username ascii PRIMARY KEY, id uuid, email ascii," +
 			" otp ascii, last_updated timestamp, expired_time timestamp, is_validated boolean)").
 		Exec()
 	if err != nil {

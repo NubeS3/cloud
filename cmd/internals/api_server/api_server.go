@@ -33,8 +33,14 @@ func Run() {
 	fmt.Println("Initializing utilities...")
 	ultis.InitUtilities()
 
-	fmt.Println("Initialize DB connection")
+	fmt.Println("Initialize Log DB connection")
 	err := models.InitCassandraDb()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Initialize DB connection")
+	err = models.InitArangoDb()
 	if err != nil {
 		panic(err)
 	}
