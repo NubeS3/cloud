@@ -73,6 +73,67 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, user)
 	})
+	r.GET("/arango/test/bucket/create", func(c *gin.Context) {
+		user, err := arango.InsertBucket("user123", "tringuyen", "vietnam")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/bucket/findName", func(c *gin.Context) {
+		user, err := arango.FindBucketByName("tringuyen")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/bucket/findId", func(c *gin.Context) {
+		bucket, err := arango.FindBucketById("9988")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, bucket)
+	})
+	r.GET("/arango/test/bucket/findUid", func(c *gin.Context) {
+		user, err := arango.FindBucketByUid("user123")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, user)
+	})
 
 	r.GET("/testInsertDB", func(c *gin.Context) {
 		res := cassandra.TestDb()
