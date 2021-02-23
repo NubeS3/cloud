@@ -1,7 +1,8 @@
-package arango
+package models
 
 const (
 	DbError = iota
+	FsError
 	Duplicated
 	DocumentNotFound
 	Other
@@ -10,10 +11,10 @@ const (
 type ErrorType int
 
 type ModelError struct {
-	msg     string
-	errType ErrorType
+	Msg     string
+	ErrType ErrorType
 }
 
 func (m *ModelError) Error() string {
-	return m.msg
+	return m.Msg
 }
