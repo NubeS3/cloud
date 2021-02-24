@@ -134,6 +134,57 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, user)
 	})
+	r.GET("/arango/test/otp/create", func(c *gin.Context) {
+		otp, err := arango.GenerateOTP("tringuyen", "test@gmail.com")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, otp)
+	})
+	r.GET("/arango/test/otp/findUname", func(c *gin.Context) {
+		otp, err := arango.FindOTPByUsername("tringuyen")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, otp)
+	})
+	r.GET("/arango/test/otp/findId", func(c *gin.Context) {
+		otp, err := arango.FindOTPById("33957")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, otp)
+	})
 
 	r.GET("/testInsertDB", func(c *gin.Context) {
 		res := cassandra.TestDb()
