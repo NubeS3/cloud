@@ -2,6 +2,7 @@ package arango
 
 import (
 	"context"
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/arangodb/go-driver"
 	"time"
 )
@@ -15,9 +16,17 @@ type Bucket struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type bucket struct {
+	Uid    string `json:"uid"`
+	Name   string `json:"name" binding:"required"`
+	Region string `json:"region" binding:"required"`
+	// DB Info
+	CreatedAt time.Time `json:"created_at"`
+}
+
 func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 	createdTime := time.Time{}
-	doc := Bucket{
+	doc := bucket{
 		Uid:       uid,
 		Name:      name,
 		Region:    region,
@@ -29,22 +38,27 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 
 	bucket, _ := FindBucketByName(name)
 	if bucket != nil {
-		return nil, &ModelError{
-			msg:     "duplicated bucket name",
-			errType: Duplicated,
+		return nil, &models.ModelError{
+			Msg:     "duplicated bucket name",
+			ErrType: models.Duplicated,
 		}
 	}
 
 	meta, err := bucketCol.CreateDocument(ctx, doc)
 	if err != nil {
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
-	doc.Id = meta.Key
-	return &doc, nil
+	return &Bucket{
+		Id:        meta.Key,
+		Uid:       doc.Uid,
+		Name:      doc.Name,
+		Region:    doc.Region,
+		CreatedAt: doc.CreatedAt,
+	}, nil
 }
 
 func FindBucketByName(bname string) (*Bucket, error) {
@@ -59,7 +73,10 @@ func FindBucketByName(bname string) (*Bucket, error) {
 	bucket := Bucket{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		return nil, err
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
 	}
 	defer cursor.Close()
 
@@ -68,15 +85,18 @@ func FindBucketByName(bname string) (*Bucket, error) {
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
-			return nil, err
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
 		}
 		bucket.Id = meta.Key
 	}
 
 	if bucket.Id == "" {
-		return nil, &ModelError{
-			msg:     "bucket not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 
@@ -91,15 +111,15 @@ func FindBucketById(bid string) (*Bucket, error) {
 	meta, err := bucketCol.ReadDocument(ctx, bid, &bucket)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "bucket not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "bucket not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
@@ -120,7 +140,10 @@ func FindBucketByUid(uid string) (*Bucket, error) {
 	bucket := Bucket{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		return nil, err
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
 	}
 	defer cursor.Close()
 
@@ -129,15 +152,18 @@ func FindBucketByUid(uid string) (*Bucket, error) {
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
-			return nil, err
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
 		}
 		bucket.Id = meta.Key
 	}
 
 	if bucket.Id == "" {
-		return nil, &ModelError{
-			msg:     "bucket not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 
@@ -151,15 +177,15 @@ func RemoveBucket(bid string) error {
 	_, err := bucketCol.RemoveDocument(ctx, bid)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return &ModelError{
-				msg:     "bucket not found",
-				errType: DocumentNotFound,
+			return &models.ModelError{
+				Msg:     "bucket not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
