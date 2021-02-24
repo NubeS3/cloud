@@ -248,6 +248,38 @@ func UpdateUserData(
 	return &user, err
 }
 
+func UpdateActive(uname string, isActive bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	user, err := FindUserByUsername(uname)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     "user not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+	userUpdate := User{
+		IsActive: isActive,
+	}
+
+	_, err = userCol.UpdateDocument(ctx, user.Id, &userUpdate)
+	if err != nil {
+		if driver.IsNotFound(err) {
+			return &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
+			}
+		}
+
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	return err
+}
+
 func UpdateUserPassword(uid string, password string) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()

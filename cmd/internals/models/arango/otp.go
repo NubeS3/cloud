@@ -14,7 +14,6 @@ type Otp struct {
 	Id          string    `json:"id"`
 	Otp         string    `json:"otp" binding:"required"`
 	Email       string    `json:"email"`
-	IsValidated bool      `json:"isValidated"`
 	LastUpdated time.Time `json:"lastUpdated"`
 	ExpiredTime time.Time `json:"expiredTime"`
 	//DB Info
@@ -23,31 +22,13 @@ type Otp struct {
 
 func GenerateOTP(username string, email string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
-	//createdTime := time.Now()
-	//doc := Otp{
-	//	Username:    username,
-	//	Otp:         newOtp,
-	//	Email:       email,
-	//	IsValidated: false,
-	//	LastUpdated: createdTime,
-	//	ExpiredTime: createdTime.Add(time.Minute * 5),
-	//	CreatedAt:   createdTime,
-	//}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	//otpByUname, _ := FindOTPByUsername(username)
-	//if otpByUname != nil {
-	//	return nil, &ModelError{
-	//		msg:     "duplicated username",
-	//		errType: Duplicated,
-	//	}
-	//}
-
 	query := "UPSERT { username: @username } " +
 		"INSERT { username: @username, otp: @newOtp, email: @email, " +
-		"lastUpdated: @lastUpdated, expiredTime: @expiredTime, isValidated: @isValidated } " +
+		"lastUpdated: @lastUpdated, expiredTime: @expiredTime } " +
 		"UPDATE { otp: @newOtp, expiredTime: @expiredTime, lastUpdated: @lastUpdated } IN otps " +
 		"RETURN NEW"
 	bindVars := map[string]interface{}{
@@ -56,7 +37,6 @@ func GenerateOTP(username string, email string) (*Otp, error) {
 		"username":    username,
 		"expiredTime": time.Now().Add(time.Minute * 5),
 		"lastUpdated": time.Now(),
-		"isValidated": false,
 	}
 	otp := Otp{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
@@ -78,10 +58,61 @@ func GenerateOTP(username string, email string) (*Otp, error) {
 	if otp.Id == "" {
 		return nil, &models.ModelError{
 			Msg:     "otp not found",
-			ErrType: models.DocumentNotFound,
+			ErrType: models.OtpInvalid,
 		}
 	}
 	return &otp, nil
+}
+
+func OTPConfirm(uname string, otp string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	userOtp, err := FindOTPByUsername(uname)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     "otp not found",
+			ErrType: models.OtpInvalid,
+		}
+	}
+
+	if userOtp.ExpiredTime.Before(time.Now()) {
+		return &models.ModelError{
+			Msg:     "otp expired",
+			ErrType: models.OtpInvalid,
+		}
+	}
+
+	if otp != userOtp.Otp {
+		return &models.ModelError{
+			Msg:     "otp not match",
+			ErrType: models.OtpInvalid,
+		}
+	}
+
+	err = UpdateActive(uname, true)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	_, err = otpCol.RemoveDocument(ctx, userOtp.Id)
+	if err != nil {
+		if driver.IsNotFound(err) {
+			return &models.ModelError{
+				Msg:     "otp not found",
+				ErrType: models.DocumentNotFound,
+			}
+		}
+
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	return err
 }
 
 func FindOTPById(id string) (*Otp, error) {

@@ -5,6 +5,7 @@ const (
 	FsError
 	Duplicated
 	DocumentNotFound
+	OtpInvalid
 	Other
 )
 
