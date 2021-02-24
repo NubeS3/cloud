@@ -28,7 +28,6 @@ type FileMetadata struct {
 }
 
 type fileMetadata struct {
-	Id       string `json:"id"`
 	FileId   string `json:"fid"`
 	BucketId string `json:"bucket_id"`
 	Path     string `json:"path"`
@@ -67,7 +66,7 @@ func saveFileMetadata(fid string, bid string,
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	meta, err := userCol.CreateDocument(ctx, doc)
+	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -95,14 +94,14 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path = @path AND fm.name = @name LIMIT 1 RETURN fm"
+	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name LIMIT 1 RETURN fm"
 	bindVars := map[string]interface{}{
 		"bid":  bid,
 		"path": path,
 		"name": name,
 	}
 
-	fm := FileMetadata{}
+	fm := fileMetadata{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -112,6 +111,7 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 	}
 	defer cursor.Close()
 
+	var retMeta FileMetadata
 	for {
 		meta, err := cursor.ReadDocument(ctx, &fm)
 		if driver.IsNoMoreDocuments(err) {
@@ -122,10 +122,24 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 				ErrType: models.DbError,
 			}
 		}
-		fm.Id = meta.Key
+
+		retMeta = FileMetadata{
+			Id:           meta.Key,
+			FileId:       fm.FileId,
+			BucketId:     fm.BucketId,
+			Path:         fm.Path,
+			Name:         fm.Name,
+			ContentType:  fm.ContentType,
+			Size:         fm.Size,
+			IsHidden:     fm.IsHidden,
+			IsDeleted:    fm.IsDeleted,
+			DeletedDate:  fm.DeletedDate,
+			UploadedDate: fm.UploadedDate,
+			ExpiredDate:  fm.ExpiredDate,
+		}
 	}
 
-	return &fm, nil
+	return &retMeta, nil
 }
 
 func SaveFile(reader io.Reader, bid string, bucketName string,
@@ -153,6 +167,10 @@ func GetFile(bid string, path, name string, callback func(reader io.Reader, meta
 			ErrType: models.DbError,
 		}
 	}
+
+	//CHECK EXPIRED TIME
+
+	//CHECK FILE DELETE
 
 	err = seaweedfs.DownloadFile(meta.FileId, func(reader io.Reader) error {
 		return callback(reader, meta)
