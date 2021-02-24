@@ -2,6 +2,7 @@ package arango
 
 import (
 	"context"
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/arangodb/go-driver"
 	"github.com/thanhpk/randstr"
 	"strings"
@@ -75,9 +76,9 @@ func GenerateOTP(username string, email string) (*Otp, error) {
 	}
 
 	if otp.Id == "" {
-		return nil, &ModelError{
-			msg:     "otp not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "otp not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 	return &otp, nil
@@ -91,15 +92,15 @@ func FindOTPById(id string) (*Otp, error) {
 	meta, err := otpCol.ReadDocument(ctx, id, &otp)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "otp not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "otp not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
@@ -135,9 +136,9 @@ func FindOTPByUsername(uname string) (*Otp, error) {
 	}
 
 	if otp.Id == "" {
-		return nil, &ModelError{
-			msg:     "otp not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "otp not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 

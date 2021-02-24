@@ -6,9 +6,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
-	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
-	"github.com/m1ome/randstr"
 	"io"
 	"net/http"
 	"strings"
@@ -264,18 +262,18 @@ func TestRoute(r *gin.Engine) {
 		})
 	})
 
-	r.POST("/uploadFile", func(c *gin.Context) {
-		file, _ := c.FormFile("file")
-		f, _ := file.Open()
-		testUuid, _ := gocql.RandomUUID()
-		rands := randstr.GetString(5)
-		mt, err := cassandra.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-		c.JSON(http.StatusOK, mt)
-	})
+	//r.POST("/uploadFile", func(c *gin.Context) {
+	//	file, _ := c.FormFile("file")
+	//	f, _ := file.Open()
+	//	testUuid, _ := gocql.RandomUUID()
+	//	rands := randstr.GetString(5)
+	//	mt, err := cassandra.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//	c.JSON(http.StatusOK, mt)
+	//})
 
 	r.POST("/downloadFile", func(c *gin.Context) {
 		//models.GetFile(nil, )
