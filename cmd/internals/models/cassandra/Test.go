@@ -30,6 +30,7 @@ func TestDb() string {
 }
 
 func TestUpload(fileContent multipart.File, size int64, newPath string, collection string, ttl string) (*goseaweedfs.FilerUploadResult, error) {
+	var sw goseaweedfs.Seaweed
 	filers := sw.Filers()
 	filer := filers[0]
 	res, err := filer.Upload(fileContent, size, newPath, collection, ttl)
@@ -40,6 +41,7 @@ func TestUpload(fileContent multipart.File, size int64, newPath string, collecti
 }
 
 func TestDelete(path string) error {
+	var sw goseaweedfs.Seaweed
 	filers := sw.Filers()
 	filer := filers[0]
 	err := filer.Delete(path, nil)
@@ -47,6 +49,7 @@ func TestDelete(path string) error {
 }
 
 func TestDownload(path string, callback func(r io.Reader) error) error {
+	var sw goseaweedfs.Seaweed
 	filers := sw.Filers()
 	filer := filers[0]
 	err := filer.Download(path, nil, callback)

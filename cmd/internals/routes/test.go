@@ -33,8 +33,8 @@ func TestRoute(r *gin.Engine) {
 	})
 	r.GET("/arango/test/user/create", func(c *gin.Context) {
 		user, err := arango.SaveUser("test", "user",
-			"test123", "1234",
-			"abc@abc.com", time.Now(),
+			"tringuyen", "1234",
+			"test@gmail.com", time.Now(),
 			"meow", true)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -182,6 +182,25 @@ func TestRoute(r *gin.Engine) {
 			}
 		}
 		c.JSON(http.StatusOK, otp)
+	})
+	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
+		err := arango.OTPConfirm("tringuyen", "60324406")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "otp confirmed.",
+		})
 	})
 
 	r.GET("/testInsertDB", func(c *gin.Context) {
