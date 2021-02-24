@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
 	"log"
@@ -35,7 +35,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			accessKeys, err := models.FindAccessKeyByUidBid(uid.(gocql.UUID), bid)
+			accessKeys, err := cassandra.FindAccessKeyByUidBid(uid.(gocql.UUID), bid)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -62,7 +62,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			accessKey, err := models.FindAccessKeyByKey(key)
+			accessKey, err := cassandra.FindAccessKeyByKey(key)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -109,7 +109,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := models.InsertAccessKey(keyData.BucketId, uid.(gocql.UUID), keyData.Permissions, keyData.ExpiredDate)
+			res, err := cassandra.InsertAccessKey(keyData.BucketId, uid.(gocql.UUID), keyData.Permissions, keyData.ExpiredDate)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -144,7 +144,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if err := models.DeleteAccessKey(uid.(gocql.UUID), bid, key); err != nil {
+			if err := cassandra.DeleteAccessKey(uid.(gocql.UUID), bid, key); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})

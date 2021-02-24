@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
 	"log"
@@ -24,7 +24,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := models.FindBucketByUid(uid.(gocql.UUID))
+			res, err := cassandra.FindBucketByUid(uid.(gocql.UUID))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -61,7 +61,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			bucket, err := models.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region)
+			bucket, err := cassandra.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -97,7 +97,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			if err := models.RemoveBucket(uid.(gocql.UUID), id); err != nil {
+			if err := cassandra.RemoveBucket(uid.(gocql.UUID), id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})

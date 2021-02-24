@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -17,7 +17,7 @@ func ApiKeyAuthenticate(c *gin.Context) {
 		return
 	}
 
-	accessKey, err := models.FindAccessKeyByKey(key)
+	accessKey, err := cassandra.FindAccessKeyByKey(key)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "access key mismatch",

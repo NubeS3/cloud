@@ -3,6 +3,7 @@ module github.com/NubeS3/cloud
 go 1.15
 
 require (
+	github.com/arangodb/go-driver v0.0.0-20201230202041-2c13286cfbda
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elithrar/simple-scrypt v1.3.0
 	github.com/gin-gonic/gin v1.6.3
