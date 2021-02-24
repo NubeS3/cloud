@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
 	"github.com/linxGnu/goseaweedfs"
@@ -33,8 +34,8 @@ func TestRoute(r *gin.Engine) {
 	})
 	r.GET("/arango/test/user/create", func(c *gin.Context) {
 		user, err := arango.SaveUser("test", "user",
-			"tringuyen", "1234",
-			"test@gmail.com", time.Now(),
+			"test123", "1234",
+			"abc@abc.com", time.Now(),
 			"meow", true)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -43,6 +44,25 @@ func TestRoute(r *gin.Engine) {
 			return
 		}
 		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
+		err := arango.OTPConfirm("test123", "60324406")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "otp confirmed.",
+		})
 	})
 	r.GET("/arango/test/user/findId", func(c *gin.Context) {
 		user, err := arango.FindUserById("14112")
@@ -132,74 +152,26 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, user)
 	})
-	r.GET("/arango/test/otp/create", func(c *gin.Context) {
-		otp, err := arango.GenerateOTP("tringuyen", "test@gmail.com")
+	r.POST("/arango/test/file/upload", func(c *gin.Context) {
+		file, _ := c.FormFile("file")
+		f, _ := file.Open()
+		cType, _ := ultis.GetFileContentType(f)
+		mt, err := arango.SaveFile(f, "1234", "test1", "", "cat_img.jpg", false, cType, file.Size, time.Nanosecond)
 		if err != nil {
-			if arangoDriver.IsNotFound(err) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "otp not found",
-				})
-				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": errors.New("read fail"),
-				})
-				return
-			}
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
 		}
-		c.JSON(http.StatusOK, otp)
+
+		c.JSON(http.StatusOK, mt)
 	})
-	r.GET("/arango/test/otp/findUname", func(c *gin.Context) {
-		otp, err := arango.FindOTPByUsername("tringuyen")
-		if err != nil {
-			if arangoDriver.IsNotFound(err) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "otp not found",
-				})
-				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": errors.New("read fail"),
-				})
-				return
+	r.GET("/arango/test/file/download", func(c *gin.Context) {
+		_ = arango.GetFile("1234", "", "cat_img.jpg", func(reader io.Reader, metadata *arango.FileMetadata) error {
+			extraHeaders := map[string]string{
+				"Content-Disposition": `attachment; filename=` + metadata.Name,
 			}
-		}
-		c.JSON(http.StatusOK, otp)
-	})
-	r.GET("/arango/test/otp/findId", func(c *gin.Context) {
-		otp, err := arango.FindOTPById("33957")
-		if err != nil {
-			if arangoDriver.IsNotFound(err) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "otp not found",
-				})
-				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": errors.New("read fail"),
-				})
-				return
-			}
-		}
-		c.JSON(http.StatusOK, otp)
-	})
-	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
-		err := arango.OTPConfirm("tringuyen", "60324406")
-		if err != nil {
-			if arangoDriver.IsNotFound(err) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "otp not found",
-				})
-				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": errors.New("read fail"),
-				})
-				return
-			}
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "otp confirmed.",
+
+			c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+			return nil
 		})
 	})
 
@@ -280,7 +252,7 @@ func TestRoute(r *gin.Engine) {
 			"message": "delete success",
 		})
 	})
-
+	//
 	//r.POST("/uploadFile", func(c *gin.Context) {
 	//	file, _ := c.FormFile("file")
 	//	f, _ := file.Open()
@@ -293,10 +265,10 @@ func TestRoute(r *gin.Engine) {
 	//	}
 	//	c.JSON(http.StatusOK, mt)
 	//})
-
-	r.POST("/downloadFile", func(c *gin.Context) {
-		//models.GetFile(nil, )
-		//
-		//c.JSON(http.StatusOK, mt)
-	})
+	//
+	//r.POST("/downloadFile", func(c *gin.Context) {
+	//	//models.GetFile(nil, )
+	//	//
+	//	//c.JSON(http.StatusOK, mt)
+	//})
 }
