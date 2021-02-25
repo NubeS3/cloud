@@ -6,6 +6,7 @@ const (
 	Duplicated
 	DocumentNotFound
 	OtpInvalid
+	InvalidAccessKey
 	Other
 )
 
