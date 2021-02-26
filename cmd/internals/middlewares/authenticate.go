@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -37,7 +37,7 @@ func UserAuthenticate(c *gin.Context) {
 				return
 			}
 
-			refreshToken, err := cassandra.FindRfTokenByUid(userClaims.Id)
+			refreshToken, err := arango.FindRfTokenByUid(userClaims.Id)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "unauthorized",
@@ -54,7 +54,7 @@ func UserAuthenticate(c *gin.Context) {
 				return
 			}
 
-			newAccessToken, newRfToken, err := cassandra.UpdateToken(refreshToken.Uid)
+			newAccessToken, newRfToken, err := arango.UpdateToken(refreshToken.Uid)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "unauthorized",

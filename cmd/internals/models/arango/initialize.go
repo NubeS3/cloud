@@ -16,6 +16,7 @@ var (
 	otpCol           arangoDriver.Collection
 	bucketCol        arangoDriver.Collection
 	apiKeyCol        arangoDriver.Collection
+	rfTokenCol       arangoDriver.Collection
 	fileMetadataCol  arangoDriver.Collection
 )
 
@@ -91,6 +92,16 @@ func initArangoDb() error {
 		otpCol, _ = arangoDb.CreateCollection(ctx, "otps", &arangoDriver.CreateCollectionOptions{})
 	} else {
 		otpCol, _ = arangoDb.Collection(ctx, "otps")
+	}
+
+	exist, err = arangoDb.CollectionExists(ctx, "rfTokens")
+	if err != nil {
+		return err
+	}
+	if !exist {
+		rfTokenCol, _ = arangoDb.CreateCollection(ctx, "rfTokens", &arangoDriver.CreateCollectionOptions{})
+	} else {
+		rfTokenCol, _ = arangoDb.Collection(ctx, "rfTokens")
 	}
 
 	exist, err = arangoDb.CollectionExists(ctx, "buckets")
