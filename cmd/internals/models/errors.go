@@ -9,6 +9,7 @@ const (
 	TokenInvalid
 	InvalidAccessKey
 	InvalidBucket
+	UidMismatch
 	Other
 )
 
