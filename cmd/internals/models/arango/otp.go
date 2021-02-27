@@ -11,7 +11,6 @@ import (
 
 type Otp struct {
 	Username    string    `json:"username" binding:"required"`
-	Id          string    `json:"id"`
 	Otp         string    `json:"otp" binding:"required"`
 	Email       string    `json:"email"`
 	LastUpdated time.Time `json:"lastUpdated"`
@@ -46,28 +45,18 @@ func GenerateOTP(username string, email string) (*Otp, error) {
 	defer cursor.Close()
 
 	for {
-		meta, err := cursor.ReadDocument(ctx, &otp)
+		_, err := cursor.ReadDocument(ctx, &otp)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		otp.Id = meta.Key
 	}
 
-	if otp.Id == "" {
-		return nil, &models.ModelError{
-			Msg:     "otp not found",
-			ErrType: models.OtpInvalid,
-		}
-	}
 	return &otp, nil
 }
 
 func OTPConfirm(uname string, otp string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
 	userOtp, err := FindOTPByUsername(uname)
 	if err != nil {
 		return &models.ModelError{
@@ -97,15 +86,8 @@ func OTPConfirm(uname string, otp string) error {
 			ErrType: models.DbError,
 		}
 	}
-	_, err = otpCol.RemoveDocument(ctx, userOtp.Id)
+	err = RemoveOTP(userOtp.Username)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return &models.ModelError{
-				Msg:     "otp not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
 		return &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
@@ -113,31 +95,6 @@ func OTPConfirm(uname string, otp string) error {
 	}
 
 	return err
-}
-
-func FindOTPById(id string) (*Otp, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	otp := Otp{}
-	meta, err := otpCol.ReadDocument(ctx, id, &otp)
-	if err != nil {
-		if driver.IsNotFound(err) {
-			return nil, &models.ModelError{
-				Msg:     "otp not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
-		return nil, &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
-
-	otp.Id = meta.Key
-
-	return &otp, nil
 }
 
 func FindOTPByUsername(uname string) (*Otp, error) {
@@ -157,21 +114,54 @@ func FindOTPByUsername(uname string) (*Otp, error) {
 	defer cursor.Close()
 
 	for {
-		meta, err := cursor.ReadDocument(ctx, &otp)
+		_, err := cursor.ReadDocument(ctx, &otp)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
 			return nil, err
 		}
-		otp.Id = meta.Key
 	}
 
-	if otp.Id == "" {
-		return nil, &models.ModelError{
+	return &otp, nil
+}
+
+func RemoveOTP(username string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR o IN otps FILTER o.username == @username REMOVE o in otps LET removed = OLD RETURN removed"
+	bindVars := map[string]interface{}{
+		"username": username,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	otp := Otp{}
+	for {
+		_, err := cursor.ReadDocument(ctx, &otp)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	if otp.Otp == "" {
+		return &models.ModelError{
 			Msg:     "otp not found",
 			ErrType: models.DocumentNotFound,
 		}
 	}
 
-	return &otp, nil
+	return nil
 }

@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"net/http"
 	"time"
@@ -27,7 +28,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			user, err := cassandra.FindUserByUsername(curSigninUser.Username)
+			user, err := arango.FindUserByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "invalid username",
@@ -59,7 +60,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			rfToken, err := cassandra.FindRfTokenByUid(user.Id)
+			rfToken, err := arango.FindRfTokenByUid(user.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
@@ -98,7 +99,7 @@ func UserRoutes(route *gin.Engine) {
 			// 	return
 			// }
 
-			var curUser, err = cassandra.SaveUser(
+			var curUser, err = arango.SaveUser(
 				user.Firstname,
 				user.Lastname,
 				user.Username,
@@ -115,7 +116,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			otp, err := cassandra.GenerateOTP(user.Username, curUser.Id, curUser.Email)
+			otp, err := arango.GenerateOTP(user.Username, curUser.Email)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
@@ -148,45 +149,28 @@ func UserRoutes(route *gin.Engine) {
 				})
 			}
 
-			user, err := cassandra.FindUserByUsername(curUser.Username)
+			user, err := arango.FindUserByUsername(curUser.Username)
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
 				})
 				return
 			}
-			_, err = cassandra.GetUserOTP(user.Username)
-			if err != nil {
-				otp, err := cassandra.GenerateOTP(user.Username, user.Id, user.Email)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": "internal server error",
-					})
-					fmt.Println("user route/resend otp/gennerate otp: " + err.Error())
-					return
-				}
-				if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": "internal server error",
-					})
-					fmt.Println("user route/resend otp/send otp:" + err.Error())
-					return
-				}
-			}
 
-			otp, err := cassandra.ReGenerateOTP(user.Username)
+			otp, err := arango.GenerateOTP(user.Username, user.Email)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/resend otp/regenerate otp: " + err.Error())
+				fmt.Println("user route/resend otp/generate otp: ", err.Error())
 				return
 			}
-			if err = SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
+
+			if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/resend otp/resend otp: " + err.Error())
+				fmt.Println("user route/resend otp/send otp: " + err.Error())
 				return
 			}
 
@@ -209,7 +193,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			_, err := cassandra.GetOTPByUsername(curSigninUser.Username)
+			_, err := arango.FindOTPByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": err.Error(),
@@ -217,16 +201,16 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			err = cassandra.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
+			err = arango.OTPConfirm(curSigninUser.Username, curSigninUser.Otp)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "interal server error",
+					"error": "internal server error",
 				})
 				fmt.Println("user route/confirm otp/models otp confirm: " + err.Error())
 				return
 			}
 
-			user, err := cassandra.FindUserByUsername(curSigninUser.Username)
+			user, err := arango.FindUserByUsername(curSigninUser.Username)
 			if err != nil {
 				c.JSON(http.StatusNotFound, gin.H{
 					"error": "user not found",
@@ -234,7 +218,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if err := cassandra.GenerateRfToken(user.Id); err != nil {
+			if err := arango.GenerateRfToken(user.Id); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})

@@ -252,31 +252,56 @@ func UpdateActive(uname string, isActive bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	user, err := FindUserByUsername(uname)
-	if err != nil {
-		return &models.ModelError{
-			Msg:     "user not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-	userUpdate := User{
-		IsActive: isActive,
+	query := "FOR u IN users FILTER u.username == @uname " +
+		"UPDATE u WITH { is_active: @isActive } IN users RETURN NEW"
+	bindVars := map[string]interface{}{
+		"uname":    uname,
+		"isActive": isActive,
 	}
 
-	_, err = userCol.UpdateDocument(ctx, user.Id, &userUpdate)
+	user := User{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return &models.ModelError{
-				Msg:     "user not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
+		return err
+	}
+	defer cursor.Close()
 
-		return &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
+	for {
+		_, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return err
 		}
 	}
+
+	//user, err := FindUserByUsername(uname)
+	//if err != nil {
+	//	return &models.ModelError{
+	//		Msg:     "user not found",
+	//		ErrType: models.DocumentNotFound,
+	//	}
+	//}
+	//userUpdate := User{
+	//	IsActive: isActive,
+	//}
+	//
+	//meta, err := userCol.UpdateDocument(ctx, user.Id, &userUpdate)
+	//
+	//if err != nil {
+	//	if driver.IsNotFound(err) {
+	//		return &models.ModelError{
+	//			Msg:     "user not found",
+	//			ErrType: models.DocumentNotFound,
+	//		}
+	//	}
+	//
+	//	return &models.ModelError{
+	//		Msg:     err.Error(),
+	//		ErrType: models.DbError,
+	//	}
+	//}
+	//user.Id = meta.Key
 	return err
 }
 

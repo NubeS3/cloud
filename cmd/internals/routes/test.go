@@ -45,8 +45,25 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, user)
 	})
+	r.GET("/arango/test/otp/create", func(c *gin.Context) {
+		otp, err := arango.GenerateOTP("test123", "abc@abc.com")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, otp)
+	})
 	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
-		err := arango.OTPConfirm("test123", "60324406")
+		err := arango.OTPConfirm("test123", "7A785414")
 		if err != nil {
 			if arangoDriver.IsNotFound(err) {
 				c.JSON(http.StatusNotFound, gin.H{
@@ -151,6 +168,63 @@ func TestRoute(r *gin.Engine) {
 			}
 		}
 		c.JSON(http.StatusOK, user)
+	})
+
+	r.GET("/arango/test/token/create", func(c *gin.Context) {
+		err := arango.GenerateRfToken("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"msg": "rftoken gen",
+		})
+	})
+	r.GET("/arango/test/token/findUid", func(c *gin.Context) {
+		rfToken, err := arango.FindRfTokenByUid("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "token not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, rfToken)
+	})
+	r.GET("/arango/test/token/update", func(c *gin.Context) {
+		access, refresh, err := arango.UpdateToken("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "token not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"access":  access,
+			"refresh": refresh,
+		})
 	})
 	r.POST("/arango/test/file/upload", func(c *gin.Context) {
 		file, _ := c.FormFile("file")
