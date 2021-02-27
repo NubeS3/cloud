@@ -142,6 +142,56 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 	return &retMeta, nil
 }
 
+func FindMetadataByFid(fid string) (*FileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fm IN fileMetadata FILTER fm.fid == @fid LIMIT 1 RETURN fm"
+	bindVars := map[string]interface{}{
+		"fid": fid,
+	}
+
+	fm := fileMetadata{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	var retMeta FileMetadata
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fm)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		retMeta = FileMetadata{
+			Id:           meta.Key,
+			FileId:       fm.FileId,
+			BucketId:     fm.BucketId,
+			Path:         fm.Path,
+			Name:         fm.Name,
+			ContentType:  fm.ContentType,
+			Size:         fm.Size,
+			IsHidden:     fm.IsHidden,
+			IsDeleted:    fm.IsDeleted,
+			DeletedDate:  fm.DeletedDate,
+			UploadedDate: fm.UploadedDate,
+			ExpiredDate:  fm.ExpiredDate,
+		}
+	}
+
+	return &retMeta, nil
+}
+
 func SaveFile(reader io.Reader, bid string, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
@@ -174,6 +224,29 @@ func GetFile(bid string, path, name string, callback func(reader io.Reader, meta
 
 	err = seaweedfs.DownloadFile(meta.FileId, func(reader io.Reader) error {
 		return callback(reader, meta)
+	})
+
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.FsError,
+		}
+	}
+
+	return nil
+}
+
+func GetFileByFid(fid string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
+	fileMeta, err := FindMetadataByFid(fid)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	err = seaweedfs.DownloadFile(fileMeta.FileId, func(reader io.Reader) error {
+		return callback(reader, fileMeta)
 	})
 
 	if err != nil {

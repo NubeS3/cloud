@@ -2,11 +2,11 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/gin-gonic/gin"
-	"github.com/gocql/gocql"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -15,10 +15,21 @@ func AccessKeyRoutes(r *gin.Engine) {
 	{
 		ar.GET("/all/:bucket_id", func(c *gin.Context) {
 			bucketId := c.Param("bucket_id")
-			bid, err := gocql.ParseUUID(bucketId)
+			limit := c.DefaultQuery("limit", "0")
+			offset := c.DefaultQuery("offset", "0")
+			iLimit, err := strconv.Atoi(limit)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "bucket_id wrong format",
+					"error": "wrong limit format",
+				})
+
+				return
+			}
+
+			iOffset, err := strconv.Atoi(offset)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "wrong offset format",
 				})
 
 				return
@@ -35,7 +46,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			accessKeys, err := cassandra.FindAccessKeyByUidBid(uid.(gocql.UUID), bid)
+			accessKeys, err := arango.FindAccessKeyByUidBid(uid.(string), bucketId, iLimit, iOffset)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -62,7 +73,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			accessKey, err := cassandra.FindAccessKeyByKey(key)
+			accessKey, err := arango.FindAccessKeyByKey(key)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -73,9 +84,9 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if accessKey.Uid != uid.(gocql.UUID) {
+			if accessKey.Uid != uid.(string) {
 				c.JSON(http.StatusForbidden, gin.H{
-					"error": "not your key",
+					"error": "invalid user ownership",
 				})
 
 				return
@@ -85,9 +96,9 @@ func AccessKeyRoutes(r *gin.Engine) {
 		})
 		ar.POST("/create", func(c *gin.Context) {
 			type createAKeyData struct {
-				BucketId    gocql.UUID `json:"bucket_id"`
-				ExpiredDate time.Time  `json:"expired_date"`
-				Permissions []string   `json:"permissions"`
+				BucketId    string    `json:"bucket_id"`
+				ExpiredDate time.Time `json:"expired_date"`
+				Permissions []string  `json:"permissions"`
 			}
 
 			var keyData createAKeyData
@@ -109,7 +120,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := cassandra.InsertAccessKey(keyData.BucketId, uid.(gocql.UUID), keyData.Permissions, keyData.ExpiredDate)
+			res, err := arango.GenerateAccessKey(keyData.BucketId, uid.(string), keyData.Permissions, keyData.ExpiredDate)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -123,15 +134,6 @@ func AccessKeyRoutes(r *gin.Engine) {
 		ar.DELETE("/delete/:bucket_id/:access_key", func(c *gin.Context) {
 			key := c.Param("access_key")
 			bucketId := c.Param("bucket_id")
-			bid, err := gocql.ParseUUID(bucketId)
-
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "bucket_id mismatch",
-				})
-
-				return
-			}
 
 			uid, ok := c.Get("uid")
 			if !ok {
@@ -144,7 +146,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if err := cassandra.DeleteAccessKey(uid.(gocql.UUID), bid, key); err != nil {
+			if err := arango.DeleteAccessKey(key, bucketId, uid.(string)); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})

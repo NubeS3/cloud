@@ -8,6 +8,7 @@ const (
 	OtpInvalid
 	TokenInvalid
 	InvalidAccessKey
+	InvalidBucket
 	Other
 )
 
@@ -20,4 +21,13 @@ type ModelError struct {
 
 func (m *ModelError) Error() string {
 	return m.Msg
+}
+
+type RouteError struct {
+	Msg     string
+	ErrType ErrorType
+}
+
+func (r *RouteError) Error() string {
+	return r.Msg
 }
