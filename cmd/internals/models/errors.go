@@ -7,6 +7,7 @@ const (
 	DocumentNotFound
 	OtpInvalid
 	TokenInvalid
+	InvalidAccessKey
 	Other
 )
 
