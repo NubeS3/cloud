@@ -177,7 +177,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR k IN apiKeys FILTER k.bucket_id == @bid AND k.uid == @uid LIMIT @limit, @offset RETURN k"
+	query := "FOR k IN apiKeys FILTER k.bucket_id == @bid AND k.uid == @uid LIMIT @offset, @limit RETURN k"
 	bindVars := map[string]interface{}{
 		"bid":    bid,
 		"uid":    uid,
@@ -185,7 +185,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 		"offset": offset,
 	}
 
-	var keys []AccessKey
+	keys := []AccessKey{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
 		return nil, &models.ModelError{
