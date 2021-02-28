@@ -4,11 +4,10 @@ import (
 	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
-	"github.com/gocql/gocql"
 	"github.com/linxGnu/goseaweedfs"
-	"github.com/m1ome/randstr"
 	"io"
 	"net/http"
 	"strings"
@@ -46,6 +45,42 @@ func TestRoute(r *gin.Engine) {
 		}
 		c.JSON(http.StatusOK, user)
 	})
+	r.GET("/arango/test/otp/create", func(c *gin.Context) {
+		otp, err := arango.GenerateOTP("test123", "abc@abc.com")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, otp)
+	})
+	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
+		err := arango.OTPConfirm("test123", "7A785414")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "otp confirmed.",
+		})
+	})
 	r.GET("/arango/test/user/findId", func(c *gin.Context) {
 		user, err := arango.FindUserById("14112")
 		if err != nil {
@@ -72,6 +107,146 @@ func TestRoute(r *gin.Engine) {
 			return
 		}
 		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/bucket/create", func(c *gin.Context) {
+		user, err := arango.InsertBucket("user123", "tringuyen", "vietnam")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/bucket/findName", func(c *gin.Context) {
+		user, err := arango.FindBucketByName("tringuyen")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, user)
+	})
+	r.GET("/arango/test/bucket/findId", func(c *gin.Context) {
+		bucket, err := arango.FindBucketById("9988")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, bucket)
+	})
+	r.GET("/arango/test/bucket/findUid", func(c *gin.Context) {
+		user, err := arango.FindBucketByUid("user123", 10, 1)
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, user)
+	})
+
+	r.GET("/arango/test/token/create", func(c *gin.Context) {
+		err := arango.GenerateRfToken("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"msg": "rftoken gen",
+		})
+	})
+	r.GET("/arango/test/token/findUid", func(c *gin.Context) {
+		rfToken, err := arango.FindRfTokenByUid("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "token not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, rfToken)
+	})
+	r.GET("/arango/test/token/update", func(c *gin.Context) {
+		access, refresh, err := arango.UpdateToken("54155")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "token not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"access":  access,
+			"refresh": refresh,
+		})
+	})
+	r.POST("/arango/test/file/upload", func(c *gin.Context) {
+		file, _ := c.FormFile("file")
+		f, _ := file.Open()
+		cType, _ := ultis.GetFileContentType(f)
+		mt, err := arango.SaveFile(f, "1234", "test1", "", "cat_img.jpg", false, cType, file.Size, time.Nanosecond)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, mt)
+	})
+	r.GET("/arango/test/file/download", func(c *gin.Context) {
+		_ = arango.GetFile("1234", "", "cat_img.jpg", func(reader io.Reader, metadata *arango.FileMetadata) error {
+			extraHeaders := map[string]string{
+				"Content-Disposition": `attachment; filename=` + metadata.Name,
+			}
+
+			c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+			return nil
+		})
 	})
 
 	r.GET("/testInsertDB", func(c *gin.Context) {
@@ -151,23 +326,23 @@ func TestRoute(r *gin.Engine) {
 			"message": "delete success",
 		})
 	})
-
-	r.POST("/uploadFile", func(c *gin.Context) {
-		file, _ := c.FormFile("file")
-		f, _ := file.Open()
-		testUuid, _ := gocql.RandomUUID()
-		rands := randstr.GetString(5)
-		mt, err := cassandra.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-		c.JSON(http.StatusOK, mt)
-	})
-
-	r.POST("/downloadFile", func(c *gin.Context) {
-		//models.GetFile(nil, )
-		//
-		//c.JSON(http.StatusOK, mt)
-	})
+	//
+	//r.POST("/uploadFile", func(c *gin.Context) {
+	//	file, _ := c.FormFile("file")
+	//	f, _ := file.Open()
+	//	testUuid, _ := gocql.RandomUUID()
+	//	rands := randstr.GetString(5)
+	//	mt, err := cassandra.SaveFile(f, testUuid, "test"+rands, "/", file.Filename, false, "image/jpeg", file.Size, time.Hour)
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//	c.JSON(http.StatusOK, mt)
+	//})
+	//
+	//r.POST("/downloadFile", func(c *gin.Context) {
+	//	//models.GetFile(nil, )
+	//	//
+	//	//c.JSON(http.StatusOK, mt)
+	//})
 }

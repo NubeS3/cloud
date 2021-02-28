@@ -1,25 +1,16 @@
 package cassandra
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/linxGnu/goseaweedfs"
 	"github.com/mediocregopher/radix/v3"
 	"github.com/spf13/viper"
 )
 
 var (
 	session     *gocql.Session
-	sw          *goseaweedfs.Seaweed
-	filer       []string
-	swFiler     *goseaweedfs.Filer
 	redisClient *radix.Pool
-)
-
-const (
-	CHUNK_SIZE = 8096
 )
 
 func InitCassandraDb() error {
@@ -57,24 +48,6 @@ func InitCassandraDb() error {
 	//	return err
 	//}
 
-	return nil
-}
-
-func InitFs() error {
-	masterUrl := viper.GetString("SW_MASTER")
-	filerUrl := viper.GetString("SW_FILER")
-
-	if _filer := filerUrl; _filer != "" {
-		filer = []string{_filer}
-	}
-	var err error
-	sw, err = goseaweedfs.NewSeaweed(masterUrl, filer, CHUNK_SIZE, &http.Client{Timeout: 5 * time.Minute})
-
-	if err != nil {
-		return err
-	}
-
-	swFiler = sw.Filers()[0]
 	return nil
 }
 
@@ -207,9 +180,6 @@ func initCassandraDbTables() error {
 }
 
 func CleanUp() {
-	if sw != nil {
-		_ = sw.Close()
-	}
 	if session != nil {
 		session.Close()
 	}

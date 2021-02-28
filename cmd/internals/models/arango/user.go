@@ -2,6 +2,7 @@ package arango
 
 import (
 	"context"
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/arangodb/go-driver"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"time"
@@ -9,6 +10,22 @@ import (
 
 type User struct {
 	Id        string    `json:"id"`
+	Firstname string    `json:"firstname" binding:"required"`
+	Lastname  string    `json:"lastname" binding:"required"`
+	Username  string    `json:"username" binding:"required"`
+	Pass      string    `json:"password" binding:"required"`
+	Email     string    `json:"email" binding:"required"`
+	Dob       time.Time `json:"dob" binding:"required"`
+	Company   string    `json:"company" binding:"required"`
+	Gender    bool      `json:"gender" binding:"required"`
+	IsActive  bool      `json:"is_active"`
+	IsBanned  bool      `json:"is_banned"`
+	// DB Info
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type user struct {
 	Firstname string    `json:"firstname" binding:"required"`
 	Lastname  string    `json:"lastname" binding:"required"`
 	Username  string    `json:"username" binding:"required"`
@@ -40,7 +57,7 @@ func SaveUser(
 		return nil, err
 	}
 
-	doc := User{
+	doc := user{
 		Firstname: firstname,
 		Lastname:  lastname,
 		Username:  username,
@@ -60,22 +77,35 @@ func SaveUser(
 
 	user, _ := FindUserByUsername(username)
 	if user != nil {
-		return nil, &ModelError{
-			msg:     "duplicated username",
-			errType: Duplicated,
+		return nil, &models.ModelError{
+			Msg:     "duplicated username",
+			ErrType: models.Duplicated,
 		}
 	}
 
 	meta, err := userCol.CreateDocument(ctx, doc)
 	if err != nil {
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
-	doc.Id = meta.Key
-	return &doc, nil
+	return &User{
+		Id:        meta.Key,
+		Firstname: doc.Firstname,
+		Lastname:  doc.Lastname,
+		Username:  doc.Username,
+		Pass:      doc.Pass,
+		Email:     doc.Email,
+		Dob:       doc.Dob,
+		Company:   doc.Company,
+		Gender:    doc.Gender,
+		IsActive:  doc.IsActive,
+		IsBanned:  doc.IsBanned,
+		CreatedAt: doc.CreatedAt,
+		UpdatedAt: doc.UpdatedAt,
+	}, nil
 }
 
 func FindUserById(uid string) (*User, error) {
@@ -86,15 +116,15 @@ func FindUserById(uid string) (*User, error) {
 	meta, err := userCol.ReadDocument(ctx, uid, &user)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "user not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
@@ -130,9 +160,9 @@ func FindUserByUsername(uname string) (*User, error) {
 	}
 
 	if user.Id == "" {
-		return nil, &ModelError{
-			msg:     "user not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "user not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 
@@ -151,7 +181,10 @@ func FindUserByEmail(mail string) (*User, error) {
 	user := User{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		return nil, err
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
 	}
 	defer cursor.Close()
 
@@ -160,15 +193,18 @@ func FindUserByEmail(mail string) (*User, error) {
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
-			return nil, err
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
 		}
 		user.Id = meta.Key
 	}
 
 	if user.Id == "" {
-		return nil, &ModelError{
-			msg:     "user not found",
-			errType: DocumentNotFound,
+		return nil, &models.ModelError{
+			Msg:     "user not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 
@@ -196,20 +232,77 @@ func UpdateUserData(
 	meta, err := userCol.UpdateDocument(ctx, uid, &user)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "user not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
 	user.Id = meta.Key
 	return &user, err
+}
+
+func UpdateActive(uname string, isActive bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR u IN users FILTER u.username == @uname " +
+		"UPDATE u WITH { is_active: @isActive } IN users RETURN NEW"
+	bindVars := map[string]interface{}{
+		"uname":    uname,
+		"isActive": isActive,
+	}
+
+	user := User{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close()
+
+	for {
+		_, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return err
+		}
+	}
+
+	//user, err := FindUserByUsername(uname)
+	//if err != nil {
+	//	return &models.ModelError{
+	//		Msg:     "user not found",
+	//		ErrType: models.DocumentNotFound,
+	//	}
+	//}
+	//userUpdate := User{
+	//	IsActive: isActive,
+	//}
+	//
+	//meta, err := userCol.UpdateDocument(ctx, user.Id, &userUpdate)
+	//
+	//if err != nil {
+	//	if driver.IsNotFound(err) {
+	//		return &models.ModelError{
+	//			Msg:     "user not found",
+	//			ErrType: models.DocumentNotFound,
+	//		}
+	//	}
+	//
+	//	return &models.ModelError{
+	//		Msg:     err.Error(),
+	//		ErrType: models.DbError,
+	//	}
+	//}
+	//user.Id = meta.Key
+	return err
 }
 
 func UpdateUserPassword(uid string, password string) (*User, error) {
@@ -227,15 +320,15 @@ func UpdateUserPassword(uid string, password string) (*User, error) {
 	meta, err := userCol.UpdateDocument(ctx, uid, &user)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "user not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
@@ -254,15 +347,15 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 	meta, err := userCol.UpdateDocument(ctx, uid, &user)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return nil, &ModelError{
-				msg:     "user not found",
-				errType: DocumentNotFound,
+			return nil, &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return nil, &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 
@@ -277,15 +370,15 @@ func RemoveUser(uid string) error {
 	_, err := userCol.RemoveDocument(ctx, uid)
 	if err != nil {
 		if driver.IsNotFound(err) {
-			return &ModelError{
-				msg:     "user not found",
-				errType: DocumentNotFound,
+			return &models.ModelError{
+				Msg:     "user not found",
+				ErrType: models.DocumentNotFound,
 			}
 		}
 
-		return &ModelError{
-			msg:     err.Error(),
-			errType: DbError,
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 

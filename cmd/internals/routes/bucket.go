@@ -2,17 +2,37 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/gin-gonic/gin"
-	"github.com/gocql/gocql"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func BucketRoutes(r *gin.Engine) {
 	ar := r.Group("/buckets", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all", func(c *gin.Context) {
+			limit, err := strconv.ParseInt(c.Query("limit"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at buckets/all:")
+				log.Println(err)
+				return
+			}
+			offset, err := strconv.ParseInt(c.Query("offset"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at buckets/all:")
+				log.Println(err)
+				return
+			}
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -24,7 +44,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := cassandra.FindBucketByUid(uid.(gocql.UUID))
+			res, err := arango.FindBucketByUid(uid.(string), limit, offset)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -61,7 +81,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			bucket, err := cassandra.InsertBucket(uid.(gocql.UUID), curCreateBucket.Name, curCreateBucket.Region)
+			bucket, err := arango.InsertBucket(uid.(string), curCreateBucket.Name, curCreateBucket.Region)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -86,18 +106,18 @@ func BucketRoutes(r *gin.Engine) {
 			}
 
 			bucketId := c.Param("bucket_id")
-			id, err := gocql.ParseUUID(bucketId)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
+			//id, err := gocql.ParseUUID(bucketId)
+			//if err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something went wrong",
+			//	})
+			//
+			//	log.Println("at /buckets/delete:")
+			//	log.Println("parse bucket_id failed")
+			//	return
+			//}
 
-				log.Println("at /buckets/delete:")
-				log.Println("parse bucket_id failed")
-				return
-			}
-
-			if err := cassandra.RemoveBucket(uid.(gocql.UUID), id); err != nil {
+			if err := arango.RemoveBucket(uid.(string), bucketId); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})

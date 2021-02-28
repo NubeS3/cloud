@@ -29,7 +29,7 @@ func FindRfTokenByUid(uid gocql.UUID) (*RefreshToken, error) {
 	}, nil
 }
 
-func UpdateToken(uid gocql.UUID) (*string, *string, error) {
+func UpdateToken(uid string) (*string, *string, error) {
 	newAccessToken, err := ultis.CreateToken(uid)
 	if err != nil {
 		return nil, nil, err
