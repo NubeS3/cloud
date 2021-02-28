@@ -128,16 +128,20 @@ func FindBucketById(bid string) (*Bucket, error) {
 	return &bucket, nil
 }
 
-func FindBucketByUid(uid string) (*Bucket, error) {
+func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR b IN buckets FILTER b.uid == @uid LIMIT 1 RETURN b"
+	query := "FOR b IN buckets FILTER b.uid == @uid LIMIT @offset, @limit RETURN b"
 	bindVars := map[string]interface{}{
-		"uid": uid,
+		"uid":    uid,
+		"limit":  limit,
+		"offset": offset,
 	}
 
+	buckets := []Bucket{}
 	bucket := Bucket{}
+
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -158,23 +162,31 @@ func FindBucketByUid(uid string) (*Bucket, error) {
 			}
 		}
 		bucket.Id = meta.Key
+		buckets = append(buckets, bucket)
 	}
 
-	if bucket.Id == "" {
-		return nil, &models.ModelError{
+	return buckets, nil
+}
+
+func RemoveBucket(uid string, bid string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	bucket, err := FindBucketById(bid)
+	if err != nil {
+		return &models.ModelError{
 			Msg:     "bucket not found",
 			ErrType: models.DocumentNotFound,
 		}
 	}
+	if bucket.Uid != uid {
+		return &models.ModelError{
+			Msg:     "uid mismatch",
+			ErrType: models.UidMismatch,
+		}
+	}
 
-	return &bucket, nil
-}
-
-func RemoveBucket(bid string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	_, err := bucketCol.RemoveDocument(ctx, bid)
+	_, err = bucketCol.RemoveDocument(ctx, bid)
 	if err != nil {
 		if driver.IsNotFound(err) {
 			return &models.ModelError{

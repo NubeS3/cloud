@@ -153,7 +153,7 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, bucket)
 	})
 	r.GET("/arango/test/bucket/findUid", func(c *gin.Context) {
-		user, err := arango.FindBucketByUid("user123")
+		user, err := arango.FindBucketByUid("user123", 10, 1)
 		if err != nil {
 			if arangoDriver.IsNotFound(err) {
 				c.JSON(http.StatusNotFound, gin.H{
