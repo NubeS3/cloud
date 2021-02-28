@@ -36,7 +36,19 @@ Có 2 cách tạo để tạo ra Docker image: *Thủ công* và sử dụng **D
 
 	Yêu cầu: đã hoàn thành các bước cài đặt và thiết lập cơ bản Docker.
 
+Đối với việc tạo ra Docker image bằng việc thiết lập Dockerfile đòi ta phải xác định cũng như lưu ý một vài điểm:
+-	Xác định được môi trường ứng dụng sẽ chạy => lựa chọn được base image.
+- Tiến hành setup *working directory*.
+- Copy các file cần thiết cho ứng dụng.
+- Xác định command cần chạy cho image filesystem (*dùng với lệnh `RUN`*).
+- Xác định cổng hoạt động của container. 
+- Xác định command đặc biệt để chạy khi container khởi chạy (*lệnh `CMD`*).
+- Xác định cách thức map các cổng giữa container và host (máy thật).
 
+Lệnh khởi chạy 1 container sẽ có dạng như sau:
+```Docker
+sudo docker run -v <forder_in_computer>:<forder_in_container> -p <port_in_computer>:<port_in_container> -it <image_name> /bin/bash
+```
 
 
 ## Switch to another file 
@@ -56,42 +68,9 @@ You can delete the current file by clicking the **Remove** button in the file ex
 You can export the current file by clicking **Export to disk** in the menu. You can choose to export the file as plain Markdown, as HTML using a Handlebars template or as a PDF.
 
 
-# Synchronization
-
-Synchronization is one of the biggest features of StackEdit. It enables you to synchronize any file in your workspace with other files stored in your **Google Drive**, your **Dropbox** and your **GitHub** accounts. This allows you to keep writing on other devices, collaborate with people you share the file with, integrate easily into your workflow... The synchronization mechanism takes place every minute in the background, downloading, merging, and uploading file modifications.
-
-There are two types of synchronization and they can complement each other:
-
-- The workspace synchronization will sync all your files, folders and settings automatically. This will allow you to fetch your workspace on any other device.
-	> To start syncing your workspace, just sign in with Google in the menu.
-
-- The file synchronization will keep one file of the workspace synced with one or multiple files in **Google Drive**, **Dropbox** or **GitHub**.
-	> Before starting to sync files, you must link an account in the **Synchronize** sub-menu.
-
-## Open a file
-
-You can open a file from **Google Drive**, **Dropbox** or **GitHub** by opening the **Synchronize** sub-menu and clicking **Open from**. Once opened in the workspace, any modification in the file will be automatically synced.
-
-## Save a file
-
-You can save any file of the workspace to **Google Drive**, **Dropbox** or **GitHub** by opening the **Synchronize** sub-menu and clicking **Save on**. Even if a file in the workspace is already synced, you can save it to another location. StackEdit can sync one file with multiple locations and accounts.
-
-## Synchronize a file
-
-Once your file is linked to a synchronized location, StackEdit will periodically synchronize it by downloading/uploading any modification. A merge will be performed if necessary and conflicts will be resolved.
-
-If you just have modified your file and you want to force syncing, click the **Synchronize now** button in the navigation bar.
-
-> **Note:** The **Synchronize now** button is disabled if you have no file to synchronize.
-
-## Manage file synchronization
-
-Since one file can be synced with multiple locations, you can list and manage synchronized locations by clicking **File synchronization** in the **Synchronize** sub-menu. This allows you to list and remove synchronized locations that are linked to your file.
 
 
-# Publication
 
-Publishing in StackEdit makes it simple for you to publish online your files. Once you're happy with a file, you can publish it to different hosting platforms like **Blogger**, **Dropbox**, **Gist**, **GitHub**, **Google Drive**, **WordPress** and **Zendesk**. With [Handlebars templates](http://handlebarsjs.com/), you have full control over what you export.
 
 > Before starting to publish, you must link an account in the **Publish** sub-menu.
 

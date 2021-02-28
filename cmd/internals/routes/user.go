@@ -3,7 +3,6 @@ package routes
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"net/http"
 	"time"
 
@@ -70,14 +69,13 @@ func UserRoutes(route *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, gin.H{
-				"id":           user.Id,
 				"accessToken":  accessToken,
 				"refreshToken": rfToken.RfToken,
 			})
 		})
 
 		userRoutesGroup.POST("/signup", func(c *gin.Context) {
-			var user cassandra.User
+			var user arango.User
 			if err := c.ShouldBind(&user); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),

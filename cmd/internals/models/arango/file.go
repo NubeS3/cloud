@@ -192,10 +192,60 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 	return &retMeta, nil
 }
 
+func FindMetadataById(fid string) (*FileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	var data fileMetadata
+	meta, err := fileMetadataCol.ReadDocument(ctx, fid, &data)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	if data.IsDeleted || data.ExpiredDate.Before(time.Now()) {
+		return nil, &models.ModelError{
+			Msg:     "file not found",
+			ErrType: models.NotFound,
+		}
+	}
+
+	return &FileMetadata{
+		Id:           meta.Key,
+		FileId:       data.FileId,
+		BucketId:     data.BucketId,
+		Path:         data.Path,
+		Name:         data.Name,
+		ContentType:  data.ContentType,
+		Size:         data.Size,
+		IsHidden:     data.IsHidden,
+		IsDeleted:    data.IsDeleted,
+		DeletedDate:  data.DeletedDate,
+		UploadedDate: data.UploadedDate,
+		ExpiredDate:  data.ExpiredDate,
+	}, nil
+}
+
 func SaveFile(reader io.Reader, bid string, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
+	bucket, err := FindBucketById(bid)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	if bucket.Name != bucketName {
+		return nil, &models.ModelError{
+			Msg:     "bucket name and id mismatch",
+			ErrType: models.InvalidBucket,
+		}
+	}
 
 	//CHECK PATH
 
@@ -237,7 +287,7 @@ func GetFile(bid string, path, name string, callback func(reader io.Reader, meta
 }
 
 func GetFileByFid(fid string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
-	fileMeta, err := FindMetadataByFid(fid)
+	fileMeta, err := FindMetadataById(fid)
 	if err != nil {
 		return &models.ModelError{
 			Msg:     err.Error(),

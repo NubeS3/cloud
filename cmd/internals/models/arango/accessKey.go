@@ -95,6 +95,18 @@ func GenerateAccessKey(bId string, uid string,
 	perms []string, expiredDate time.Time) (*AccessKey, error) {
 	key := randstr.GetString(16)
 
+	bucket, err := FindBucketById(bId)
+	if err != nil {
+		return nil, err
+	}
+
+	if bucket.Uid != uid {
+		return nil, &models.ModelError{
+			Msg:     "invalid user",
+			ErrType: models.UidMismatch,
+		}
+	}
+
 	var permissions []Permission
 	for _, perm := range perms {
 		permission, err := parsePerm(perm)
@@ -115,7 +127,7 @@ func GenerateAccessKey(bId string, uid string,
 		Uid:         uid,
 	}
 
-	_, err := apiKeyCol.CreateDocument(ctx, doc)
+	_, err = apiKeyCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -177,7 +189,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR k IN apiKeys FILTER k.bucket_id == @bid AND k.uid == @uid LIMIT @limit, @offset RETURN k"
+	query := "FOR k IN apiKeys FILTER k.bucket_id == @bid AND k.uid == @uid LIMIT @offset, @limit RETURN k"
 	bindVars := map[string]interface{}{
 		"bid":    bid,
 		"uid":    uid,
@@ -185,7 +197,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 		"offset": offset,
 	}
 
-	var keys []AccessKey
+	keys := []AccessKey{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
 		return nil, &models.ModelError{

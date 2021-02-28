@@ -51,16 +51,12 @@ func FileRoutes(r *gin.Engine) {
 				})
 				return
 			}
-			path := c.PostForm("path")
+			path := c.DefaultPostForm("path", "/")
 			//TODO Validate path format
 
 			//END TODO
 
-			if path == "" {
-				path = "/"
-			}
-
-			fileName := c.PostForm("name")
+			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			bucket, err := arango.FindBucketById(accessKey.BucketId)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -72,6 +68,7 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 			//newPath := bucket.Name + path + fileName
+
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -82,6 +79,7 @@ func FileRoutes(r *gin.Engine) {
 				log.Println("open file failed")
 				return
 			}
+
 			fileSize := uploadFile.Size
 			ttlStr := c.DefaultPostForm("ttl", "0")
 			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
@@ -167,12 +165,14 @@ func FileRoutes(r *gin.Engine) {
 			})
 
 			if err != nil {
-				if err.(*models.RouteError).ErrType == models.InvalidBucket {
-					c.JSON(http.StatusForbidden, gin.H{
-						"error": err.Error(),
-					})
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
 
-					return
+						return
+					}
 				}
 
 				c.JSON(http.StatusInternalServerError, gin.H{

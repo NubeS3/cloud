@@ -4,6 +4,7 @@ const (
 	DbError = iota
 	FsError
 	Duplicated
+	NotFound
 	DocumentNotFound
 	OtpInvalid
 	TokenInvalid

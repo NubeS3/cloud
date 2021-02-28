@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/gin-gonic/gin"
 	"log"
@@ -13,24 +14,20 @@ func BucketRoutes(r *gin.Engine) {
 	ar := r.Group("/buckets", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all", func(c *gin.Context) {
-			limit, err := strconv.ParseInt(c.Query("limit"), 10, 64)
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
 				})
 
-				log.Println("at buckets/all:")
-				log.Println(err)
 				return
 			}
-			offset, err := strconv.ParseInt(c.Query("offset"), 10, 64)
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
 				})
 
-				log.Println("at buckets/all:")
-				log.Println(err)
 				return
 			}
 			uid, ok := c.Get("uid")
@@ -83,6 +80,14 @@ func BucketRoutes(r *gin.Engine) {
 
 			bucket, err := arango.InsertBucket(uid.(string), curCreateBucket.Name, curCreateBucket.Region)
 			if err != nil {
+				if err.(*models.ModelError).ErrType == models.Duplicated {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "duplicated bucket name",
+					})
+
+					return
+				}
+
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
 				})
