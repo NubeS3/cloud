@@ -205,7 +205,12 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 		}
 	}
 
-	//TODO CHECK DELETED && EXPIRED
+	if data.IsDeleted || data.ExpiredDate.Before(time.Now()) {
+		return nil, &models.ModelError{
+			Msg:     "file not found",
+			ErrType: models.NotFound,
+		}
+	}
 
 	return &FileMetadata{
 		Id:           meta.Key,
@@ -227,6 +232,20 @@ func SaveFile(reader io.Reader, bid string, bucketName string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
+	bucket, err := FindBucketById(bid)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	if bucket.Name != bucketName {
+		return nil, &models.ModelError{
+			Msg:     "bucket name and id mismatch",
+			ErrType: models.InvalidBucket,
+		}
+	}
 
 	//CHECK PATH
 
