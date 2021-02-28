@@ -95,6 +95,18 @@ func GenerateAccessKey(bId string, uid string,
 	perms []string, expiredDate time.Time) (*AccessKey, error) {
 	key := randstr.GetString(16)
 
+	bucket, err := FindBucketById(bId)
+	if err != nil {
+		return nil, err
+	}
+
+	if bucket.Uid != uid {
+		return nil, &models.ModelError{
+			Msg:     "invalid user",
+			ErrType: models.UidMismatch,
+		}
+	}
+
 	var permissions []Permission
 	for _, perm := range perms {
 		permission, err := parsePerm(perm)
@@ -115,7 +127,7 @@ func GenerateAccessKey(bId string, uid string,
 		Uid:         uid,
 	}
 
-	_, err := apiKeyCol.CreateDocument(ctx, doc)
+	_, err = apiKeyCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
