@@ -115,16 +115,6 @@ func FileRoutes(r *gin.Engine) {
 			//END TODO
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
-			bucket, err := arango.FindBucketById(accessKey.BucketId)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				log.Println("at /files/upload:")
-				log.Println("bucket not found")
-				return
-			}
 			//newPath := bucket.Name + path + fileName
 
 			fileContent, err := uploadFile.Open()
@@ -166,8 +156,7 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := arango.SaveFile(fileContent, bucket.Id,
-				bucket.Name, path, fileName, isHidden,
+			res, err := arango.SaveFile(fileContent, accessKey.BucketId, path, fileName, isHidden,
 				cType, fileSize, time.Duration(ttl))
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{

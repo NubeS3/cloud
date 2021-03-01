@@ -268,7 +268,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 	}, nil
 }
 
-func SaveFile(reader io.Reader, bid string, bucketName string,
+func SaveFile(reader io.Reader, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
@@ -280,13 +280,6 @@ func SaveFile(reader io.Reader, bid string, bucketName string,
 		}
 	}
 
-	if bucket.Name != bucketName {
-		return nil, &models.ModelError{
-			Msg:     "bucket name and id mismatch",
-			ErrType: models.InvalidBucket,
-		}
-	}
-
 	if ttl == time.Duration(0) {
 		ttl = time.Hour * 24 * 365 * 10
 	}
@@ -295,7 +288,7 @@ func SaveFile(reader io.Reader, bid string, bucketName string,
 
 	//CHECK DUP FILE NAME
 
-	meta, err := seaweedfs.UploadFile(bucketName, path, name, size, reader)
+	meta, err := seaweedfs.UploadFile(bucket.Name, path, name, size, reader)
 	if err != nil {
 		return nil, err
 	}
