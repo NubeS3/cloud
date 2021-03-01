@@ -4,6 +4,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 func ApiKeyAuthenticate(c *gin.Context) {
@@ -25,6 +26,15 @@ func ApiKeyAuthenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
+	if accessKey.ExpiredDate.Before(time.Now()) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "access key expired",
+		})
+		c.Abort()
+		return
+	}
+
 	c.Set("accessKey", accessKey)
 	c.Next()
 }

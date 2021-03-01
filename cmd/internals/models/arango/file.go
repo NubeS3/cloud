@@ -90,6 +90,46 @@ func saveFileMetadata(fid string, bid string,
 	}, nil
 }
 
+func FindMetadataByBid(bid string, limit int64, offset int64) ([]FileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid LIMIT @offset, @limit RETURN fm"
+	bindVars := map[string]interface{}{
+		"bid":    bid,
+		"offset": offset,
+		"limit":  limit,
+	}
+
+	fileMetadatas := []FileMetadata{}
+	fileMetadata := FileMetadata{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		fileMetadata.Id = meta.Key
+		fileMetadatas = append(fileMetadatas, fileMetadata)
+	}
+
+	return fileMetadatas, nil
+}
+
 func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -228,7 +268,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 	}, nil
 }
 
-func SaveFile(reader io.Reader, bid string, bucketName string,
+func SaveFile(reader io.Reader, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
@@ -240,18 +280,15 @@ func SaveFile(reader io.Reader, bid string, bucketName string,
 		}
 	}
 
-	if bucket.Name != bucketName {
-		return nil, &models.ModelError{
-			Msg:     "bucket name and id mismatch",
-			ErrType: models.InvalidBucket,
-		}
+	if ttl == time.Duration(0) {
+		ttl = time.Hour * 24 * 365 * 10
 	}
 
 	//CHECK PATH
 
 	//CHECK DUP FILE NAME
 
-	meta, err := seaweedfs.UploadFile(bucketName, path, name, size, reader)
+	meta, err := seaweedfs.UploadFile(bucket.Name, path, name, size, reader)
 	if err != nil {
 		return nil, err
 	}
