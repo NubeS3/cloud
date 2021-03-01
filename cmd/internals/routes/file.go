@@ -156,8 +156,7 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := arango.SaveFile(fileContent, bucket.Id,
-				bucket.Name, path, fileName, isHidden,
+			res, err := arango.SaveFile(fileContent, accessKey.BucketId, path, fileName, isHidden,
 				cType, fileSize, time.Duration(ttl)*time.Second)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
