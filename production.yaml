@@ -15,7 +15,7 @@ services:
   arango:
     image: arangodb:latest
     environment:
-      ARANGO_ROOT_PASSWORD: admin
+      ARANGO_ROOT_PASSWORD: "${ARANGO_PASSWORD}"
     ports:
       - 8529:8529
     volumes:
