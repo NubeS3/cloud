@@ -15,7 +15,7 @@
 vendor/
 
 # configs
-config.json
+config*.json
 /configs
 
 # idea

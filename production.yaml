@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  nubes3:
+    build: ./
+    ports:
+      - 6160:80
+    restart: always
+    depends_on:
+      - arango
+      - seaweedfs-master
+      - seaweedfs-volume
+    networks:
+      - nw_nubes3
+  arango:
+    image: arangodb:latest
+    environment:
+      ARANGO_ROOT_PASSWORD: admin
+    ports:
+      - 8529:8529
+    volumes:
+    - arangodb_data_container:/var/lib/arangodb3
+    - arangodb_apps_data_container:/var/lib/arangodb3-apps
+  seaweedfs-master:
+    image: chrislusf/seaweedfs
+    ports:
+      - 9333:9333
+      - 19333:19333
+    command: "master -ip=master -mdir="/mdata""
+    volumes:
+    - seaweedfs_mdata:/mdata
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 8080:8080
+      - 18080:18080
+    command: 'volume -mserver="master:9333" -port=8080 -dir="/data" -max=0'
+    depends_on:
+      - seaweedfs-master
+    volumes:
+      - seaweedfs_data:/data
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs # use a remote image
+    ports:
+      - 8888:8888
+      - 18888:18888
+      - 9326:9326
+    command: 'filer -master="master:9333"'
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+  cronjob:
+    image: chrislusf/seaweedfs # use a remote image
+    command: 'cronjob'
+    environment:
+      # Run re-replication every 2 minutes
+      CRON_SCHEDULE: '*/2 * * * * *' # Default: '*/5 * * * * *'
+      WEED_MASTER: master:9333 # Default: localhost:9333
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+
+networks:
+  nw_ourdemy: { }
+volumes:
+  seaweedfs_data:
+  seaweedfs_mdata:
+  arangodb_data_container:
+  arangodb_apps_data_container:
