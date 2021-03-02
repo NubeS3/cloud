@@ -1,0 +1,8 @@
+.vscode/
+.idea/
+.git/
+docs/
+config*.json
+AUTHORS.md
+LICENSE
+README.md
