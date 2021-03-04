@@ -168,7 +168,7 @@ func FileRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
-		acr.GET("/download/:file_id", func(c *gin.Context) {
+		acr.GET("/download", func(c *gin.Context) {
 			key, ok := c.Get("accessKey")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -193,7 +193,7 @@ func FileRoutes(r *gin.Engine) {
 				})
 				return
 			}
-			fid := c.Param("file_id")
+			fid := c.DefaultQuery("fileId", "")
 
 			err := arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
 				if metadata.BucketId != accessKey.BucketId {
@@ -252,7 +252,7 @@ func FileRoutes(r *gin.Engine) {
 
 				return
 			}
-			bid := c.Query("bid")
+			bid := c.DefaultQuery("bucketId", "")
 			if bid == "" {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": "missing bid",
@@ -320,6 +320,162 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, res)
+		})
+
+		ar.POST("/upload", func(c *gin.Context) {
+			bid := c.DefaultPostForm("bucket_id", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						log.Println("at authenticated files/upload:")
+						log.Println(err)
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at authenticated files/upload:")
+				log.Println(err)
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at authenticated files/all:")
+				log.Println(err)
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			uploadFile, err := c.FormFile("file")
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			path := c.DefaultPostForm("path", "/")
+			//TODO Validate path format
+
+			//END TODO
+
+			fileName := c.DefaultPostForm("name", uploadFile.Filename)
+			//newPath := bucket.Name + path + fileName
+
+			fileContent, err := uploadFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /files/upload:")
+				log.Println("open file failed")
+				return
+			}
+
+			fileSize := uploadFile.Size
+			ttlStr := c.DefaultPostForm("ttl", "0")
+			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+			}
+
+			isHiddenStr := c.DefaultPostForm("hidden", "false")
+			isHidden, err := strconv.ParseBool(isHiddenStr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+
+			cType, err := ultis.GetFileContentType(fileContent)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "unknown file content type",
+				})
+
+				return
+			}
+
+			res, err := arango.SaveFile(fileContent, bid, path, fileName, isHidden,
+				cType, fileSize, time.Duration(ttl))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		ar.GET("/download", func(c *gin.Context) {
+			fid := c.DefaultQuery("fileId", "")
+			bid := c.DefaultQuery("bucketId", "")
+
+			err := arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
+				if metadata.BucketId != bid {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				extraHeaders := map[string]string{
+					"Content-Disposition": `attachment; filename=` + metadata.Name,
+				}
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				log.Println("at /files/auth/download:")
+				log.Println("download failed: " + err.Error())
+				return
+			}
 		})
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
-	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
 	"github.com/linxGnu/goseaweedfs"
@@ -226,18 +225,18 @@ func TestRoute(r *gin.Engine) {
 			"refresh": refresh,
 		})
 	})
-	r.POST("/arango/test/file/upload", func(c *gin.Context) {
-		file, _ := c.FormFile("file")
-		f, _ := file.Open()
-		cType, _ := ultis.GetFileContentType(f)
-		mt, err := arango.SaveFile(f, "1234", "test1", "", "cat_img.jpg", false, cType, file.Size, time.Nanosecond)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		c.JSON(http.StatusOK, mt)
-	})
+	//r.POST("/arango/test/file/upload", func(c *gin.Context) {
+	//	file, _ := c.FormFile("file")
+	//	f, _ := file.Open()
+	//	cType, _ := ultis.GetFileContentType(f)
+	//	mt, err := arango.SaveFile(f, "1234", "test1", "", "cat_img.jpg", false, cType, file.Size, time.Nanosecond)
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//
+	//	c.JSON(http.StatusOK, mt)
+	//})
 	r.GET("/arango/test/file/download", func(c *gin.Context) {
 		_ = arango.GetFile("1234", "", "cat_img.jpg", func(reader io.Reader, metadata *arango.FileMetadata) error {
 			extraHeaders := map[string]string{
