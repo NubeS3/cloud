@@ -3,6 +3,7 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"net/http"
@@ -36,24 +37,26 @@ func Run() {
 	fmt.Println("Initializing utilities...")
 	ultis.InitUtilities()
 
-	//fmt.Println("Initialize Log DB connection")
-	//err := cassandra.InitCassandraDb()
-	//if err != nil {
-	//	panic(err)
-	//}
-
-	fmt.Println("Initialize DB connection")
-	err := arango.InitArangoDb()
+	fmt.Println("Initialize Log DB connection")
+	err := cassandra.InitCassandraDb()
 	if err != nil {
 		panic(err)
 	}
 
+	fmt.Println("Initialize DB connection")
+	err = arango.InitArangoDb()
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Initialize SeaweedFS connection")
 	err = seaweedfs.InitFs()
 	if err != nil {
 		panic(err)
 	}
 	defer seaweedfs.CleanUp()
 
+	fmt.Println("Initialize NATS connection")
 	err = nats.InitNats()
 	if err != nil {
 		panic(err)

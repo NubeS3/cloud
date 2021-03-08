@@ -4,8 +4,8 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -36,8 +36,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/all:")
-				log.Println("uid not found in authenticated route")
+				cassandra.ErrLog("uid not found in authenticated route at /buckets/all:",
+					"Unknown Error")
 				return
 			}
 
@@ -47,8 +47,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at buckets/all:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at buckets/all:",
+					"Db Error")
+
 				return
 			}
 
@@ -73,8 +74,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/create:")
-				log.Println("uid not found in authenticated route")
+				cassandra.ErrLog("uid not found in authenticated route at /buckets/create:",
+					"Unknown Error")
+
 				return
 			}
 
@@ -92,8 +94,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at buckets/create:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at buckets/create:",
+					"Db Error")
+
 				return
 			}
 			c.JSON(http.StatusOK, bucket)
@@ -105,8 +108,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/delete:")
-				log.Println("uid not found in authenticated route")
+				cassandra.ErrLog("uid not found in authenticated route at /buckets/create:",
+					"Unknown Error")
+
 				return
 			}
 
@@ -127,8 +131,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /buckets/delete:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at /buckets/delete:",
+					"Db Error")
+
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{
