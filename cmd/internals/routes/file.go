@@ -4,6 +4,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"io"
@@ -40,8 +41,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/all:")
-				log.Println("accessKey not found in authenticate")
+				cassandra.ErrLog("accessKey not found in authenticate at /files/all:",
+					"Unknown Error")
 				return
 			}
 			accessKey := key.(*arango.AccessKey)
@@ -66,8 +67,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at files/all:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at files/all:",
+					"Db Error")
 				return
 			}
 
@@ -81,8 +82,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/upload:")
-				log.Println("accessKey not found in authenticate")
+				cassandra.ErrLog("accessKey not found in authenticate at /files/upload:",
+					"Unknown Error")
 				return
 			}
 
@@ -123,8 +124,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/upload:")
-				log.Println("open file failed")
+				cassandra.ErrLog("open file failed at /files/upload:",
+					"File Error")
 				return
 			}
 
@@ -175,8 +176,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/download:")
-				log.Println("accessKey not found in authenticate")
+				cassandra.ErrLog("accessKey not found in authenticate at /files/download:",
+					"Unknown Error")
 				return
 			}
 			accessKey := key.(*arango.AccessKey)
@@ -226,8 +227,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/download:")
-				log.Println("download failed: " + err.Error())
+				cassandra.ErrLog("download failed: "+err.Error()+" at /files/download:",
+					"File Error")
 				return
 			}
 		})
@@ -276,8 +277,8 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						log.Println("at authenticated files/all:")
-						log.Println(err)
+						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+							"Db Error")
 						return
 					}
 				}
@@ -286,8 +287,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+					"Db Error")
 				return
 			}
 
@@ -314,8 +315,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+					"Db Error")
 				return
 			}
 
@@ -339,8 +340,8 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						log.Println("at authenticated files/upload:")
-						log.Println(err)
+						cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+							"Db Error")
 						return
 					}
 				}
@@ -349,8 +350,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/upload:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+					"Db Error")
 				return
 			}
 
@@ -359,8 +360,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+					"Unknown Error")
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -392,8 +393,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/upload:")
-				log.Println("open file failed")
+				cassandra.ErrLog("open file failed at /files/upload:",
+					"File Error")
 				return
 			}
 
@@ -456,8 +457,8 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						log.Println("at authenticated files/all:")
-						log.Println(err)
+						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+							"Db Error")
 						return
 					}
 				}
@@ -468,8 +469,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				cassandra.ErrLog("uid not found at authenticated files/all:",
+					"Unknown Error")
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -511,8 +512,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /files/auth/download:")
-				log.Println("download failed: " + err.Error())
+				cassandra.ErrLog(err.Error()+" at /files/auth/download:",
+					"File Error")
 				return
 			}
 		})
