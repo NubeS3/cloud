@@ -24,6 +24,7 @@ func init() {
 
 func Routing(r *gin.Engine) {
 	routes.TestRoute(r)
+	routes.PingRoute(r)
 	routes.UserRoutes(r)
 	routes.BucketRoutes(r)
 	routes.AccessKeyRoutes(r)
