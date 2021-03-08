@@ -441,7 +441,46 @@ func FileRoutes(r *gin.Engine) {
 			fid := c.DefaultQuery("fileId", "")
 			bid := c.DefaultQuery("bucketId", "")
 
-			err := arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						log.Println("at authenticated files/all:")
+						log.Println(err)
+						return
+					}
+				}
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				log.Println("at authenticated files/all:")
+				log.Println(err)
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			err = arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
 				if metadata.BucketId != bid {
 					return &models.RouteError{
 						Msg:     "invalid bucket",

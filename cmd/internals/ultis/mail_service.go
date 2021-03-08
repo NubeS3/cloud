@@ -8,8 +8,8 @@ import (
 
 var (
 	sgSender string
-	sgEmail string
-	sgKey string
+	sgEmail  string
+	sgKey    string
 )
 
 func InitMailService() {
@@ -26,4 +26,5 @@ func SendMail(receiver string, receiverEmail string, subject string, content str
 	_, err := client.Send(message)
 
 	return err
+
 }
