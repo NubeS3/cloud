@@ -3,6 +3,7 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"net/http"
 
@@ -52,6 +53,12 @@ func Run() {
 		panic(err)
 	}
 	defer seaweedfs.CleanUp()
+
+	err = nats.InitNats()
+	if err != nil {
+		panic(err)
+	}
+	defer nats.CleanUp()
 
 	ultis.InitMailService()
 

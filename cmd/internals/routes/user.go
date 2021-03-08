@@ -3,6 +3,7 @@ package routes
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"net/http"
 	"time"
 
@@ -240,5 +241,9 @@ func SendOTP(username string, email string, otp string, expiredTime time.Time) e
 			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
 	)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }
