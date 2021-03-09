@@ -6,7 +6,9 @@ import (
 )
 
 const (
-	mailSubj = "nubes3_mail"
+	mailSubj       = "nubes3_mail"
+	errSubj        = "nubes3_err"
+	uploadFileSubj = "nubes3_upload_file"
 )
 
 var (

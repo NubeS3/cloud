@@ -10,7 +10,7 @@ type mailMessage struct {
 }
 
 func SendEmailEvent(email, username, otp string, expired time.Time) error {
-	return c.Publish(mailSubj, &mailMessage{
+	return c.Publish(mailSubj, mailMessage{
 		Otp:      otp,
 		Username: username,
 		To:       email,
