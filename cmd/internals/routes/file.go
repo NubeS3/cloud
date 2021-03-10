@@ -4,11 +4,10 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,7 +40,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/all:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/all:",
 					"Unknown Error")
 				return
 			}
@@ -67,7 +66,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at files/all:",
 					"Db Error")
 				return
 			}
@@ -82,7 +81,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/upload:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/upload:",
 					"Unknown Error")
 				return
 			}
@@ -124,7 +123,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("open file failed at /files/upload:",
+				_ = nats.SendErrorEvent("open file failed at /files/upload:",
 					"File Error")
 				return
 			}
@@ -166,6 +165,9 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
+			//LOG
+			_ = nats.SendUploadFileEvent(*res)
+
 			c.JSON(http.StatusOK, res)
 		})
 
@@ -176,7 +178,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/download:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/download:",
 					"Unknown Error")
 				return
 			}
@@ -209,6 +211,10 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*metadata)
+
 				return nil
 			})
 
@@ -227,7 +233,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("download failed: "+err.Error()+" at /files/download:",
+				_ = nats.SendErrorEvent("download failed: "+err.Error()+" at /files/download:",
 					"File Error")
 				return
 			}
@@ -277,7 +283,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 							"Db Error")
 						return
 					}
@@ -287,7 +293,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 					"Db Error")
 				return
 			}
@@ -297,8 +303,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
+					"Unknown Error")
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -315,7 +321,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 					"Db Error")
 				return
 			}
@@ -340,7 +346,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 							"Db Error")
 						return
 					}
@@ -350,7 +356,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 					"Db Error")
 				return
 			}
@@ -360,7 +366,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 					"Unknown Error")
 				return
 			} else {
@@ -393,7 +399,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("open file failed at /files/upload:",
+				_ = nats.SendErrorEvent("open file failed at /files/auth/upload:",
 					"File Error")
 				return
 			}
@@ -435,6 +441,9 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
+			//LOG
+			_ = nats.SendUploadFileEvent(*res)
+
 			c.JSON(http.StatusOK, res)
 		})
 
@@ -457,7 +466,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
 							"Db Error")
 						return
 					}
@@ -469,7 +478,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog("uid not found at authenticated files/all:",
+				_ = nats.SendErrorEvent("uid not found at authenticated files/auth/download",
 					"Unknown Error")
 				return
 			} else {
@@ -494,6 +503,10 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*metadata)
+
 				return nil
 			})
 
@@ -512,7 +525,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at /files/auth/download:",
+				_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
 					"File Error")
 				return
 			}
