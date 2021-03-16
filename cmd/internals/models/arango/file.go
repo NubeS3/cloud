@@ -345,3 +345,16 @@ func GetFileByFid(fid string, callback func(reader io.Reader, metadata *FileMeta
 
 	return nil
 }
+
+func GetFileByFidIgnoreQueryMetadata(fid string, callback func(reader io.Reader) error) error {
+	err := seaweedfs.DownloadFile(fid, callback)
+
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.FsError,
+		}
+	}
+
+	return nil
+}
