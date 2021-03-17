@@ -51,6 +51,13 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 			ErrType: models.DbError,
 		}
 	}
+	_, err = InsertBucketFolder(doc.Name)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
 
 	return &Bucket{
 		Id:        meta.Key,

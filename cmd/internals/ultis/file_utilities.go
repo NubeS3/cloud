@@ -4,6 +4,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 func GetFileContentType(out multipart.File) (string, error) {
@@ -23,4 +24,13 @@ func GetFileContentType(out multipart.File) (string, error) {
 	contentType := http.DetectContentType(buffer)
 
 	return contentType, nil
+}
+
+func RemoveLastFolderPath(path string) (string, error) {
+	token := strings.Split(path, "/")
+
+	var s string
+	for _, str := range token {
+		s +=
+	}
 }
