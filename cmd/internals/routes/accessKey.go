@@ -3,9 +3,8 @@ package routes
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/gin-gonic/gin"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -42,7 +41,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /buckets/all:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/all:",
 					"Unknown Error")
 				return
 			}
@@ -53,7 +52,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+"at /buckets/all:",
+				_ = nats.SendErrorEvent(err.Error()+"at /buckets/all:",
 					"Db Error")
 				return
 			}
@@ -69,7 +68,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /accessKey/info/:access_key:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
 					"Unknown Error")
 				return
 			}
@@ -80,9 +79,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				log.Println("at /accessKey/info/:access_key:")
-				log.Println(err)
-				cassandra.ErrLog(err.Error()+" at /accessKey/info/:access_key:",
+				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
 					"Db Error")
 				return
 			}
@@ -118,7 +115,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /accessKeys/create:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/create:",
 					"Unknown Error")
 				return
 			}
@@ -144,7 +141,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /accessKeys/delete:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/delete:",
 					"Unknown Error")
 				return
 			}
@@ -154,7 +151,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at /accessKeys/delete:",
+				_ = nats.SendErrorEvent(err.Error()+" at /accessKeys/delete:",
 					"Db Error")
 
 				return

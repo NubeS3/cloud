@@ -1,6 +1,7 @@
 package cassandra
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -34,7 +35,15 @@ func InitCassandraDb() error {
 	if err != nil {
 		return err
 	}
+	err = session.Query(fmt.Sprintf(`CREATE KEYSPACE %s
+	WITH replication = {
+		'class' : 'SimpleStrategy',
+		'replication_factor' : %d
+	}`, keyspace, 1)).Exec()
 
+	if err != nil {
+		return err
+	}
 	if err := initCassandraDbTables(); err != nil {
 		return err
 	}

@@ -4,7 +4,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -36,7 +36,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /buckets/all:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/all:",
 					"Unknown Error")
 				return
 			}
@@ -47,7 +47,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at buckets/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at buckets/all:",
 					"Db Error")
 
 				return
@@ -74,7 +74,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /buckets/create:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
 					"Unknown Error")
 
 				return
@@ -94,7 +94,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at buckets/create:",
+				_ = nats.SendErrorEvent(err.Error()+" at buckets/create:",
 					"Db Error")
 
 				return
@@ -108,7 +108,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("uid not found in authenticated route at /buckets/create:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
 					"Unknown Error")
 
 				return
@@ -131,7 +131,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at /buckets/delete:",
+				_ = nats.SendErrorEvent(err.Error()+" at /buckets/delete:",
 					"Db Error")
 
 				return

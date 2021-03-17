@@ -26,6 +26,26 @@ func GetFileContentType(out multipart.File) (string, error) {
 	return contentType, nil
 }
 
+func StandardizedPath(path string) (string, error) {
+	var s string
+	tokenSpace := strings.Fields(path)
+	for _, str := range tokenSpace {
+		if str != "" {
+			s += str
+		}
+	}
+
+	tokenBackSplash := strings.Split(s, "/")
+	s = ""
+	for _, str := range tokenBackSplash {
+		if str != "" {
+			s += str + "/"
+		}
+	}
+
+	return s, nil
+}
+
 func RemoveLastFolderPath(path string) (string, error) {
 	token := strings.Split(path, "/")
 

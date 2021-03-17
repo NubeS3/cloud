@@ -2,7 +2,6 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"net/http"
 	"time"
@@ -56,7 +55,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/sign in/access token",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/access token",
 					"Token Error")
 				return
 			}
@@ -66,7 +65,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/sign in/find refresh token",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/find refresh token",
 					"Db Error")
 				return
 			}
@@ -122,7 +121,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/sign up/generate otp",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
 					"Db Error")
 				return
 			}
@@ -131,7 +130,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/sign up/send otp",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
 					"OTP Failed")
 				return
 			}
@@ -165,7 +164,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/resend otp/generate otp",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/generate otp",
 					"Db Error")
 				return
 			}
@@ -174,7 +173,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/resend otp/send otp",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
 					"OTP Error")
 				return
 			}
@@ -211,7 +210,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/confirm otp/models otp confirm",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/models otp confirm",
 					"Db Error")
 				return
 			}
@@ -228,7 +227,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				cassandra.ErrLog(err.Error()+" at user route/confirm otp/generate refresh token",
+				_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/generate refresh token",
 					"Db Error")
 				return
 			}
