@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
 	"io"
 	"time"
@@ -48,6 +49,14 @@ func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
 	uploadedTime := time.Time{}
+	standardizedPath := ultis.StandardizedPath(path)
+	f, err := FindFolderByFullpath(standardizedPath)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.NotFound,
+		}
+	}
 
 	doc := fileMetadata{
 		FileId:       fid,
@@ -70,6 +79,14 @@ func saveFileMetadata(fid string, bid string,
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	_, err = InsertFile(meta.Key, doc.Name, f.Fullpath)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     "insert file to folder failed",
 			ErrType: models.DbError,
 		}
 	}

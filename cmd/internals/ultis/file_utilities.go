@@ -26,7 +26,7 @@ func GetFileContentType(out multipart.File) (string, error) {
 	return contentType, nil
 }
 
-func StandardizedPath(path string) (string, error) {
+func StandardizedPath(path string) string {
 	var s string
 	tokenSpace := strings.Fields(path)
 	for _, str := range tokenSpace {
@@ -43,14 +43,18 @@ func StandardizedPath(path string) (string, error) {
 		}
 	}
 
-	return s, nil
+	return s
 }
 
-func RemoveLastFolderPath(path string) (string, error) {
+func GetParentPath(path string) (string, error) {
 	token := strings.Split(path, "/")
 
+	if len(token) > 0 {
+		token = token[:len(token)-1]
+	}
 	var s string
 	for _, str := range token {
-		s +=
+		s += str
 	}
+	return s, nil
 }

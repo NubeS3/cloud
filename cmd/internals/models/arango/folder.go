@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
 	"time"
 )
@@ -68,7 +69,11 @@ func InsertFolder(name, parentId string) (*Folder, error) {
 	}
 
 	doc.Id = meta.Key
-	_, err = AppendChildToFolderById(parent.Id, doc.Id, doc.Name, "folder")
+	_, err = AppendChildToFolderById(parent.Id, Child{
+		Id:   doc.Id,
+		Name: doc.Name,
+		Type: "folder",
+	})
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -79,33 +84,12 @@ func InsertFolder(name, parentId string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFile(name, parentId string) (*Folder, error) {
-	parent, err := FindFolderById(parentId)
-	if err != nil {
-		return nil, &models.ModelError{
-			Msg:     "folder with id " + parentId + " is not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-
-	doc := &Folder{
-		Name:     name,
-		Fullpath: parent.Fullpath + "/" + name,
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
-	if err != nil {
-		return nil, &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
-
-	doc.Id = meta.Key
-	_, err = AppendChildToFolderById(parent.Id, doc.Id, doc.Name, "file")
+func InsertFile(fid, fname, parentId string) (*Folder, error) {
+	f, err := AppendChildToFolderById(parentId, Child{
+		Id:   fid,
+		Name: fname,
+		Type: "file",
+	})
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -113,7 +97,23 @@ func InsertFile(name, parentId string) (*Folder, error) {
 		}
 	}
 
-	return doc, nil
+	return f, nil
+}
+
+func InsertFileByPath(fid, fname, parentPath string) (*Folder, error) {
+	f, err := AppendChildToFolderByPath(parentPath, Child{
+		Id:   fid,
+		Name: fname,
+		Type: "file",
+	})
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return f, nil
 }
 
 func MoveFolderById(targetId string, toId string) (*Folder, error) {
@@ -133,6 +133,8 @@ func MoveFolderById(targetId string, toId string) (*Folder, error) {
 		}
 	}
 
+	oldParentPath, _ := ultis.GetParentPath(target.Fullpath)
+
 	target, err = UpdateFullPath(targetId, to.Fullpath)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -141,19 +143,19 @@ func MoveFolderById(targetId string, toId string) (*Folder, error) {
 		}
 	}
 
-	to, err = RemoveChildOfFolder(to.Id, Child{
+	_, _ = RemoveChildOfFolderByPath(oldParentPath, Child{
 		Id:   target.Id,
 		Name: target.Name,
 		Type: target.Fullpath,
 	})
-	if err != nil {
-		return nil, &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
 
-	app
+	target, err = AppendChildToFolderById(to.Id, Child{
+		Id:   target.Id,
+		Name: target.Name,
+		Type: "folder",
+	})
+
+	return target, nil
 }
 
 func UpdateFullPath(id, newParentPath string) (*Folder, error) {
@@ -193,12 +195,55 @@ func UpdateFullPath(id, newParentPath string) (*Folder, error) {
 	return &folder, nil
 }
 
+func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
+	bindVars := map[string]interface{}{
+		"path":  path,
+		"child": child,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	folder := Folder{}
+	for {
+		_, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	if folder.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return &folder, nil
+}
+
 func RemoveChildOfFolder(id string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
 	bindVars := map[string]interface{}{
+		"id":    id,
 		"child": child,
 	}
 
@@ -293,19 +338,48 @@ func FindFolderByFullpath(fullpath string) (*Folder, error) {
 	return &folder, nil
 }
 
-func AppendChildToFolderById(id, childId, childName, t string) (*Folder, error) {
+func AppendChildToFolderById(toId string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
 		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
 	bindVars := map[string]interface{}{
-		"id": id,
-		"new": Child{
-			Id:   childId,
-			Name: childName,
-			Type: t,
-		},
+		"id":  toId,
+		"new": child,
+	}
+
+	folder := Folder{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		_, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return &folder, nil
+}
+
+func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fol IN folders FILTER fol.fullpath == @path " +
+		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
+	bindVars := map[string]interface{}{
+		"path": toPath,
+		"new":  child,
 	}
 
 	folder := Folder{}
