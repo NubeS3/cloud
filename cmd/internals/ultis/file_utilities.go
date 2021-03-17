@@ -4,6 +4,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 func GetFileContentType(out multipart.File) (string, error) {
@@ -23,4 +24,24 @@ func GetFileContentType(out multipart.File) (string, error) {
 	contentType := http.DetectContentType(buffer)
 
 	return contentType, nil
+}
+
+func StandardizedPath(path string) (string, error) {
+	var s string
+	tokenSpace := strings.Fields(path)
+	for _, str := range tokenSpace {
+		if str != "" {
+			s += str
+		}
+	}
+
+	tokenBackSplash := strings.Split(s, "/")
+	s = ""
+	for _, str := range tokenBackSplash {
+		if str != "" {
+			s += str + "/"
+		}
+	}
+
+	return s, nil
 }

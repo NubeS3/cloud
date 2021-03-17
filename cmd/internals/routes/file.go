@@ -1,14 +1,14 @@
 package routes
 
 import (
+	"archive/zip"
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -41,7 +41,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/all:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/all:",
 					"Unknown Error")
 				return
 			}
@@ -67,7 +67,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at files/all:",
 					"Db Error")
 				return
 			}
@@ -82,7 +82,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/upload:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/upload:",
 					"Unknown Error")
 				return
 			}
@@ -124,7 +124,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("open file failed at /files/upload:",
+				_ = nats.SendErrorEvent("open file failed at /files/upload:",
 					"File Error")
 				return
 			}
@@ -166,6 +166,9 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
+			//LOG
+			_ = nats.SendUploadFileEvent(*res)
+
 			c.JSON(http.StatusOK, res)
 		})
 
@@ -176,7 +179,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("accessKey not found in authenticate at /files/download:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/download:",
 					"Unknown Error")
 				return
 			}
@@ -209,6 +212,10 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*metadata)
+
 				return nil
 			})
 
@@ -227,7 +234,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("download failed: "+err.Error()+" at /files/download:",
+				_ = nats.SendErrorEvent("download failed: "+err.Error()+" at /files/download:",
 					"File Error")
 				return
 			}
@@ -277,7 +284,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 							"Db Error")
 						return
 					}
@@ -287,7 +294,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 					"Db Error")
 				return
 			}
@@ -297,8 +304,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				log.Println("at authenticated files/all:")
-				log.Println(err)
+				_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
+					"Unknown Error")
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -315,7 +322,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
 					"Db Error")
 				return
 			}
@@ -340,7 +347,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 							"Db Error")
 						return
 					}
@@ -350,7 +357,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/upload:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 					"Db Error")
 				return
 			}
@@ -360,7 +367,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
 					"Unknown Error")
 				return
 			} else {
@@ -393,7 +400,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog("open file failed at /files/upload:",
+				_ = nats.SendErrorEvent("open file failed at /files/auth/upload:",
 					"File Error")
 				return
 			}
@@ -435,6 +442,9 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
+			//LOG
+			_ = nats.SendUploadFileEvent(*res)
+
 			c.JSON(http.StatusOK, res)
 		})
 
@@ -457,7 +467,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						cassandra.ErrLog(err.Error()+" at authenticated files/all:",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
 							"Db Error")
 						return
 					}
@@ -469,7 +479,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				cassandra.ErrLog("uid not found at authenticated files/all:",
+				_ = nats.SendErrorEvent("uid not found at authenticated files/auth/download",
 					"Unknown Error")
 				return
 			} else {
@@ -494,6 +504,10 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*metadata)
+
 				return nil
 			})
 
@@ -512,10 +526,126 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				cassandra.ErrLog(err.Error()+" at /files/auth/download:",
+				_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
 					"File Error")
 				return
 			}
 		})
+
+		ar.GET("/downloadFiles", func(c *gin.Context) {
+			type fileList struct {
+				FileIds  []string `json:"file_ids"`
+				BucketId string   `json:"bucket_id"`
+			}
+
+			var curFileList fileList
+			if err := c.ShouldBind(&curFileList); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+			}
+
+			bucket, err := arango.FindBucketById(curFileList.BucketId)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
+							"Db Error")
+						return
+					}
+				}
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated files/auth/downloadFiles",
+					"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			listFileMetadata := []arango.FileMetadata{}
+			for _, fid := range curFileList.FileIds {
+				fm, err := arango.FindMetadataByFid(fid)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+					return
+				}
+				listFileMetadata = append(listFileMetadata, *fm)
+			}
+
+			validListFileMetadata := []arango.FileMetadata{}
+			for _, fm := range listFileMetadata {
+				if fm.BucketId == curFileList.BucketId {
+					validListFileMetadata = append(validListFileMetadata, fm)
+				}
+			}
+
+			var totalSize int64
+			for _, fm := range validListFileMetadata {
+				totalSize += fm.Size
+			}
+
+			const TotalSizeLimit = 10 << (10 * 3)
+			if totalSize > TotalSizeLimit {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Total File Size Over Limit (10GB)",
+				})
+				return
+			}
+
+			c.Writer.Header().Set("Content-type", "application/octet-stream")
+			zipw := zip.NewWriter(c.Writer)
+			defer zipw.Close()
+
+			for _, fm := range validListFileMetadata {
+				err := arango.GetFileByFidIgnoreQueryMetadata(fm.FileId, func(reader io.Reader) error {
+					if err = appendReaderToZip(reader, fm.Name, zipw); err != nil {
+						return err
+					}
+					return nil
+				})
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+					return
+				}
+			}
+		})
 	}
+}
+
+func appendReaderToZip(fileReader io.Reader, filename string, zipw *zip.Writer) error {
+	wr, err := zipw.Create(filename)
+	if err != nil {
+		return err
+	}
+	if _, err = io.Copy(wr, fileReader); err != nil {
+		return err
+	}
+
+	return nil
 }
