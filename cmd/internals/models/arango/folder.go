@@ -10,6 +10,7 @@ import (
 
 type Folder struct {
 	Id       string  `json:"id"`
+	OwnerId  string  `owner_id`
 	Name     string  `json:"name"`
 	Fullpath string  `json:"fullpath"`
 	Children []Child `json:"children"`
@@ -22,9 +23,18 @@ type Child struct {
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
+	bucket, err := FindBucketByName(bucketName)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
 	doc := &Folder{
 		Name:     bucketName,
-		Fullpath: bucketName,
+		Fullpath: "/" + bucketName,
+		OwnerId:  bucket.Uid,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -43,7 +53,7 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFolder(name, parentId string) (*Folder, error) {
+func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	parent, err := FindFolderById(parentId)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -55,6 +65,7 @@ func InsertFolder(name, parentId string) (*Folder, error) {
 	doc := &Folder{
 		Name:     name,
 		Fullpath: parent.Fullpath + "/" + name,
+		OwnerId:  ownerId,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -114,6 +125,45 @@ func InsertFileByPath(fid, fname, parentPath string) (*Folder, error) {
 	}
 
 	return f, nil
+}
+
+func FindFolderByOwnerId(oid string, limit int64, offset int64) ([]Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fol IN folders FILTER fol.owner_id == @oid LIMIT @offset, @limit RETURN fol"
+	bindVars := map[string]interface{}{
+		"oid":    oid,
+		"offset": offset,
+		"limit":  limit,
+	}
+	folders := []Folder{}
+	folder := Folder{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		folder.Id = meta.Key
+		folders = append(folders, folder)
+	}
+
+	return folders, nil
 }
 
 func MoveFolderById(targetId string, toId string) (*Folder, error) {
