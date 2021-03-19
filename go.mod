@@ -9,6 +9,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gocql/gocql v0.0.0-20201215165327-e49edf966d90
 	github.com/golang/snappy v0.0.1 // indirect
+	github.com/google/uuid v1.1.1
 	github.com/linxGnu/goseaweedfs v0.1.5
 	github.com/m1ome/randstr v0.0.0-20170328115817-50e7f2dc0288
 	github.com/mediocregopher/radix/v3 v3.7.0
