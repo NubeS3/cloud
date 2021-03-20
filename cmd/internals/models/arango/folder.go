@@ -40,7 +40,7 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
+	meta, err := folderCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),

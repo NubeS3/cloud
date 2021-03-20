@@ -56,8 +56,8 @@ func FolderRoutes(r *gin.Engine) {
 
 		ar.POST("/insertFolder", func(c *gin.Context) {
 			type insertFolder struct {
-				Name     string `json:"name"`
-				ParentId string `json:"parent_id"`
+				Name       string `json:"name"`
+				ParentPath string `json:"parent_path"`
 			}
 
 			var curInsertedFolder insertFolder
@@ -67,7 +67,7 @@ func FolderRoutes(r *gin.Engine) {
 				})
 			}
 
-			folderParent, err := arango.FindFolderById(curInsertedFolder.ParentId)
+			folderParent, err := arango.FindFolderByFullpath(curInsertedFolder.ParentPath)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
