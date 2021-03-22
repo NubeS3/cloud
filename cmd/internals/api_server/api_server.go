@@ -29,6 +29,7 @@ func Routing(r *gin.Engine) {
 	routes.UserRoutes(r)
 	routes.BucketRoutes(r)
 	routes.AccessKeyRoutes(r)
+	routes.KeyPairsRoutes(r)
 	routes.FileRoutes(r)
 	routes.FolderRoutes(r)
 }
