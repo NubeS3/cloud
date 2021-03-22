@@ -9,7 +9,8 @@ import (
 )
 
 type Folder struct {
-	Id       string  `json:"id"`
+	Id       string  `json:"-"`
+	OwnerId  string  `owner_id`
 	Name     string  `json:"name"`
 	Fullpath string  `json:"fullpath"`
 	Children []Child `json:"children"`
@@ -22,15 +23,25 @@ type Child struct {
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
+	bucket, err := FindBucketByName(bucketName)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
 	doc := &Folder{
 		Name:     bucketName,
-		Fullpath: bucketName,
+		Fullpath: "/" + bucketName,
+		OwnerId:  bucket.Uid,
+		Children: []Child{},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
+	meta, err := folderCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -43,7 +54,7 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFolder(name, parentId string) (*Folder, error) {
+func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	parent, err := FindFolderById(parentId)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -55,12 +66,14 @@ func InsertFolder(name, parentId string) (*Folder, error) {
 	doc := &Folder{
 		Name:     name,
 		Fullpath: parent.Fullpath + "/" + name,
+		OwnerId:  ownerId,
+		Children: []Child{},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
+	meta, err := folderCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -74,6 +87,7 @@ func InsertFolder(name, parentId string) (*Folder, error) {
 		Name: doc.Name,
 		Type: "folder",
 	})
+
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -114,6 +128,45 @@ func InsertFileByPath(fid, fname, parentPath string) (*Folder, error) {
 	}
 
 	return f, nil
+}
+
+func FindFolderByOwnerId(oid string, limit int64, offset int64) ([]Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fol IN folders FILTER fol.owner_id == @oid LIMIT @offset, @limit RETURN fol"
+	bindVars := map[string]interface{}{
+		"oid":    oid,
+		"offset": offset,
+		"limit":  limit,
+	}
+	folders := []Folder{}
+	folder := Folder{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		folder.Id = meta.Key
+		folders = append(folders, folder)
+	}
+
+	return folders, nil
 }
 
 func MoveFolderById(targetId string, toId string) (*Folder, error) {
@@ -284,7 +337,7 @@ func FindFolderById(id string) (*Folder, error) {
 	defer cancel()
 
 	var data Folder
-	meta, err := fileMetadataCol.ReadDocument(ctx, id, &data)
+	meta, err := folderCol.ReadDocument(ctx, id, &data)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -343,7 +396,7 @@ func AppendChildToFolderById(toId string, child Child) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
-		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
+		"UPDATE fol WITH { children: APPEND(fol.children, @new) } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":  toId,
 		"new": child,
@@ -376,7 +429,7 @@ func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol.fullpath == @path " +
-		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
+		"UPDATE fol WITH { children: APPEND(fol.children, @new) } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"path": toPath,
 		"new":  child,

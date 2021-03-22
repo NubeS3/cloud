@@ -49,7 +49,7 @@ func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
 	uploadedTime := time.Time{}
-	standardizedPath := ultis.StandardizedPath(path)
+	standardizedPath := ultis.StandardizedPath(path, true)
 	f, err := FindFolderByFullpath(standardizedPath)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -83,7 +83,7 @@ func saveFileMetadata(fid string, bid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Fullpath)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
