@@ -9,7 +9,7 @@ import (
 )
 
 type Folder struct {
-	Id       string  `json:"id"`
+	Id       string  `json:"-"`
 	OwnerId  string  `owner_id`
 	Name     string  `json:"name"`
 	Fullpath string  `json:"fullpath"`
@@ -35,6 +35,7 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 		Name:     bucketName,
 		Fullpath: "/" + bucketName,
 		OwnerId:  bucket.Uid,
+		Children: []Child{},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -66,6 +67,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 		Name:     name,
 		Fullpath: parent.Fullpath + "/" + name,
 		OwnerId:  ownerId,
+		Children: []Child{},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -335,7 +337,7 @@ func FindFolderById(id string) (*Folder, error) {
 	defer cancel()
 
 	var data Folder
-	meta, err := fileMetadataCol.ReadDocument(ctx, id, &data)
+	meta, err := folderCol.ReadDocument(ctx, id, &data)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -394,7 +396,7 @@ func AppendChildToFolderById(toId string, child Child) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
-		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
+		"UPDATE fol WITH { children: APPEND(fol.children, @new) } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":  toId,
 		"new": child,
@@ -427,7 +429,7 @@ func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol.fullpath == @path " +
-		"UPDATE fol WITH { children: APPEND(doc.children, @new } IN fol RETURN NEW"
+		"UPDATE fol WITH { children: APPEND(fol.children, @new) } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"path": toPath,
 		"new":  child,

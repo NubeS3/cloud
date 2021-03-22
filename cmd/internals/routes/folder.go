@@ -99,7 +99,7 @@ func FolderRoutes(r *gin.Engine) {
 			}
 
 			folder, err := arango.InsertFolder(curInsertedFolder.Name,
-				curInsertedFolder.ParentId, uid.(string))
+				folderParent.Id, uid.(string))
 
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
