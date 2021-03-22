@@ -4,6 +4,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 func GetFileContentType(out multipart.File) (string, error) {
@@ -23,4 +24,43 @@ func GetFileContentType(out multipart.File) (string, error) {
 	contentType := http.DetectContentType(buffer)
 
 	return contentType, nil
+}
+
+func StandardizedPath(path string, isBucketFolder bool) string {
+	var s string
+	tokenSpace := strings.Fields(path)
+	for _, str := range tokenSpace {
+		if str != "" {
+			s += str
+		}
+	}
+
+	tokenBackSplash := strings.Split(s, "/")
+	s = ""
+	for _, str := range tokenBackSplash {
+		if str != "" {
+			s += str + "/"
+		}
+	}
+
+	s = s[:len(s)-1]
+
+	if isBucketFolder {
+		s = "/" + s
+	}
+
+	return s
+}
+
+func GetParentPath(path string) (string, error) {
+	token := strings.Split(path, "/")
+
+	if len(token) > 0 {
+		token = token[:len(token)-1]
+	}
+	var s string
+	for _, str := range token {
+		s += str
+	}
+	return s, nil
 }

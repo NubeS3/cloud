@@ -23,6 +23,7 @@ func UploadFile(bucketName string, path string, filename string, size int64, rea
 
 func DownloadFile(id string, callback func(reader io.Reader) error) error {
 	_, err := sw.Download(id, nil, callback)
+
 	if err != nil {
 		return &models.ModelError{
 			Msg:     err.Error(),

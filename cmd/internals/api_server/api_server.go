@@ -3,6 +3,7 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"net/http"
 
@@ -24,10 +25,12 @@ func init() {
 
 func Routing(r *gin.Engine) {
 	routes.TestRoute(r)
+	routes.PingRoute(r)
 	routes.UserRoutes(r)
 	routes.BucketRoutes(r)
 	routes.AccessKeyRoutes(r)
 	routes.FileRoutes(r)
+	routes.FolderRoutes(r)
 }
 
 func Run() {
@@ -46,11 +49,19 @@ func Run() {
 		panic(err)
 	}
 
+	fmt.Println("Initialize SeaweedFS connection")
 	err = seaweedfs.InitFs()
 	if err != nil {
 		panic(err)
 	}
 	defer seaweedfs.CleanUp()
+
+	fmt.Println("Initialize NATS connection")
+	err = nats.InitNats()
+	if err != nil {
+		panic(err)
+	}
+	defer nats.CleanUp()
 
 	ultis.InitMailService()
 

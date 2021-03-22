@@ -1,6 +1,7 @@
 package cassandra
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -28,25 +29,23 @@ func InitCassandraDb() error {
 	}
 	cluster.Keyspace = keyspace
 	cluster.Consistency = gocql.One
-
 	cluster.ConnectTimeout = time.Second * 10
 	session, err = cluster.CreateSession()
 	if err != nil {
 		return err
 	}
+	err = session.Query(fmt.Sprintf(`CREATE KEYSPACE %s
+	WITH replication = {
+		'class' : 'SimpleStrategy',
+		'replication_factor' : %d
+	}`, keyspace, 1)).Exec()
 
-	//_query := "SELECT * FROM system.local"
-	//iter := session.Query(_query).Iter()
-	//fmt.Printf("Testing: %d rows returned", iter.NumRows())
-
+	if err != nil {
+		return err
+	}
 	if err := initCassandraDbTables(); err != nil {
 		return err
 	}
-
-	//redisClient, err = radix.NewPool("tcp", "127.0.0.1:6379", 10)
-	//if err != nil {
-	//	return err
-	//}
 
 	return nil
 }
@@ -54,123 +53,8 @@ func InitCassandraDb() error {
 func initCassandraDbTables() error {
 	err := session.
 		Query("CREATE TABLE IF NOT EXISTS" +
-			" users_by_id (id uuid PRIMARY KEY, username ascii," +
-			" password ascii, " +
-			" is_active boolean, is_banned boolean)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" users_by_username (id uuid, username ascii PRIMARY KEY," +
-			" password ascii, is_active boolean, is_banned boolean)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" users_by_email (id uuid, username ascii," +
-			" password ascii, email ascii PRIMARY KEY," +
-			" is_active boolean, is_banned boolean)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_data_by_id (id uuid PRIMARY KEY, email ascii," +
-			" gender boolean, company ascii, firstname text," +
-			" lastname text, dob date, is_active boolean," +
-			" created_at timestamp, updated_at timestamp," +
-			" is_banned boolean)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" user_otp (username ascii PRIMARY KEY, id uuid, email ascii," +
-			" otp ascii, last_updated timestamp, expired_time timestamp, is_validated boolean)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" refresh_token (uid uuid, rf_token ascii, expired_rf timestamp," +
-			" PRIMARY KEY (uid))").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" buckets (id uuid, uid uuid, name ascii, region ascii," +
-			" PRIMARY KEY ((uid), id))").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" access_keys_by_uid_bid" +
-			" (uid uuid, bucket_id uuid, key ascii, permissions set<int>," +
-			" expired_date timestamp, PRIMARY KEY ((uid), bucket_id, key))").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" access_keys_by_key" +
-			" (uid uuid, bucket_id uuid, key ascii, permissions set<int>," +
-			" expired_date timestamp, PRIMARY KEY ((key), bucket_id))").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("create table if not exists folders" +
-			" (bucket_id uuid, path text, name text," +
-			" primary key ((bucket_id), path, name))" +
-			" with clustering order by (path asc, name asc) ").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" file_metadata_by_id" +
-			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
-			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
-			" upload_date timestamp, expired_date timestamp," +
-			" PRIMARY KEY ((id), bucket_id, upload_date))" +
-			" with clustering order by (bucket_id asc, upload_date desc)").
-		Exec()
-	if err != nil {
-		return err
-	}
-
-	err = session.
-		Query("CREATE TABLE IF NOT EXISTS" +
-			" file_metadata_by_pathname" +
-			" (id ascii, bucket_id uuid, path text, name text, content_type ascii," +
-			" size int, is_hidden boolean, is_deleted boolean, deleted_date timestamp," +
-			" upload_date timestamp, expired_date timestamp," +
-			" PRIMARY KEY ((bucket_id), path, name, upload_date))" +
-			" with clustering order by (path asc, name asc, upload_date desc)").
+			" errors_log (id, type ascii," +
+			" message text, time timestamp, PRIMARY KEY ((id), type, time))").
 		Exec()
 	if err != nil {
 		return err
@@ -183,8 +67,4 @@ func CleanUp() {
 	if session != nil {
 		session.Close()
 	}
-	if redisClient != nil {
-		_ = redisClient.Close()
-	}
-
 }

@@ -1,10 +1,23 @@
 package routes
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/gin-gonic/gin"
+	"net/http"
+	"time"
 )
 
 func TestRoute(r *gin.Engine) {
+	r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
+		err := nats.SendEmailEvent("nhokbm13@gmail.com", "lu123", "123456", time.Now().Add(time.Minute*5))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, "sent")
+	})
+
 	//r.GET("/test", func(c *gin.Context) {
 	//	c.JSON(http.StatusOK, gin.H{
 	//		"message": "Connected",

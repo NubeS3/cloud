@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"net/http"
 	"time"
 
@@ -55,7 +55,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/sign in/access token: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/access token",
+					"Token Error")
 				return
 			}
 
@@ -64,7 +65,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/sign in/find refresh token: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/find refresh token",
+					"Db Error")
 				return
 			}
 
@@ -119,7 +121,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/sign up/generate otp: ", err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
+					"Db Error")
 				return
 			}
 
@@ -127,7 +130,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/sign up/send otp: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
+					"OTP Failed")
 				return
 			}
 
@@ -160,7 +164,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/resend otp/generate otp: ", err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/generate otp",
+					"Db Error")
 				return
 			}
 
@@ -168,7 +173,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/resend otp/send otp: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
+					"OTP Error")
 				return
 			}
 
@@ -204,7 +210,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/confirm otp/models otp confirm: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/models otp confirm",
+					"Db Error")
 				return
 			}
 
@@ -220,7 +227,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				fmt.Println("user route/confirm otp/generate refresh token: " + err.Error())
+				_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/generate refresh token",
+					"Db Error")
 				return
 			}
 
@@ -240,5 +248,9 @@ func SendOTP(username string, email string, otp string, expiredTime time.Time) e
 			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
 	)
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }

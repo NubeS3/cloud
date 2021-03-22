@@ -11,6 +11,7 @@ const (
 	InvalidAccessKey
 	InvalidBucket
 	UidMismatch
+	GeneratorError
 	Other
 )
 
