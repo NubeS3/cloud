@@ -103,6 +103,14 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
+			bucket, err := arango.FindBucketById(accessKey.BucketId)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
 			uploadFile, err := c.FormFile("file")
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -110,10 +118,8 @@ func FileRoutes(r *gin.Engine) {
 				})
 				return
 			}
-			path := c.DefaultPostForm("path", "/")
-			//TODO Validate path format
-
-			//END TODO
+			queryPath := c.DefaultPostForm("path", "/")
+			path := "/" + bucket.Name + "/" + ultis.StandardizedPath(queryPath, false)
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
@@ -386,10 +392,8 @@ func FileRoutes(r *gin.Engine) {
 				})
 				return
 			}
-			path := c.DefaultPostForm("path", "/")
-			//TODO Validate path format
-
-			//END TODO
+			queryPath := c.DefaultPostForm("path", "/")
+			path := ultis.StandardizedPath(queryPath, true)
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName

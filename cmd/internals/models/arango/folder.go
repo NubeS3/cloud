@@ -71,7 +71,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
+	meta, err := folderCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -85,6 +85,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 		Name: doc.Name,
 		Type: "folder",
 	})
+
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
