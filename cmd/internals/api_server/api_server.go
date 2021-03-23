@@ -3,7 +3,6 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/cassandra"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"net/http"
@@ -30,21 +29,23 @@ func Routing(r *gin.Engine) {
 	routes.UserRoutes(r)
 	routes.BucketRoutes(r)
 	routes.AccessKeyRoutes(r)
+	routes.KeyPairsRoutes(r)
 	routes.FileRoutes(r)
+	routes.FolderRoutes(r)
 }
 
 func Run() {
 	fmt.Println("Initializing utilities...")
 	ultis.InitUtilities()
 
-	fmt.Println("Initialize Log DB connection")
-	err := cassandra.InitCassandraDb()
-	if err != nil {
-		panic(err)
-	}
+	//fmt.Println("Initialize Log DB connection")
+	//err := cassandra.InitCassandraDb()
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	fmt.Println("Initialize DB connection")
-	err = arango.InitArangoDb()
+	err := arango.InitArangoDb()
 	if err != nil {
 		panic(err)
 	}

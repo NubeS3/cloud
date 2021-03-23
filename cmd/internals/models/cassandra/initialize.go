@@ -29,7 +29,6 @@ func InitCassandraDb() error {
 	}
 	cluster.Keyspace = keyspace
 	cluster.Consistency = gocql.One
-
 	cluster.ConnectTimeout = time.Second * 10
 	session, err = cluster.CreateSession()
 	if err != nil {
