@@ -110,6 +110,46 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 	}, nil
 }
 
+func FindKeyByUidBid(uid, bid string, limit, offset int) ([]KeyPair, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR k IN keyPairs FILTER k.bucket_id == @bid AND k.generator_uid == @uid LIMIT @offset, @limit RETURN k"
+	bindVars := map[string]interface{}{
+		"bid":    bid,
+		"uid":    uid,
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	keys := []KeyPair{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		keypair := keyPair{}
+		_, err := cursor.ReadDocument(ctx, &keypair)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		keys = append(keys, *keypair.toKeyPair())
+	}
+
+	return keys, nil
+}
+
 func FindKeyPairByPublic(key string) (*KeyPair, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
