@@ -68,6 +68,15 @@ func CheckSigned(c *gin.Context) {
 		return
 	}
 
+	if kp.ExpiredDate.Before(time.Now()) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "signed url expired",
+		})
+
+		c.Abort()
+		return
+	}
+
 	pHash, err := hashFunc(kp.Private)
 	if pHash == sig {
 		c.Set("uid", kp.GeneratorUid)
