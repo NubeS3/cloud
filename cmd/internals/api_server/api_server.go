@@ -7,9 +7,11 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/NubeS3/cloud/cmd/internals/routes"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -76,6 +78,15 @@ func Run() {
 		})
 	})
 	Routing(r)
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Refresh"},
+		ExposeHeaders:    []string{"Content-Length", "AccessToken", "RefreshToken"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
