@@ -6,6 +6,7 @@ require (
 	github.com/arangodb/go-driver v0.0.0-20201230202041-2c13286cfbda
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/elithrar/simple-scrypt v1.3.0
+	github.com/gin-gonic/autotls v0.0.3
 	github.com/gin-gonic/gin v1.6.3
 	github.com/gocql/gocql v0.0.0-20201215165327-e49edf966d90
 	github.com/golang/snappy v0.0.1 // indirect
@@ -19,5 +20,6 @@ require (
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/spf13/viper v1.7.1
 	github.com/thanhpk/randstr v1.0.4
+	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	google.golang.org/protobuf v1.25.0 // indirect
 )
