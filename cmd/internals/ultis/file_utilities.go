@@ -27,6 +27,9 @@ func GetFileContentType(out multipart.File) (string, error) {
 }
 
 func StandardizedPath(path string, isBucketFolder bool) string {
+	if path == "/" {
+		return ""
+	}
 	var s string
 	tokenSpace := strings.Fields(path)
 	for _, str := range tokenSpace {

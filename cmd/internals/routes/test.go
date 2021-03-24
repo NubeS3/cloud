@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -16,6 +17,10 @@ func TestRoute(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, "sent")
+	})
+
+	r.GET("/test/signed", middlewares.CheckSigned, func(c *gin.Context) {
+		c.JSON(http.StatusOK, "Ok")
 	})
 
 	//r.GET("/test", func(c *gin.Context) {

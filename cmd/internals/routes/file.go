@@ -247,7 +247,7 @@ func FileRoutes(r *gin.Engine) {
 		})
 	}
 
-	ar := r.Group("/files/auth", middlewares.UserAuthenticate)
+	ar := r.Group("/auth/files", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
@@ -564,7 +564,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated /auth/files/download",
 							"Db Error")
 						return
 					}
@@ -576,7 +576,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at authenticated files/auth/downloadFiles",
+				_ = nats.SendErrorEvent("uid not found at authenticated /auth/files/downloadFiles",
 					"Unknown Error")
 				return
 			} else {
@@ -637,6 +637,239 @@ func FileRoutes(r *gin.Engine) {
 					})
 					return
 				}
+			}
+		})
+	}
+
+	kpr := r.Group("/signed/files", middlewares.CheckSigned)
+	{
+		kpr.GET("/all", func(c *gin.Context) {
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at /signed/files/all:",
+					"Unknown Error")
+				return
+			}
+			keyPair := key.(*arango.KeyPair)
+
+			var isUploadPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "GetFileList" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			res, err := arango.FindMetadataByBid(keyPair.BucketId, limit, offset)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at /signed/files/all:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		kpr.POST("/upload", func(c *gin.Context) {
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at /signed/files/upload:",
+					"Unknown Error")
+				return
+			}
+
+			keyPair := key.(*arango.KeyPair)
+			var isUploadPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "Upload" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			bucket, err := arango.FindBucketById(keyPair.BucketId)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			uploadFile, err := c.FormFile("file")
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			queryPath := c.DefaultPostForm("path", "/")
+			path := "/" + bucket.Name + ultis.StandardizedPath(queryPath, false)
+
+			fileName := c.DefaultPostForm("name", uploadFile.Filename)
+			//newPath := bucket.Name + path + fileName
+
+			fileContent, err := uploadFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("open file failed at /signed/files/upload:",
+					"File Error")
+				return
+			}
+
+			fileSize := uploadFile.Size
+			ttlStr := c.DefaultPostForm("ttl", "0")
+			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+			}
+
+			isHiddenStr := c.DefaultPostForm("hidden", "false")
+			isHidden, err := strconv.ParseBool(isHiddenStr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+
+			cType, err := ultis.GetFileContentType(fileContent)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "unknown file content type",
+				})
+
+				return
+			}
+
+			res, err := arango.SaveFile(fileContent, keyPair.BucketId, path, fileName, isHidden,
+				cType, fileSize, time.Duration(ttl)*time.Second)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			//LOG
+			_ = nats.SendUploadFileEvent(*res)
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		kpr.GET("/download", func(c *gin.Context) {
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at signed/files/download:",
+					"Unknown Error")
+				return
+			}
+			keyPair := key.(*arango.KeyPair)
+			var isDownloadPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "Download" {
+					isDownloadPerm = true
+					break
+				}
+			}
+			if !isDownloadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+			fid := c.DefaultQuery("fileId", "")
+
+			err := arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
+				if metadata.BucketId != keyPair.BucketId {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				extraHeaders := map[string]string{
+					"Content-Disposition": `attachment; filename=` + metadata.Name,
+				}
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*metadata)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("download failed: "+err.Error()+" at signed/files/download:",
+					"File Error")
+				return
 			}
 		})
 	}
