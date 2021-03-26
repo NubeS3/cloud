@@ -56,7 +56,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
-		ar.POST("/folder", func(c *gin.Context) {
+		ar.POST("/", func(c *gin.Context) {
 			type insertFolder struct {
 				Name       string `json:"name"`
 				ParentPath string `json:"parent_path"`

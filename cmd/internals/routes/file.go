@@ -15,7 +15,7 @@ import (
 )
 
 func FileRoutes(r *gin.Engine) {
-	acr := r.Group("/files", middlewares.ApiKeyAuthenticate)
+	acr := r.Group("/accessKey/files", middlewares.ApiKeyAuthenticate)
 	{
 		acr.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)

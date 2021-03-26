@@ -11,7 +11,7 @@ import (
 )
 
 func KeyPairsRoutes(r *gin.Engine) {
-	ar := r.Group("/keyPairs", middlewares.UserAuthenticate)
+	ar := r.Group("/auth/keyPairs", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all/:bucket_id", func(c *gin.Context) {
 			bucketId := c.Param("bucket_id")
