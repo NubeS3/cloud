@@ -133,6 +133,35 @@ func KeyPairsRoutes(r *gin.Engine) {
 				"public_key":  res.Public,
 				"private_key": res.Private,
 			})
+
+			ar.DELETE("/delete/:bucket_id/:public_key", func(c *gin.Context) {
+				key := c.Param("public_key")
+				bucketId := c.Param("bucket_id")
+
+				uid, ok := c.Get("uid")
+				if !ok {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
+						"Unknown Error")
+					return
+				}
+
+				if err := arango.DeleteKeyPair(key, bucketId, uid.(string)); err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
+						"Db Error")
+
+					return
+				}
+
+				c.JSON(http.StatusOK, key)
+			})
 		})
 	}
 }

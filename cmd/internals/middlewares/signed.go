@@ -3,6 +3,7 @@ package middlewares
 import (
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -27,7 +28,7 @@ func CheckSigned(c *gin.Context) {
 	}
 
 	expT := time.Unix(exp, 0)
-	if expT.After(time.Now()) {
+	if expT.Before(time.Now()) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "signed url expired",
 		})
@@ -63,7 +64,7 @@ func CheckSigned(c *gin.Context) {
 			"error": "something went wrong",
 		})
 
-		//TODO log error here
+		_ = nats.SendErrorEvent("signed authenticate error: "+err.Error(), "Unknown Error")
 		c.Abort()
 		return
 	}
@@ -79,8 +80,7 @@ func CheckSigned(c *gin.Context) {
 
 	pHash, err := hashFunc(kp.Private)
 	if pHash == sig {
-		c.Set("uid", kp.GeneratorUid)
-		c.Set("bid", kp.BucketId)
+		c.Set("keyPair", kp)
 		c.Next()
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{
