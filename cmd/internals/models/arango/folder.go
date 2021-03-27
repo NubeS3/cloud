@@ -220,7 +220,7 @@ func UpdateFullPath(id, newParentPath string) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
-		"UPDATE fol WITH { fullpath: @newParentPath + fol.name } IN fol RETURN NEW"
+		"UPDATE fol WITH { fullpath: @newParentPath + fol.name } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":            id,
 		"newParentPath": newParentPath,
@@ -252,7 +252,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
+	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"path":  path,
 		"child": child,
@@ -294,7 +294,7 @@ func RemoveChildOfFolder(id string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
+	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":    id,
 		"child": child,

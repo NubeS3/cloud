@@ -61,7 +61,7 @@ func saveFileMetadata(fid string, bid string,
 	doc := fileMetadata{
 		FileId:       fid,
 		BucketId:     bid,
-		Path:         path,
+		Path:         standardizedPath,
 		Name:         name,
 		ContentType:  contentType,
 		Size:         size,
@@ -108,6 +108,47 @@ func saveFileMetadata(fid string, bid string,
 }
 
 func FindMetadataByBid(bid string, limit int64, offset int64) ([]FileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
+		"AND fm.is_hidden == false LIMIT @offset, @limit RETURN fm"
+	bindVars := map[string]interface{}{
+		"bid":    bid,
+		"offset": offset,
+		"limit":  limit,
+	}
+
+	fileMetadatas := []FileMetadata{}
+	fileMetadata := FileMetadata{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		fileMetadata.Id = meta.Key
+		fileMetadatas = append(fileMetadatas, fileMetadata)
+	}
+
+	return fileMetadatas, nil
+}
+
+func FindAllMetadataByBid(bid string, limit int64, offset int64) ([]FileMetadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -374,4 +415,47 @@ func GetFileByFidIgnoreQueryMetadata(fid string, callback func(reader io.Reader)
 	}
 
 	return nil
+}
+
+func ToggleHidden(fid string, isHidden bool) (*FileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR fm IN fileMetadata FILTER fm._key == @fid UPDATE fm WITH { is_hidden: @isHidden} IN fileMetadata RETURN NEW"
+	bindVars := map[string]interface{}{
+		"fid":      fid,
+		"isHidden": isHidden,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	fileMetadata := FileMetadata{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		fileMetadata.Id = meta.Key
+	}
+
+	if fileMetadata.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return &fileMetadata, nil
 }
