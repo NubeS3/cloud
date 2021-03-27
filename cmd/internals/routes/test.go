@@ -1,8 +1,11 @@
 package routes
 
 import (
+	"errors"
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
+	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
+	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
@@ -40,19 +43,19 @@ func TestRoute(r *gin.Engine) {
 	//		"user": user,
 	//	})
 	//})
-	//r.GET("/arango/test/user/create", func(c *gin.Context) {
-	//	user, err := arango.SaveUser("test", "user",
-	//		"test123", "1234",
-	//		"abc@abc.com", time.Now(),
-	//		"meow", true)
-	//	if err != nil {
-	//		c.JSON(http.StatusBadRequest, gin.H{
-	//			"error": err.Error(),
-	//		})
-	//		return
-	//	}
-	//	c.JSON(http.StatusOK, user)
-	//})
+	r.GET("/arango/test/user/create", func(c *gin.Context) {
+		user, err := arango.SaveUser("test", "user",
+			"t1", "1234",
+			"abc@abc.com", time.Now(),
+			"meow", true)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		c.JSON(http.StatusOK, user)
+	})
 	//r.GET("/arango/test/otp/create", func(c *gin.Context) {
 	//	otp, err := arango.GenerateOTP("test123", "abc@abc.com")
 	//	if err != nil {
@@ -70,25 +73,25 @@ func TestRoute(r *gin.Engine) {
 	//	}
 	//	c.JSON(http.StatusOK, otp)
 	//})
-	//r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
-	//	err := arango.OTPConfirm("test123", "7A785414")
-	//	if err != nil {
-	//		if arangoDriver.IsNotFound(err) {
-	//			c.JSON(http.StatusNotFound, gin.H{
-	//				"error": "otp not found",
-	//			})
-	//			return
-	//		} else {
-	//			c.JSON(http.StatusInternalServerError, gin.H{
-	//				"error": errors.New("read fail"),
-	//			})
-	//			return
-	//		}
-	//	}
-	//	c.JSON(http.StatusOK, gin.H{
-	//		"message": "otp confirmed.",
-	//	})
-	//})
+	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
+		err := arango.OTPConfirm("test123", "7A785414")
+		if err != nil {
+			if arangoDriver.IsNotFound(err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "otp not found",
+				})
+				return
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": errors.New("read fail"),
+				})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"message": "otp confirmed.",
+		})
+	})
 	//r.GET("/arango/test/user/findId", func(c *gin.Context) {
 	//	user, err := arango.FindUserById("14112")
 	//	if err != nil {
