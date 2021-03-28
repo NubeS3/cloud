@@ -4,13 +4,11 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/linxGnu/goseaweedfs"
 	"io"
-	"strings"
 )
 
-func UploadFile(bucketName string, path string, filename string, size int64, reader io.Reader) (*goseaweedfs.FilePart, error) {
-	pathNormalized := strings.ReplaceAll(bucketName+"/"+path+"/"+filename, "/", "_")
+func UploadFile(filename string, size int64, reader io.Reader) (*goseaweedfs.FilePart, error) {
 
-	meta, err := sw.Upload(reader, pathNormalized, size, "", "")
+	meta, err := sw.Upload(reader, filename, size, "", "")
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),

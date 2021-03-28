@@ -191,15 +191,15 @@ func FindKeyPairByPublic(key string) (*KeyPair, error) {
 	return kp.toKeyPair(), nil
 }
 
-func DeleteKeyPair(key, bid, uid string) error {
+func RemoveKeyPair(public, bid, uid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR kp IN keyPairs FILTER kp.public == @key AND k.bucket_id == @bid AND k.generator_uid == uid REMOVE k in keyPairs LET removed = OLD RETURN removed"
+	query := "FOR kp IN keyPairs FILTER kp.public == @public AND k.bucket_id == @bid AND k.generator_uid == uid REMOVE k in keyPairs LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
-		"key": key,
-		"bid": bid,
-		"uid": uid,
+		"public": public,
+		"bid":    bid,
+		"uid":    uid,
 	}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
@@ -226,7 +226,7 @@ func DeleteKeyPair(key, bid, uid string) error {
 
 	if kp.Public == "" {
 		return &models.ModelError{
-			Msg:     "key not found",
+			Msg:     "public not found",
 			ErrType: models.DocumentNotFound,
 		}
 	}

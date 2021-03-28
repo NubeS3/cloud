@@ -94,7 +94,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, accessKey)
 		})
-		ar.POST("/create", func(c *gin.Context) {
+		ar.POST("/", func(c *gin.Context) {
 			type createAKeyData struct {
 				BucketId    string    `json:"bucket_id"`
 				ExpiredDate time.Time `json:"expired_date"`
@@ -131,7 +131,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res.Key)
 		})
-		ar.DELETE("/delete/:bucket_id/:access_key", func(c *gin.Context) {
+		ar.DELETE("/:bucket_id/:access_key", func(c *gin.Context) {
 			key := c.Param("access_key")
 			bucketId := c.Param("bucket_id")
 

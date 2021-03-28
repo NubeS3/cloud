@@ -17,9 +17,10 @@ type Folder struct {
 }
 
 type Child struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	IsHidden bool   `json:"is_hidden"`
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
@@ -83,9 +84,10 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 
 	doc.Id = meta.Key
 	_, err = AppendChildToFolderById(parent.Id, Child{
-		Id:   doc.Id,
-		Name: doc.Name,
-		Type: "folder",
+		Id:       doc.Id,
+		Name:     doc.Name,
+		Type:     "folder",
+		IsHidden: false,
 	})
 
 	if err != nil {
@@ -98,11 +100,12 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFile(fid, fname, parentId string) (*Folder, error) {
+func InsertFile(fid, fname, parentId string, isHidden bool) (*Folder, error) {
 	f, err := AppendChildToFolderById(parentId, Child{
-		Id:   fid,
-		Name: fname,
-		Type: "file",
+		Id:       fid,
+		Name:     fname,
+		Type:     "file",
+		IsHidden: isHidden,
 	})
 	if err != nil {
 		return nil, &models.ModelError{
@@ -186,7 +189,7 @@ func MoveFolderById(targetId string, toId string) (*Folder, error) {
 		}
 	}
 
-	oldParentPath, _ := ultis.GetParentPath(target.Fullpath)
+	oldParentPath := ultis.GetParentPath(target.Fullpath)
 
 	target, err = UpdateFullPath(targetId, to.Fullpath)
 	if err != nil {

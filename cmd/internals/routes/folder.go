@@ -143,7 +143,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder.Children)
 		})
 
-		ar.GET("/child/all/:full_path", func(c *gin.Context) {
+		ar.GET("/child/all/*full_path", func(c *gin.Context) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
@@ -178,6 +178,7 @@ func FolderRoutes(r *gin.Engine) {
 				})
 				return
 			}
+
 			c.JSON(http.StatusOK, folder.Children)
 		})
 	}
