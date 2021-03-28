@@ -46,11 +46,11 @@ func StandardizedPath(path string, isBucketFolder bool) string {
 		}
 	}
 
-	s = s[:len(s)-1]
-
 	if isBucketFolder {
 		s = "/" + s
 	}
+
+	s = s[:len(s)-1]
 
 	return s
 }

@@ -75,6 +75,64 @@ func FileRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
+		acr.GET("/hidden/all", func(c *gin.Context) {
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			key, ok := c.Get("accessKey")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/hidden/all:",
+					"Unknown Error")
+				return
+			}
+			accessKey := key.(*arango.AccessKey)
+			var isUploadPerm bool
+			for _, perm := range accessKey.Permissions {
+				if perm == "GetFileListHidden" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			res, err := arango.FindAllMetadataByBid(accessKey.BucketId, limit, offset)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/hidden/all:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
 		acr.POST("/upload", func(c *gin.Context) {
 			key, ok := c.Get("accessKey")
 			if !ok {
@@ -245,6 +303,78 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 		})
+
+		acr.POST("/toggle/hidden", func(c *gin.Context) {
+			qIsHidden := c.DefaultQuery("hidden", "false")
+			qFid := c.DefaultQuery("fid", "")
+
+			fm, err := arango.FindMetadataById(qFid)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("find file failed at /files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			key, ok := c.Get("accessKey")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/toggle/hidden:",
+					"Unknown Error")
+				return
+			}
+			accessKey := key.(*arango.AccessKey)
+			var isUploadPerm bool
+			for _, perm := range accessKey.Permissions {
+				if perm == "MarkHidden" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			if accessKey.BucketId != fm.BucketId {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			isHidden, err := strconv.ParseBool(qIsHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("parse failed at /files/toggle/hidden:",
+					"File Error")
+				return
+			}
+			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("toggle failed at /files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, file)
+		})
 	}
 
 	ar := r.Group("/auth/files", middlewares.UserAuthenticate)
@@ -323,6 +453,93 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			res, err := arango.FindMetadataByBid(bid, limit, offset)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		ar.GET("/hidden/all", func(c *gin.Context) {
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+			bid := c.DefaultQuery("bucketId", "")
+			if bid == "" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "missing bid",
+				})
+
+				return
+			}
+
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+							"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+					"Db Error")
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
+					"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			res, err := arango.FindAllMetadataByBid(bid, limit, offset)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -639,6 +856,92 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 		})
+
+		ar.POST("/toggle/hidden", func(c *gin.Context) {
+			qIsHidden := c.DefaultQuery("hidden", "false")
+			qFid := c.DefaultQuery("fid", "")
+
+			fm, err := arango.FindMetadataById(qFid)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("find file failed at auth/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			bucket, err := arango.FindBucketById(fm.BucketId)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+							"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+					"Db Error")
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+					"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			isHidden, err := strconv.ParseBool(qIsHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("parse failed at auth/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("toggle failed at auth/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, file)
+		})
 	}
 
 	kpr := r.Group("/signed/files", middlewares.CheckSigned)
@@ -695,6 +998,65 @@ func FileRoutes(r *gin.Engine) {
 				})
 
 				_ = nats.SendErrorEvent(err.Error()+" at /signed/files/all:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		kpr.GET("/hidden/all", func(c *gin.Context) {
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at /signed/files/all:",
+					"Unknown Error")
+				return
+			}
+			keyPair := key.(*arango.KeyPair)
+
+			var isUploadPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "GetFileListHidden" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			res, err := arango.FindAllMetadataByBid(keyPair.BucketId, limit, offset)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/hidden/all:",
 					"Db Error")
 				return
 			}
@@ -871,6 +1233,79 @@ func FileRoutes(r *gin.Engine) {
 					"File Error")
 				return
 			}
+		})
+
+		kpr.POST("/toggle/hidden", func(c *gin.Context) {
+			qIsHidden := c.DefaultQuery("hidden", "false")
+			qFid := c.DefaultQuery("fid", "")
+
+			fm, err := arango.FindMetadataById(qFid)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("find file failed at /signed/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at /signed/files/all:",
+					"Unknown Error")
+				return
+			}
+			keyPair := key.(*arango.KeyPair)
+
+			var isUploadPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "MarkHidden" {
+					isUploadPerm = true
+					break
+				}
+			}
+
+			if !isUploadPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "not have permission",
+				})
+				return
+			}
+
+			if keyPair.BucketId != fm.BucketId {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			isHidden, err := strconv.ParseBool(qIsHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("parse failed at /signed/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("toggle failed at /signed/files/toggle/hidden:",
+					"File Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, file)
 		})
 	}
 }
