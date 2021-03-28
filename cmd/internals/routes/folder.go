@@ -178,6 +178,7 @@ func FolderRoutes(r *gin.Engine) {
 				})
 				return
 			}
+
 			c.JSON(http.StatusOK, folder.Children)
 		})
 	}
