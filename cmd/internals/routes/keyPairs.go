@@ -94,7 +94,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keyPair)
 		})
-		ar.POST("/create", func(c *gin.Context) {
+		ar.POST("/", func(c *gin.Context) {
 			type createKeyPairData struct {
 				BucketId    string    `json:"bucket_id"`
 				ExpiredDate time.Time `json:"expired_date"`
@@ -134,34 +134,34 @@ func KeyPairsRoutes(r *gin.Engine) {
 				"private_key": res.Private,
 			})
 
-			ar.DELETE("/delete/:bucket_id/:public_key", func(c *gin.Context) {
-				key := c.Param("public_key")
-				bucketId := c.Param("bucket_id")
+		})
+		ar.DELETE("/:bucket_id/:public_key", func(c *gin.Context) {
+			key := c.Param("public_key")
+			bucketId := c.Param("bucket_id")
 
-				uid, ok := c.Get("uid")
-				if !ok {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": "something went wrong",
-					})
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
 
-					_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
-						"Unknown Error")
-					return
-				}
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
+					"Unknown Error")
+				return
+			}
 
-				if err := arango.DeleteKeyPair(key, bucketId, uid.(string)); err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": "something went wrong",
-					})
+			if err := arango.RemoveKeyPair(key, bucketId, uid.(string)); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
 
-					_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
-						"Db Error")
+				_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
+					"Db Error")
 
-					return
-				}
+				return
+			}
 
-				c.JSON(http.StatusOK, key)
-			})
+			c.JSON(http.StatusOK, key)
 		})
 	}
 }

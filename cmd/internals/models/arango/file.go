@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
-	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
 	"io"
 	"time"
@@ -49,8 +48,7 @@ func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
 	uploadedTime := time.Time{}
-	standardizedPath := ultis.StandardizedPath(path, true)
-	f, err := FindFolderByFullpath(standardizedPath)
+	f, err := FindFolderByFullpath(path)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "folder not found",
@@ -61,7 +59,7 @@ func saveFileMetadata(fid string, bid string,
 	doc := fileMetadata{
 		FileId:       fid,
 		BucketId:     bid,
-		Path:         standardizedPath,
+		Path:         path,
 		Name:         name,
 		ContentType:  contentType,
 		Size:         size,
@@ -83,7 +81,7 @@ func saveFileMetadata(fid string, bid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Id)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id, isHidden)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
@@ -107,52 +105,19 @@ func saveFileMetadata(fid string, bid string,
 	}, nil
 }
 
-func FindMetadataByBid(bid string, limit int64, offset int64) ([]FileMetadata, error) {
+func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) ([]FileMetadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
-		"AND fm.is_hidden == false LIMIT @offset, @limit RETURN fm"
-	bindVars := map[string]interface{}{
-		"bid":    bid,
-		"offset": offset,
-		"limit":  limit,
+	var query string
+	if showHidden {
+		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
+			"LIMIT @offset, @limit RETURN fm"
+	} else {
+		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
+			"AND fm.is_hidden == false LIMIT @offset, @limit RETURN fm"
 	}
 
-	fileMetadatas := []FileMetadata{}
-	fileMetadata := FileMetadata{}
-
-	cursor, err := arangoDb.Query(ctx, query, bindVars)
-	if err != nil {
-		return nil, &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
-	defer cursor.Close()
-
-	for {
-		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
-		if driver.IsNoMoreDocuments(err) {
-			break
-		} else if err != nil {
-			return nil, &models.ModelError{
-				Msg:     err.Error(),
-				ErrType: models.DbError,
-			}
-		}
-		fileMetadata.Id = meta.Key
-		fileMetadatas = append(fileMetadatas, fileMetadata)
-	}
-
-	return fileMetadatas, nil
-}
-
-func FindAllMetadataByBid(bid string, limit int64, offset int64) ([]FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid LIMIT @offset, @limit RETURN fm"
 	bindVars := map[string]interface{}{
 		"bid":    bid,
 		"offset": offset,
@@ -234,6 +199,13 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 			DeletedDate:  fm.DeletedDate,
 			UploadedDate: fm.UploadedDate,
 			ExpiredDate:  fm.ExpiredDate,
+		}
+	}
+
+	if retMeta.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "not found",
+			ErrType: models.NotFound,
 		}
 	}
 
@@ -330,7 +302,7 @@ func SaveFile(reader io.Reader, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, ttl time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
-	bucket, err := FindBucketById(bid)
+	_, err := FindBucketById(bid)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -342,11 +314,16 @@ func SaveFile(reader io.Reader, bid string,
 		ttl = time.Hour * 24 * 365 * 10
 	}
 
-	//CHECK PATH
-
 	//CHECK DUP FILE NAME
+	_, err = FindMetadataByFilename(path, name, bid)
+	if err == nil {
+		return nil, &models.ModelError{
+			Msg:     "duplicate file",
+			ErrType: models.Duplicated,
+		}
+	}
 
-	meta, err := seaweedfs.UploadFile(bucket.Name, path, name, size, reader)
+	meta, err := seaweedfs.UploadFile(name, size, reader)
 	if err != nil {
 		return nil, err
 	}

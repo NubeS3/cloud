@@ -55,7 +55,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		ar.POST("/create", func(c *gin.Context) {
+		ar.POST("/", func(c *gin.Context) {
 			type createBucket struct {
 				Name   string `json:"name" binding:"required"`
 				Region string `json:"region" binding:"required"`
@@ -101,7 +101,7 @@ func BucketRoutes(r *gin.Engine) {
 			}
 			c.JSON(http.StatusOK, bucket)
 		})
-		ar.DELETE("/delete/:bucket_id", middlewares.UserAuthenticate, func(c *gin.Context) {
+		ar.DELETE("/:bucket_id", middlewares.UserAuthenticate, func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
