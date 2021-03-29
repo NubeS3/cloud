@@ -459,3 +459,43 @@ func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
 
 	return &folder, nil
 }
+
+func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) (*Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @path LIMIT 1 " +
+		"LET alterL = REPLACE_NTH(f.children, POSITION(f.children, { name: @childName }, true),  @newChild) " +
+		"UPDATE f WITH { children: alterL } IN folders RETURN NEW"
+	bindVars := map[string]interface{}{
+		"path":      path,
+		"childName": name,
+		"newChild": Child{
+			Id:       fid,
+			Name:     name,
+			Type:     "file",
+			IsHidden: hiddenStatus,
+		},
+	}
+
+	folder := Folder{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		_, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return &folder, nil
+}

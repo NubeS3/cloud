@@ -13,7 +13,7 @@ import (
 
 func TestRoute(r *gin.Engine) {
 	r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
-		err := nats.SendEmailEvent("nhokbm13@gmail.com", "lu123", "123456", time.Now().Add(time.Minute*5))
+		err := nats.SendEmailEvent("nguyenduongtri0503@gmail.com", "lu123", "123456", time.Now().Add(time.Minute*5))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return
