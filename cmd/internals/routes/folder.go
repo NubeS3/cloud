@@ -56,7 +56,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
-		ar.POST("/folder", func(c *gin.Context) {
+		ar.POST("/", func(c *gin.Context) {
 			type insertFolder struct {
 				Name       string `json:"name"`
 				ParentPath string `json:"parent_path"`
@@ -143,7 +143,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder.Children)
 		})
 
-		ar.GET("/child/all/:full_path", func(c *gin.Context) {
+		ar.GET("/child/all/*full_path", func(c *gin.Context) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
@@ -178,7 +178,152 @@ func FolderRoutes(r *gin.Engine) {
 				})
 				return
 			}
+
 			c.JSON(http.StatusOK, folder.Children)
+		})
+	}
+
+	acr := r.Group("/accessKey/folders", middlewares.ApiKeyAuthenticate)
+	{
+		acr.GET("/child/all/*full_path", func(c *gin.Context) {
+			queryPath := c.Param("full_path")
+			path := ultis.StandardizedPath(queryPath, true)
+			token := strings.Split(path, "/")
+			bucketName := token[1]
+			if _, err := arango.FindBucketByName(bucketName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			folder, err := arango.FindFolderByFullpath(path)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			key, ok := c.Get("accessKey")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at accessKey/folders/child/all/*full_path:",
+					"Unknown Error")
+				return
+			}
+
+			accessKey := key.(*arango.AccessKey)
+			var isViewHiddenPerm bool
+			for _, perm := range accessKey.Permissions {
+				if perm == "GetFileListHidden" {
+					isViewHiddenPerm = true
+					break
+				}
+			}
+
+			var isViewPerm bool
+			for _, perm := range accessKey.Permissions {
+				if perm == "GetFileList" {
+					isViewPerm = true
+					break
+				}
+			}
+
+			if folder.OwnerId != accessKey.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			if isViewHiddenPerm {
+				var nonHiddenChild []arango.Child
+				for _, f := range folder.Children {
+					if !f.IsHidden {
+						nonHiddenChild = append(nonHiddenChild, f)
+					}
+				}
+
+				c.JSON(http.StatusOK, nonHiddenChild)
+				return
+			} else if isViewPerm {
+				c.JSON(http.StatusOK, folder.Children)
+				return
+			}
+		})
+	}
+
+	kpr := r.Group("/keyPairs", middlewares.CheckSigned)
+	{
+		kpr.GET("/child/all/*full_path", func(c *gin.Context) {
+			queryPath := c.Param("full_path")
+			path := ultis.StandardizedPath(queryPath, true)
+			token := strings.Split(path, "/")
+			bucketName := token[1]
+			if _, err := arango.FindBucketByName(bucketName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			folder, err := arango.FindFolderByFullpath(path)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			key, ok := c.Get("keyPair")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("keyPair not found in authenticate at keyPair/folders/child/all/*full_path:",
+					"Unknown Error")
+				return
+			}
+
+			keyPair := key.(*arango.KeyPair)
+			var isViewHiddenPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "GetFileListHidden" {
+					isViewHiddenPerm = true
+					break
+				}
+			}
+
+			var isViewPerm bool
+			for _, perm := range keyPair.Permissions {
+				if perm == "GetFileList" {
+					isViewPerm = true
+					break
+				}
+			}
+
+			if folder.OwnerId != keyPair.GeneratorUid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			if isViewHiddenPerm {
+				var nonHiddenChild []arango.Child
+				for _, f := range folder.Children {
+					if !f.IsHidden {
+						nonHiddenChild = append(nonHiddenChild, f)
+					}
+				}
+
+				c.JSON(http.StatusOK, nonHiddenChild)
+				return
+			} else if isViewPerm {
+				c.JSON(http.StatusOK, folder.Children)
+				return
+			}
 		})
 	}
 }

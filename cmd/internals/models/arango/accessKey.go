@@ -16,7 +16,7 @@ const (
 	Download
 	DownloadHidden
 	Upload
-	UploadHidden
+	MarkHidden
 	DeleteFile
 	RecoverFile
 )
@@ -28,7 +28,7 @@ func (perm Permission) String() string {
 		"Download",
 		"DownloadHidden",
 		"Upload",
-		"UploadHidden",
+		"MarkHidden",
 		"DeleteFile",
 		"RecoverFile",
 	}[perm]
@@ -46,8 +46,8 @@ func parsePerm(p string) (Permission, error) {
 		return DownloadHidden, nil
 	case "Upload":
 		return Upload, nil
-	case "UploadHidden":
-		return UploadHidden, nil
+	case "MarkHidden":
+		return MarkHidden, nil
 	case "DeleteFile":
 		return DeleteFile, nil
 	case "RecoverFile":

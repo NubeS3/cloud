@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-func AccessKeyRoutes(r *gin.Engine) {
-	ar := r.Group("/auth/accessKey", middlewares.UserAuthenticate)
+func KeyPairsRoutes(r *gin.Engine) {
+	ar := r.Group("/auth/keyPairs", middlewares.UserAuthenticate)
 	{
 		ar.GET("/all/:bucket_id", func(c *gin.Context) {
 			bucketId := c.Param("bucket_id")
@@ -41,26 +41,26 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/all:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at keyPairs/buckets/all:",
 					"Unknown Error")
 				return
 			}
 
-			accessKeys, err := arango.FindAccessKeyByUidBid(uid.(string), bucketId, iLimit, iOffset)
+			keyPairs, err := arango.FindKeyByUidBid(uid.(string), bucketId, iLimit, iOffset)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+"at /buckets/all:",
+				_ = nats.SendErrorEvent(err.Error()+"at keyPairs/buckets/all:",
 					"Db Error")
 				return
 			}
 
-			c.JSON(http.StatusOK, accessKeys)
+			c.JSON(http.StatusOK, keyPairs)
 		})
-		ar.GET("/info/:access_key", func(c *gin.Context) {
-			key := c.Param("access_key")
+		ar.GET("/info/:public_key", func(c *gin.Context) {
+			key := c.Param("public_key")
 
 			uid, ok := c.Get("uid")
 			if !ok {
@@ -68,23 +68,23 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/info/:public_key:",
 					"Unknown Error")
 				return
 			}
 
-			accessKey, err := arango.FindAccessKeyByKey(key)
+			keyPair, err := arango.FindKeyPairByPublic(key)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
+				_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/info/:public_key:",
 					"Db Error")
 				return
 			}
 
-			if accessKey.Uid != uid.(string) {
+			if keyPair.GeneratorUid != uid.(string) {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "invalid user ownership",
 				})
@@ -92,16 +92,16 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, accessKey)
+			c.JSON(http.StatusOK, keyPair)
 		})
 		ar.POST("/", func(c *gin.Context) {
-			type createAKeyData struct {
+			type createKeyPairData struct {
 				BucketId    string    `json:"bucket_id"`
 				ExpiredDate time.Time `json:"expired_date"`
 				Permissions []string  `json:"permissions"`
 			}
 
-			var keyData createAKeyData
+			var keyData createKeyPairData
 			if err := c.ShouldBind(&keyData); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -115,12 +115,12 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/create:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/create:",
 					"Unknown Error")
 				return
 			}
 
-			res, err := arango.GenerateAccessKey(keyData.BucketId, uid.(string), keyData.Permissions, keyData.ExpiredDate)
+			res, err := arango.GenerateKeyPair(keyData.BucketId, uid.(string), keyData.ExpiredDate, keyData.Permissions)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -129,10 +129,14 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, res.Key)
+			c.JSON(http.StatusOK, gin.H{
+				"public_key":  res.Public,
+				"private_key": res.Private,
+			})
+
 		})
-		ar.DELETE("/:bucket_id/:access_key", func(c *gin.Context) {
-			key := c.Param("access_key")
+		ar.DELETE("/:bucket_id/:public_key", func(c *gin.Context) {
+			key := c.Param("public_key")
 			bucketId := c.Param("bucket_id")
 
 			uid, ok := c.Get("uid")
@@ -141,17 +145,17 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/delete:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
 					"Unknown Error")
 				return
 			}
 
-			if err := arango.DeleteAccessKey(key, bucketId, uid.(string)); err != nil {
+			if err := arango.RemoveKeyPair(key, bucketId, uid.(string)); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /accessKeys/delete:",
+				_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
 					"Db Error")
 
 				return

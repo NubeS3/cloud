@@ -17,9 +17,10 @@ type Folder struct {
 }
 
 type Child struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
+	Id       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	IsHidden bool   `json:"is_hidden"`
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
@@ -83,9 +84,10 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 
 	doc.Id = meta.Key
 	_, err = AppendChildToFolderById(parent.Id, Child{
-		Id:   doc.Id,
-		Name: doc.Name,
-		Type: "folder",
+		Id:       doc.Id,
+		Name:     doc.Name,
+		Type:     "folder",
+		IsHidden: false,
 	})
 
 	if err != nil {
@@ -98,11 +100,12 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFile(fid, fname, parentId string) (*Folder, error) {
+func InsertFile(fid, fname, parentId string, isHidden bool) (*Folder, error) {
 	f, err := AppendChildToFolderById(parentId, Child{
-		Id:   fid,
-		Name: fname,
-		Type: "file",
+		Id:       fid,
+		Name:     fname,
+		Type:     "file",
+		IsHidden: isHidden,
 	})
 	if err != nil {
 		return nil, &models.ModelError{
@@ -186,7 +189,7 @@ func MoveFolderById(targetId string, toId string) (*Folder, error) {
 		}
 	}
 
-	oldParentPath, _ := ultis.GetParentPath(target.Fullpath)
+	oldParentPath := ultis.GetParentPath(target.Fullpath)
 
 	target, err = UpdateFullPath(targetId, to.Fullpath)
 	if err != nil {
@@ -220,7 +223,7 @@ func UpdateFullPath(id, newParentPath string) (*Folder, error) {
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
-		"UPDATE fol WITH { fullpath: @newParentPath + fol.name } IN fol RETURN NEW"
+		"UPDATE fol WITH { fullpath: @newParentPath + fol.name } IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":            id,
 		"newParentPath": newParentPath,
@@ -252,7 +255,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
+	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"path":  path,
 		"child": child,
@@ -294,7 +297,7 @@ func RemoveChildOfFolder(id string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} RETURN NEW"
+	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":    id,
 		"child": child,
@@ -433,6 +436,46 @@ func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
 	bindVars := map[string]interface{}{
 		"path": toPath,
 		"new":  child,
+	}
+
+	folder := Folder{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		_, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+	}
+
+	return &folder, nil
+}
+
+func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) (*Folder, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @path LIMIT 1 " +
+		"LET alterL = REPLACE_NTH(f.children, POSITION(f.children, { name: @childName }, true),  @newChild) " +
+		"UPDATE f WITH { children: alterL } IN folders RETURN NEW"
+	bindVars := map[string]interface{}{
+		"path":      path,
+		"childName": name,
+		"newChild": Child{
+			Id:       fid,
+			Name:     name,
+			Type:     "file",
+			IsHidden: hiddenStatus,
+		},
 	}
 
 	folder := Folder{}
