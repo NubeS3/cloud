@@ -394,13 +394,13 @@ func GetFileByFidIgnoreQueryMetadata(fid string, callback func(reader io.Reader)
 	return nil
 }
 
-func ToggleHidden(fid string, isHidden bool) (*FileMetadata, error) {
+func ToggleHidden(fullpath string, isHidden bool) (*FileMetadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR fm IN fileMetadata FILTER fm._key == @fid UPDATE fm WITH { is_hidden: @isHidden} IN fileMetadata RETURN NEW"
+	query := "FOR fm IN fileMetadata FILTER fm.path == @fullpath UPDATE fm WITH { is_hidden: @isHidden} IN fileMetadata RETURN NEW"
 	bindVars := map[string]interface{}{
-		"fid":      fid,
+		"fullpath": fullpath,
 		"isHidden": isHidden,
 	}
 
@@ -431,6 +431,15 @@ func ToggleHidden(fid string, isHidden bool) (*FileMetadata, error) {
 		return nil, &models.ModelError{
 			Msg:     "folder not found",
 			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	_, err = UpdateHiddenStatusOfFolderChild(fileMetadata.Path, fileMetadata.Id,
+		fileMetadata.Name, fileMetadata.IsHidden)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
 		}
 	}
 

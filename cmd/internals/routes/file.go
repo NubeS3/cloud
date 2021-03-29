@@ -46,15 +46,15 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 			accessKey := key.(*arango.AccessKey)
-			var isUploadPerm bool
+			var isGetFileListPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "GetFileList" {
-					isUploadPerm = true
+					isGetFileListPerm = true
 					break
 				}
 			}
 
-			if !isUploadPerm {
+			if !isGetFileListPerm {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "not have permission",
 				})
@@ -104,15 +104,15 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 			accessKey := key.(*arango.AccessKey)
-			var isUploadPerm bool
+			var isGetFileListHiddenPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "GetFileListHidden" {
-					isUploadPerm = true
+					isGetFileListHiddenPerm = true
 					break
 				}
 			}
 
-			if !isUploadPerm {
+			if !isGetFileListHiddenPerm {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "not have permission",
 				})
@@ -468,18 +468,8 @@ func FileRoutes(r *gin.Engine) {
 
 		acr.POST("/hidden", func(c *gin.Context) {
 			qIsHidden := c.DefaultQuery("hidden", "false")
-			qFid := c.DefaultQuery("fid", "")
-
-			fm, err := arango.FindMetadataById(qFid)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				_ = nats.SendErrorEvent("find file failed at /files/toggle/hidden:",
-					"File Error")
-				return
-			}
+			qName := c.DefaultQuery("name", "")
+			qPath := c.DefaultQuery("path", "")
 
 			key, ok := c.Get("accessKey")
 			if !ok {
@@ -487,23 +477,35 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/toggle/hidden:",
+				_ = nats.SendErrorEvent("accessKey not found in authenticate at /accessKey/files/hidden:",
 					"Unknown Error")
 				return
 			}
 			accessKey := key.(*arango.AccessKey)
-			var isUploadPerm bool
+
+			var isMarkHiddenPerm bool
 			for _, perm := range accessKey.Permissions {
 				if perm == "MarkHidden" {
-					isUploadPerm = true
+					isMarkHiddenPerm = true
 					break
 				}
 			}
 
-			if !isUploadPerm {
+			if !isMarkHiddenPerm {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "not have permission",
 				})
+				return
+			}
+
+			fm, err := arango.FindMetadataByFilename(qPath, qName, accessKey.BucketId)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("find file failed at /accessKey/files/hidden:",
+					"File Error")
 				return
 			}
 
@@ -520,17 +522,17 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("parse failed at /files/toggle/hidden:",
+				_ = nats.SendErrorEvent("parse failed at /accessKey/files/hidden:",
 					"File Error")
 				return
 			}
-			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			file, err := arango.ToggleHidden(fm.Path, isHidden)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("toggle failed at /files/toggle/hidden:",
+				_ = nats.SendErrorEvent("toggle failed at /accessKey/files/hidden:",
 					"File Error")
 				return
 			}
@@ -934,9 +936,11 @@ func FileRoutes(r *gin.Engine) {
 
 		ar.POST("/hidden", func(c *gin.Context) {
 			qIsHidden := c.DefaultQuery("hidden", "false")
-			qFid := c.DefaultQuery("fid", "")
+			qName := c.DefaultQuery("name", "")
+			qPath := c.DefaultQuery("path", "")
+			qBid := c.DefaultQuery("bucketId", "")
 
-			fm, err := arango.FindMetadataById(qFid)
+			fm, err := arango.FindMetadataByFilename(qPath, qName, qBid)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -1004,7 +1008,7 @@ func FileRoutes(r *gin.Engine) {
 					"File Error")
 				return
 			}
-			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			file, err := arango.ToggleHidden(fm.Path, isHidden)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -1451,18 +1455,8 @@ func FileRoutes(r *gin.Engine) {
 
 		kpr.POST("/hidden", func(c *gin.Context) {
 			qIsHidden := c.DefaultQuery("hidden", "false")
-			qFid := c.DefaultQuery("fid", "")
-
-			fm, err := arango.FindMetadataById(qFid)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				_ = nats.SendErrorEvent("find file failed at /signed/files/toggle/hidden:",
-					"File Error")
-				return
-			}
+			qName := c.DefaultQuery("name", "")
+			qPath := c.DefaultQuery("path", "")
 
 			key, ok := c.Get("keyPair")
 			if !ok {
@@ -1476,18 +1470,29 @@ func FileRoutes(r *gin.Engine) {
 			}
 			keyPair := key.(*arango.KeyPair)
 
-			var isUploadPerm bool
+			var isMarkHiddenPerm bool
 			for _, perm := range keyPair.Permissions {
 				if perm == "MarkHidden" {
-					isUploadPerm = true
+					isMarkHiddenPerm = true
 					break
 				}
 			}
 
-			if !isUploadPerm {
+			if !isMarkHiddenPerm {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "not have permission",
 				})
+				return
+			}
+
+			fm, err := arango.FindMetadataByFilename(qPath, qName, keyPair.BucketId)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("find file failed at /signed/files/hidden:",
+					"File Error")
 				return
 			}
 
@@ -1504,17 +1509,17 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("parse failed at /signed/files/toggle/hidden:",
+				_ = nats.SendErrorEvent("parse failed at /signed/files/hidden:",
 					"File Error")
 				return
 			}
-			file, err := arango.ToggleHidden(fm.Id, isHidden)
+			file, err := arango.ToggleHidden(fm.Path, isHidden)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("toggle failed at /signed/files/toggle/hidden:",
+				_ = nats.SendErrorEvent("toggle failed at /signed/files/hidden:",
 					"File Error")
 				return
 			}
