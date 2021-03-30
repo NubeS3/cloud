@@ -33,7 +33,7 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 		CreatedAt: createdTime,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	bucket, _ := FindBucketByName(name)
@@ -69,7 +69,7 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 }
 
 func FindBucketByName(bname string) (*Bucket, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR b IN buckets FILTER b.name == @bname LIMIT 1 RETURN b"
@@ -111,7 +111,7 @@ func FindBucketByName(bname string) (*Bucket, error) {
 }
 
 func FindBucketById(bid string) (*Bucket, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	bucket := Bucket{}
@@ -136,7 +136,7 @@ func FindBucketById(bid string) (*Bucket, error) {
 }
 
 func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR b IN buckets FILTER b.uid == @uid LIMIT @offset, @limit RETURN b"
@@ -176,7 +176,7 @@ func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 }
 
 func RemoveBucket(uid string, bid string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	bucket, err := FindBucketById(bid)

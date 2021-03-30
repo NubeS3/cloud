@@ -80,7 +80,7 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 		permissions = append(permissions, permission)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	doc := keyPair{
@@ -111,7 +111,7 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 }
 
 func FindKeyByUidBid(uid, bid string, limit, offset int) ([]KeyPair, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR k IN keyPairs FILTER k.bucket_id == @bid AND k.generator_uid == @uid LIMIT @offset, @limit RETURN k"
@@ -151,7 +151,7 @@ func FindKeyByUidBid(uid, bid string, limit, offset int) ([]KeyPair, error) {
 }
 
 func FindKeyPairByPublic(key string) (*KeyPair, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR kp IN keyPairs FILTER kp.public == @key LIMIT 1 RETURN kp"
@@ -192,7 +192,7 @@ func FindKeyPairByPublic(key string) (*KeyPair, error) {
 }
 
 func RemoveKeyPair(public, bid, uid string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR kp IN keyPairs FILTER kp.public == @public AND k.bucket_id == @bid AND k.generator_uid == uid REMOVE k in keyPairs LET removed = OLD RETURN removed"

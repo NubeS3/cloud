@@ -70,7 +70,7 @@ func saveFileMetadata(fid string, bid string,
 		ExpiredDate:  expiredDate,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	meta, err := fileMetadataCol.CreateDocument(ctx, doc)
@@ -106,7 +106,7 @@ func saveFileMetadata(fid string, bid string,
 }
 
 func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) ([]FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	var query string
@@ -154,7 +154,7 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 }
 
 func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name LIMIT 1 RETURN fm"
@@ -213,7 +213,7 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 }
 
 func FindMetadataByFid(fid string) (*FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fm IN fileMetadata FILTER fm.fid == @fid LIMIT 1 RETURN fm"
@@ -263,7 +263,7 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 }
 
 func FindMetadataById(fid string) (*FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	var data fileMetadata
@@ -395,7 +395,7 @@ func GetFileByFidIgnoreQueryMetadata(fid string, callback func(reader io.Reader)
 }
 
 func ToggleHidden(fullpath string, isHidden bool) (*FileMetadata, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fm IN fileMetadata FILTER fm.path == @fullpath UPDATE fm WITH { is_hidden: @isHidden} IN fileMetadata RETURN NEW"

@@ -22,7 +22,7 @@ type Otp struct {
 func GenerateOTP(username string, email string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "UPSERT { username: @username } " +
@@ -98,7 +98,7 @@ func OTPConfirm(uname string, otp string) error {
 }
 
 func FindOTPByUsername(uname string) (*Otp, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR o IN otps FILTER o.username == @uname LIMIT 1 RETURN o"
@@ -126,7 +126,7 @@ func FindOTPByUsername(uname string) (*Otp, error) {
 }
 
 func RemoveOTP(username string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR o IN otps FILTER o.username == @username REMOVE o in otps LET removed = OLD RETURN removed"

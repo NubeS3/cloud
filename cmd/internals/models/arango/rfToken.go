@@ -27,7 +27,7 @@ func GenerateRfToken(uid string) error {
 		CreatedAt:   time.Now(),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	rfToken, _ := FindRfTokenByUid(uid)
@@ -49,7 +49,7 @@ func GenerateRfToken(uid string) error {
 }
 
 func FindRfTokenByUid(uid string) (*RefreshToken, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR r IN rfTokens FILTER r.uid == @uid LIMIT 1 RETURN r"
@@ -99,7 +99,7 @@ func UpdateToken(uid string) (*string, *string, error) {
 	}
 	rfToken := randstr.Hex(8)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR r IN rfTokens FILTER r.uid == @uid " +

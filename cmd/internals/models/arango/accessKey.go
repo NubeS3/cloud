@@ -116,7 +116,7 @@ func GenerateAccessKey(bId string, uid string,
 		permissions = append(permissions, permission)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	doc := accessKey{
