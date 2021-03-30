@@ -72,7 +72,7 @@ func SaveUser(
 		UpdatedAt: createdTime,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	user, _ := FindUserByUsername(username)
@@ -109,7 +109,7 @@ func SaveUser(
 }
 
 func FindUserById(uid string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	user := User{}
@@ -134,7 +134,7 @@ func FindUserById(uid string) (*User, error) {
 }
 
 func FindUserByUsername(uname string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR u IN users FILTER u.username == @uname LIMIT 1 RETURN u"
@@ -170,7 +170,7 @@ func FindUserByUsername(uname string) (*User, error) {
 }
 
 func FindUserByEmail(mail string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR u IN users FILTER u.email == @email LIMIT 1 RETURN u"
@@ -218,7 +218,7 @@ func UpdateUserData(
 	dob time.Time,
 	company string,
 	gender bool) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	user := User{
@@ -249,7 +249,7 @@ func UpdateUserData(
 }
 
 func UpdateActive(uname string, isActive bool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR u IN users FILTER u.username == @uname " +
@@ -306,7 +306,7 @@ func UpdateActive(uname string, isActive bool) error {
 }
 
 func UpdateUserPassword(uid string, password string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
@@ -337,7 +337,7 @@ func UpdateUserPassword(uid string, password string) (*User, error) {
 }
 
 func UpdateBanStatus(uid string, isBan bool) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	user := User{
@@ -364,7 +364,7 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 }
 
 func RemoveUser(uid string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	_, err := userCol.RemoveDocument(ctx, uid)
