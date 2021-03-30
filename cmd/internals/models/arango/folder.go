@@ -39,7 +39,7 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 		Children: []Child{},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	meta, err := folderCol.CreateDocument(ctx, doc)
@@ -71,7 +71,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 		Children: []Child{},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	meta, err := folderCol.CreateDocument(ctx, doc)
@@ -134,7 +134,7 @@ func InsertFileByPath(fid, fname, parentPath string) (*Folder, error) {
 }
 
 func FindFolderByOwnerId(oid string, limit int64, offset int64) ([]Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol.owner_id == @oid LIMIT @offset, @limit RETURN fol"
@@ -219,7 +219,7 @@ func UpdateFullPath(id, newParentPath string) (*Folder, error) {
 		newParentPath = newParentPath + "/"
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
@@ -252,7 +252,7 @@ func UpdateFullPath(id, newParentPath string) (*Folder, error) {
 }
 
 func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
@@ -294,7 +294,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 }
 
 func RemoveChildOfFolder(id string, child Child) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR f IN folders FILTER f._key == @id UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
@@ -336,7 +336,7 @@ func RemoveChildOfFolder(id string, child Child) (*Folder, error) {
 }
 
 func FindFolderById(id string) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	var data Folder
@@ -353,7 +353,7 @@ func FindFolderById(id string) (*Folder, error) {
 }
 
 func FindFolderByFullpath(fullpath string) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR f IN folders FILTER f.fullpath == @fullpath LIMIT 1 RETURN f"
@@ -395,7 +395,7 @@ func FindFolderByFullpath(fullpath string) (*Folder, error) {
 }
 
 func AppendChildToFolderById(toId string, child Child) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol._key == @id " +
@@ -428,7 +428,7 @@ func AppendChildToFolderById(toId string, child Child) (*Folder, error) {
 }
 
 func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR fol IN folders FILTER fol.fullpath == @path " +
@@ -461,7 +461,7 @@ func AppendChildToFolderByPath(toPath string, child Child) (*Folder, error) {
 }
 
 func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) (*Folder, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
 	query := "FOR f IN folders FILTER f.fullpath == @path LIMIT 1 " +

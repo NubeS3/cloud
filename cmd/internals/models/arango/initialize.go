@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const CONTEXT_EXPIRED_TIME = 30
+
 var (
 	arangoConnection arangoDriver.Connection
 	arangoClient     arangoDriver.Client
