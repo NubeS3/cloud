@@ -1,6 +1,9 @@
 package nats
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type mailMessage struct {
 	Otp      string    `json:"otp"`
@@ -10,10 +13,15 @@ type mailMessage struct {
 }
 
 func SendEmailEvent(email, username, otp string, expired time.Time) error {
-	return c.Publish(mailSubj, &mailMessage{
+	jsonData, err := json.Marshal(mailMessage{
 		Otp:      otp,
 		Username: username,
 		To:       email,
 		Exp:      expired,
 	})
+
+	if err != nil {
+		return err
+	}
+	return sc.Publish(mailSubj, jsonData)
 }
