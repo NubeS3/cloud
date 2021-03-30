@@ -1,7 +1,7 @@
 package nats
 
 import (
-	nats "github.com/nats-io/nats.go"
+	stan "github.com/nats-io/stan.go"
 	"github.com/spf13/viper"
 )
 
@@ -12,19 +12,14 @@ const (
 )
 
 var (
-	nc *nats.Conn
-	c  *nats.EncodedConn
+	sc stan.Conn
 )
 
 func InitNats() error {
 	url := viper.GetString("NATS_URL")
 
 	var err error
-	nc, err = nats.Connect("nats://" + url)
-	if err != nil {
-		return err
-	}
-	c, err = nats.NewEncodedConn(nc, nats.JSON_ENCODER)
+	sc, err = stan.Connect("log", "log-1", stan.NatsURL("nats://"+url))
 	if err != nil {
 		return err
 	}
@@ -33,7 +28,7 @@ func InitNats() error {
 }
 
 func CleanUp() {
-	if nc != nil {
-		nc.Close()
+	if sc != nil {
+		_ = sc.Close()
 	}
 }

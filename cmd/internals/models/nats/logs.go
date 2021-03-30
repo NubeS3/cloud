@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"encoding/json"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"time"
 )
@@ -12,11 +13,17 @@ type errLogMessage struct {
 }
 
 func SendErrorEvent(content, t string) error {
-	return c.Publish(errSubj, errLogMessage{
+	jsonData, err := json.Marshal(errLogMessage{
 		Content: content,
 		Type:    t,
 		At:      time.Now(),
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return sc.Publish(errSubj, jsonData)
 }
 
 type fileLog struct {
@@ -32,7 +39,7 @@ type fileLog struct {
 }
 
 func SendUploadFileEvent(metadata arango.FileMetadata) error {
-	return c.Publish(uploadFileSubj, fileLog{
+	jsonData, err := json.Marshal(fileLog{
 		Id:          metadata.Id,
 		FId:         metadata.FileId,
 		Name:        metadata.Name,
@@ -43,10 +50,16 @@ func SendUploadFileEvent(metadata arango.FileMetadata) error {
 		Path:        metadata.Path,
 		IsHidden:    metadata.IsHidden,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return sc.Publish(uploadFileSubj, jsonData)
 }
 
 func SendDownloadFileEvent(metadata arango.FileMetadata) error {
-	return c.Publish(uploadFileSubj, fileLog{
+	jsonData, err := json.Marshal(fileLog{
 		Id:          metadata.Id,
 		FId:         metadata.FileId,
 		Name:        metadata.Name,
@@ -57,4 +70,10 @@ func SendDownloadFileEvent(metadata arango.FileMetadata) error {
 		Path:        metadata.Path,
 		IsHidden:    metadata.IsHidden,
 	})
+
+	if err != nil {
+		return err
+	}
+
+	return sc.Publish(uploadFileSubj, jsonData)
 }
