@@ -15,7 +15,7 @@ require (
 	github.com/mediocregopher/radix/v3 v3.7.0
 	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
 	github.com/nats-io/nats.go v1.10.0
-	github.com/nats-io/stan.go v0.8.3 // indirect
+	github.com/nats-io/stan.go v0.8.3
 	github.com/sendgrid/rest v2.6.2+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/spf13/viper v1.7.1
