@@ -19,7 +19,7 @@ func InitNats() error {
 	url := viper.GetString("NATS_URL")
 
 	var err error
-	sc, err = stan.Connect("log", "nubes3", stan.NatsURL("nats://"+url))
+	sc, err = stan.Connect("nats-streaming", "nubes3", stan.NatsURL("nats://"+url))
 	if err != nil {
 		return err
 	}
