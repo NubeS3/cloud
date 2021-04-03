@@ -240,17 +240,17 @@ func UserRoutes(route *gin.Engine) {
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
-	err := ultis.SendMail(
-		username,
-		email,
-		"Verify email",
-		"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
-			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
-	)
-
-	if err != nil {
-		return err
-	}
+	//err := ultis.SendMail(
+	//	username,
+	//	email,
+	//	"Verify email",
+	//	"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
+	//		"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
+	//)
+	//
+	//if err != nil {
+	//	return err
+	//}
 
 	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }
