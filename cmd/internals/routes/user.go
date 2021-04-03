@@ -240,11 +240,11 @@ func UserRoutes(route *gin.Engine) {
 
 		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, func(c *gin.Context) {
 			type updateUser struct {
-				Firstname string    `json:"firstname"`
-				Lastname  string    `json:"lastname"`
-				Dob       time.Time `json:"dob"`
-				Company   string    `json:"company"`
-				Gender    bool      `json:"gender"`
+				Firstname string    `json:"firstname" binding:"required"`
+				Lastname  string    `json:"lastname" binding:"required"`
+				Dob       time.Time `json:"dob" binding:"required"`
+				Company   string    `json:"company" binding:"required"`
+				Gender    bool      `json:"gender" binding:"required"`
 			}
 
 			var curUpdateUser updateUser
@@ -278,23 +278,29 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, user)
+			c.JSON(http.StatusOK, gin.H{
+				"firstname": user.Firstname,
+				"lastname":  user.Lastname,
+				"dob":       user.Dob,
+				"company":   user.Company,
+				"gender":    user.Gender,
+			})
 		})
 	}
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
-	err := ultis.SendMail(
-		username,
-		email,
-		"Verify email",
-		"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
-			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
-	)
-
-	if err != nil {
-		return err
-	}
+	//err := ultis.SendMail(
+	//	username,
+	//	email,
+	//	"Verify email",
+	//	"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
+	//		"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
+	//)
+	//
+	//if err != nil {
+	//	return err
+	//}
 
 	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }

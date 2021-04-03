@@ -221,25 +221,24 @@ func UpdateUserData(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	isTimeZero := dob.IsZero()
 	updatedTime := time.Now()
 
 	query := "FOR u IN users FILTER u._key == @uid UPDATE u " +
-		"WITH { firstname: CHAR_LENGTH(@firstname) == 0 ? u.firstname : @firstname, " +
-		"lastname: CHAR_LENGTH(@firstname) == 0 ? u.lastname : @lastname, " +
-		"dob: @isTimeZero == true ? u.dob : @dob, " +
-		"company: CHAR_LENGTH(@firstname) == 0 ? u.company : @company, " +
-		"gender: @gender == u.gender ? u.gender : @gender, updated_at: @updatedAt } " +
+		"WITH { firstname: @firstname, " +
+		"lastname: @lastname, " +
+		"dob: @dob, " +
+		"company: @company, " +
+		"gender: @gender, " +
+		"updated_at: @updatedAt } " +
 		"IN users RETURN NEW"
 	bindVars := map[string]interface{}{
-		"uid":        uid,
-		"firstname":  firstname,
-		"lastname":   lastname,
-		"dob":        dob,
-		"isTimeZero": isTimeZero,
-		"company":    company,
-		"gender":     gender,
-		"updatedAt":  updatedTime,
+		"uid":       uid,
+		"firstname": firstname,
+		"lastname":  lastname,
+		"dob":       dob,
+		"company":   company,
+		"gender":    gender,
+		"updatedAt": updatedTime,
 	}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)

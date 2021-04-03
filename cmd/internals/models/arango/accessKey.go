@@ -229,7 +229,7 @@ func DeleteAccessKey(key, bid, uid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR k IN apiKeys FILTER k.key == @key AND k.bucket_id == @bid AND k.uid == uid REMOVE k in apiKeys LET removed = OLD RETURN removed"
+	query := "FOR k IN apiKeys FILTER k.key == @key AND k.bucket_id == @bid AND k.uid == @uid REMOVE k in apiKeys LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"key": key,
 		"bid": bid,

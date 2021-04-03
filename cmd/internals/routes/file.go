@@ -616,7 +616,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 
-			res, err := arango.FindMetadataByBid(bid, limit, offset, false)
+			res, err := arango.FindMetadataByBid(bid, limit, offset, true)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -825,6 +825,121 @@ func FileRoutes(r *gin.Engine) {
 				})
 
 				_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
+					"File Error")
+				return
+			}
+		})
+
+		ar.GET("/download/*fullpath", func(c *gin.Context) {
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bid := c.DefaultQuery("bucketId", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+							"Db Error")
+						return
+					}
+				}
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			if bucket.Name != bucketName {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid bucket name",
+				})
+
+				return
+			}
+
+			fileMeta, err := arango.FindMetadataByFilename(parentPath, fileName, bucket.Id)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "file not found",
+				})
+
+				return
+			}
+
+			err = arango.GetFileByFidIgnoreQueryMetadata(fileMeta.FileId, func(reader io.Reader) error {
+				if fileMeta.BucketId != bucket.Id {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				extraHeaders := map[string]string{
+					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				}
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(*fileMeta)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
 					"File Error")
 				return
 			}
@@ -1353,7 +1468,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("accessKey not found in authenticate at /files/upload:",
+				_ = nats.SendErrorEvent("keypair not found in authenticate at /files/upload:",
 					"Unknown Error")
 				return
 			}
