@@ -6,9 +6,17 @@ import (
 )
 
 const (
-	mailSubj       = "nubes3_mail"
-	errSubj        = "nubes3_err"
-	uploadFileSubj = "nubes3_upload_file"
+	mailSubj              = "nubes3_mail"
+	errSubj               = "nubes3_err"
+	uploadFileSubj        = "nubes3_upload_file"
+	downloadFileSubj      = "nubes3_download_file"
+	stagingFileSubj       = "nubes3_staging_file"
+	uploadFileSuccessSubj = "nubes3_upload_success_file"
+	userSubj              = "nubes3_user"
+	bucketSubj            = "nubes3_bucket"
+	folderSubj            = "nubes3_folder"
+	accessKeySubj         = "nubes3_accessKey"
+	keyPairSubj           = "nubes3_keyPair"
 )
 
 var (

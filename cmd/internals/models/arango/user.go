@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"time"
@@ -90,6 +91,11 @@ func SaveUser(
 			ErrType: models.DbError,
 		}
 	}
+
+	//LOG CREATE USER
+	_ = nats.SendUserEvent(doc.Firstname, doc.Lastname, doc.Username,
+		doc.Pass, doc.Email, doc.Dob, doc.Company, doc.Gender, doc.IsActive, doc.IsBanned,
+		"create")
 
 	return &User{
 		Id:        meta.Key,
@@ -270,6 +276,12 @@ func UpdateUserData(
 			ErrType: models.DocumentNotFound,
 		}
 	}
+
+	//LOG UPDATE USER
+	_ = nats.SendUserEvent(user.Firstname, user.Lastname, user.Username,
+		user.Pass, user.Email, user.Dob, user.Company, user.Gender, user.IsActive, user.IsBanned,
+		"update")
+
 	return &user, err
 }
 

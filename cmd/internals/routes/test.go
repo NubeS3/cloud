@@ -22,6 +22,17 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, "sent")
 	})
 
+	r.DELETE("/test/user/:uid", func(c *gin.Context) {
+		uid := c.Param("uid")
+		err := arango.RemoveUser(uid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, "deleted")
+	})
+
 	r.GET("/test/nats/sendError", func(c *gin.Context) {
 		err := nats.SendErrorEvent("test error", "test")
 
