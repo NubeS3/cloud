@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
 	"time"
@@ -10,7 +11,7 @@ import (
 
 type Folder struct {
 	Id       string  `json:"-"`
-	OwnerId  string  `owner_id`
+	OwnerId  string  `json:"owner_id"`
 	Name     string  `json:"name"`
 	Fullpath string  `json:"fullpath"`
 	Children []Child `json:"children"`
@@ -51,6 +52,9 @@ func InsertBucketFolder(bucketName string) (*Folder, error) {
 	}
 
 	doc.Id = meta.Key
+
+	////LOG CREATE BUCKET FOLDER
+	//_ = nats.SendFolderEvent(doc.Id, doc.OwnerId, doc.Name, doc.Fullpath, "create_root")
 
 	return doc, nil
 }
@@ -96,6 +100,9 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 			ErrType: models.DocumentNotFound,
 		}
 	}
+
+	//LOG CREATE BUCKET FOLDER
+	_ = nats.SendFolderEvent(doc.Id, doc.OwnerId, doc.Name, doc.Fullpath, "create")
 
 	return doc, nil
 }

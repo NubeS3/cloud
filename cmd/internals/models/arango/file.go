@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"github.com/arangodb/go-driver"
 	"io"
@@ -47,7 +48,7 @@ type fileMetadata struct {
 func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
-	uploadedTime := time.Time{}
+	uploadedTime := time.Now()
 	f, err := FindFolderByFullpath(path)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -88,6 +89,10 @@ func saveFileMetadata(fid string, bid string,
 			ErrType: models.DbError,
 		}
 	}
+
+	//LOG UPLOAD SUCCESS
+	_ = nats.SendUploadSuccessFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size,
+		doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
 
 	return &FileMetadata{
 		Id:           meta.Key,
@@ -322,6 +327,9 @@ func SaveFile(reader io.Reader, bid string,
 			ErrType: models.Duplicated,
 		}
 	}
+
+	//LOG STAGING
+	_ = nats.SendStagingFileEvent(name, size, bid, contentType, path, isHidden)
 
 	meta, err := seaweedfs.UploadFile(name, size, reader)
 	if err != nil {

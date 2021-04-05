@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"time"
@@ -51,7 +52,7 @@ func SaveUser(
 	company string,
 	gender bool,
 ) (*User, error) {
-	createdTime := time.Time{}
+	createdTime := time.Now()
 	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
 	if err != nil {
 		return nil, err
@@ -90,6 +91,11 @@ func SaveUser(
 			ErrType: models.DbError,
 		}
 	}
+
+	//LOG CREATE USER
+	_ = nats.SendUserEvent(doc.Firstname, doc.Lastname, doc.Username,
+		doc.Pass, doc.Email, doc.Dob, doc.Company, doc.Gender, doc.IsActive, doc.IsBanned,
+		"create")
 
 	return &User{
 		Id:        meta.Key,
@@ -221,30 +227,61 @@ func UpdateUserData(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	user := User{
-		Firstname: firstname,
-		Lastname:  lastname,
-		Dob:       dob,
-		Company:   company,
-		Gender:    gender,
+	updatedTime := time.Now()
+
+	query := "FOR u IN users FILTER u._key == @uid UPDATE u " +
+		"WITH { firstname: @firstname, " +
+		"lastname: @lastname, " +
+		"dob: @dob, " +
+		"company: @company, " +
+		"gender: @gender, " +
+		"updated_at: @updatedAt } " +
+		"IN users RETURN NEW"
+	bindVars := map[string]interface{}{
+		"uid":       uid,
+		"firstname": firstname,
+		"lastname":  lastname,
+		"dob":       dob,
+		"company":   company,
+		"gender":    gender,
+		"updatedAt": updatedTime,
 	}
 
-	meta, err := userCol.UpdateDocument(ctx, uid, &user)
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return nil, &models.ModelError{
-				Msg:     "user not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
 		}
 	}
+	defer cursor.Close()
 
-	user.Id = meta.Key
+	user := User{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		user.Id = meta.Key
+	}
+
+	if user.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	//LOG UPDATE USER
+	_ = nats.SendUserEvent(user.Firstname, user.Lastname, user.Username,
+		user.Pass, user.Email, user.Dob, user.Company, user.Gender, user.IsActive, user.IsBanned,
+		"update")
+
 	return &user, err
 }
 

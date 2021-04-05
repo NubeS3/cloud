@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	"github.com/google/uuid"
 	"time"
@@ -100,6 +101,14 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 		}
 	}
 
+	//LOG CREATE KEYPAIR
+	var perm []string
+	for _, p := range doc.Permissions {
+		perm = append(perm, p.String())
+	}
+	_ = nats.SendKeyPairEvent(doc.Public, doc.Private, doc.BucketId, doc.ExpiredDate,
+		perm, doc.GeneratorUid, "create")
+
 	return &KeyPair{
 		Public:       doc.Public,
 		Private:      doc.Private,
@@ -195,7 +204,7 @@ func RemoveKeyPair(public, bid, uid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR kp IN keyPairs FILTER kp.public == @public AND k.bucket_id == @bid AND k.generator_uid == uid REMOVE k in keyPairs LET removed = OLD RETURN removed"
+	query := "FOR kp IN keyPairs FILTER kp.public == @public AND kp.bucket_id == @bid AND kp.generator_uid == @uid REMOVE kp in keyPairs LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"public": public,
 		"bid":    bid,
@@ -230,6 +239,14 @@ func RemoveKeyPair(public, bid, uid string) error {
 			ErrType: models.DocumentNotFound,
 		}
 	}
+
+	//LOG DELETE KEYPAIR
+	var perm []string
+	for _, p := range kp.Permissions {
+		perm = append(perm, p.String())
+	}
+	_ = nats.SendKeyPairEvent(kp.Public, kp.Private, kp.BucketId, kp.ExpiredDate,
+		perm, kp.GeneratorUid, "delete")
 
 	return nil
 }

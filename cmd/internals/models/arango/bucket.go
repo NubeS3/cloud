@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	"time"
 )
@@ -25,7 +26,7 @@ type bucket struct {
 }
 
 func InsertBucket(uid string, name string, region string) (*Bucket, error) {
-	createdTime := time.Time{}
+	createdTime := time.Now()
 	doc := bucket{
 		Uid:       uid,
 		Name:      name,
@@ -58,6 +59,9 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 			ErrType: models.DbError,
 		}
 	}
+
+	//LOG CREATE BUCKET
+	_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region, "create")
 
 	return &Bucket{
 		Id:        meta.Key,
@@ -207,6 +211,9 @@ func RemoveBucket(uid string, bid string) error {
 			ErrType: models.DbError,
 		}
 	}
+
+	//LOG CREATE BUCKET
+	_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region, "delete")
 
 	return nil
 }

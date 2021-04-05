@@ -3,6 +3,7 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	"github.com/m1ome/randstr"
 	"time"
@@ -135,6 +136,14 @@ func GenerateAccessKey(bId string, uid string,
 		}
 	}
 
+	//LOG CREATE ACCESS KEY
+	var perm []string
+	for _, p := range doc.Permissions {
+		perm = append(perm, p.String())
+	}
+	_ = nats.SendAccessKeyEvent(doc.Key, doc.BucketId, doc.ExpiredDate,
+		perm, doc.Uid, "create")
+
 	return &AccessKey{
 		Key:         key,
 		BucketId:    bId,
@@ -229,7 +238,7 @@ func DeleteAccessKey(key, bid, uid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR k IN apiKeys FILTER k.key == @key AND k.bucket_id == @bid AND k.uid == uid REMOVE k in apiKeys LET removed = OLD RETURN removed"
+	query := "FOR k IN apiKeys FILTER k.key == @key AND k.bucket_id == @bid AND k.uid == @uid REMOVE k in apiKeys LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"key": key,
 		"bid": bid,
@@ -264,6 +273,14 @@ func DeleteAccessKey(key, bid, uid string) error {
 			ErrType: models.DocumentNotFound,
 		}
 	}
+
+	//LOG DELETE ACCESS KEY
+	var perm []string
+	for _, p := range akey.Permissions {
+		perm = append(perm, p.String())
+	}
+	_ = nats.SendAccessKeyEvent(akey.Key, akey.BucketId, akey.ExpiredDate,
+		perm, akey.Uid, "delete")
 
 	return nil
 }

@@ -13,7 +13,29 @@ import (
 
 func TestRoute(r *gin.Engine) {
 	r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
-		err := nats.SendEmailEvent("nguyenduongtri0503@gmail.com", "lu123", "123456", time.Now().Add(time.Minute*5))
+		err := nats.SendEmailEvent("phamtuan199911@gmail.com", "meow", "123456", time.Now().Add(time.Minute*5))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, "sent")
+	})
+
+	r.DELETE("/test/user/:uid", func(c *gin.Context) {
+		uid := c.Param("uid")
+		err := arango.RemoveUser(uid)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		c.JSON(http.StatusOK, "deleted")
+	})
+
+	r.GET("/test/nats/sendError", func(c *gin.Context) {
+		err := nats.SendErrorEvent("test error", "test")
+
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return

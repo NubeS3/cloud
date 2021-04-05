@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"net/http"
@@ -236,21 +237,70 @@ func UserRoutes(route *gin.Engine) {
 				"message": "otp confirmed",
 			})
 		})
+
+		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, func(c *gin.Context) {
+			type updateUser struct {
+				Firstname string    `json:"firstname" binding:"required"`
+				Lastname  string    `json:"lastname" binding:"required"`
+				Dob       time.Time `json:"dob" binding:"required"`
+				Company   string    `json:"company" binding:"required"`
+				Gender    bool      `json:"gender" binding:"required"`
+			}
+
+			var curUpdateUser updateUser
+			if err := c.ShouldBind(&curUpdateUser); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticate at /users/update",
+					"Unknown Error")
+				return
+			}
+
+			user, err := arango.UpdateUserData(uid.(string), curUpdateUser.Firstname, curUpdateUser.Lastname,
+				curUpdateUser.Dob, curUpdateUser.Company, curUpdateUser.Gender)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated users/update",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"firstname": user.Firstname,
+				"lastname":  user.Lastname,
+				"dob":       user.Dob,
+				"company":   user.Company,
+				"gender":    user.Gender,
+			})
+		})
 	}
 }
 
 func SendOTP(username string, email string, otp string, expiredTime time.Time) error {
-	err := ultis.SendMail(
-		username,
-		email,
-		"Verify email",
-		"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
-			"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
-	)
-
-	if err != nil {
-		return err
-	}
+	//err := ultis.SendMail(
+	//	username,
+	//	email,
+	//	"Verify email",
+	//	"Enter the OTP we sent you via email to continue.\r\n\r\n"+otp+"\r\n\r\n"+
+	//		"The OTP will be expired at "+expiredTime.Local().Format("02-01-2006 15:04")+". Do not share it to public.",
+	//)
+	//
+	//if err != nil {
+	//	return err
+	//}
 
 	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }
