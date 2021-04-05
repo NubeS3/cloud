@@ -51,7 +51,7 @@ func SaveUser(
 	company string,
 	gender bool,
 ) (*User, error) {
-	createdTime := time.Time{}
+	createdTime := time.Now()
 	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
 	if err != nil {
 		return nil, err
@@ -221,30 +221,55 @@ func UpdateUserData(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	user := User{
-		Firstname: firstname,
-		Lastname:  lastname,
-		Dob:       dob,
-		Company:   company,
-		Gender:    gender,
+	updatedTime := time.Now()
+
+	query := "FOR u IN users FILTER u._key == @uid UPDATE u " +
+		"WITH { firstname: @firstname, " +
+		"lastname: @lastname, " +
+		"dob: @dob, " +
+		"company: @company, " +
+		"gender: @gender, " +
+		"updated_at: @updatedAt } " +
+		"IN users RETURN NEW"
+	bindVars := map[string]interface{}{
+		"uid":       uid,
+		"firstname": firstname,
+		"lastname":  lastname,
+		"dob":       dob,
+		"company":   company,
+		"gender":    gender,
+		"updatedAt": updatedTime,
 	}
 
-	meta, err := userCol.UpdateDocument(ctx, uid, &user)
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return nil, &models.ModelError{
-				Msg:     "user not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
 		}
 	}
+	defer cursor.Close()
 
-	user.Id = meta.Key
+	user := User{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		user.Id = meta.Key
+	}
+
+	if user.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
 	return &user, err
 }
 

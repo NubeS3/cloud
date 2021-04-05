@@ -101,7 +101,7 @@ func BucketRoutes(r *gin.Engine) {
 			}
 			c.JSON(http.StatusOK, bucket)
 		})
-		ar.DELETE("/:bucket_id", middlewares.UserAuthenticate, func(c *gin.Context) {
+		ar.DELETE("/:bucket_id", func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{

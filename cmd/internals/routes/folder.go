@@ -14,7 +14,7 @@ import (
 func FolderRoutes(r *gin.Engine) {
 	ar := r.Group("/auth/folders", middlewares.UserAuthenticate)
 	{
-		ar.GET("/allFolder", func(c *gin.Context) {
+		ar.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -255,7 +255,7 @@ func FolderRoutes(r *gin.Engine) {
 		})
 	}
 
-	kpr := r.Group("/keyPairs", middlewares.CheckSigned)
+	kpr := r.Group("/keyPairs/folders", middlewares.CheckSigned)
 	{
 		kpr.GET("/child/all/*full_path", func(c *gin.Context) {
 			queryPath := c.Param("full_path")

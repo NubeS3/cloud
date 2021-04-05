@@ -10,7 +10,7 @@ import (
 
 type Folder struct {
 	Id       string  `json:"-"`
-	OwnerId  string  `owner_id`
+	OwnerId  string  `json:"owner_id"`
 	Name     string  `json:"name"`
 	Fullpath string  `json:"fullpath"`
 	Children []Child `json:"children"`

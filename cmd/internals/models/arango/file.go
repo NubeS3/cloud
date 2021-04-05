@@ -47,7 +47,7 @@ type fileMetadata struct {
 func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
-	uploadedTime := time.Time{}
+	uploadedTime := time.Now()
 	f, err := FindFolderByFullpath(path)
 	if err != nil {
 		return nil, &models.ModelError{

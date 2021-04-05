@@ -25,7 +25,7 @@ type bucket struct {
 }
 
 func InsertBucket(uid string, name string, region string) (*Bucket, error) {
-	createdTime := time.Time{}
+	createdTime := time.Now()
 	doc := bucket{
 		Uid:       uid,
 		Name:      name,
