@@ -690,7 +690,7 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 			queryPath := c.DefaultPostForm("path", "/")
-			path := ultis.StandardizedPath(queryPath, true)
+			path := ultis.StandardizedPath(bucket.Name+"/"+queryPath, true)
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
