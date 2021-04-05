@@ -244,7 +244,8 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			//LOG
-			_ = nats.SendUploadFileEvent(*res)
+			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
+				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
 
 			c.JSON(http.StatusOK, res)
 		})
@@ -317,7 +318,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*fileMeta)
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
 
 				return nil
 			})
@@ -430,7 +432,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*fileMeta)
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
 
 				return nil
 			})
@@ -741,7 +744,8 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			//LOG
-			_ = nats.SendUploadFileEvent(*res)
+			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
+				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
 
 			c.JSON(http.StatusOK, res)
 		})
@@ -804,7 +808,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*metadata)
+				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
+					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
 
 				return nil
 			})
@@ -909,7 +914,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*fileMeta)
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
 
 				return nil
 			})
@@ -1356,7 +1362,8 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			//LOG
-			_ = nats.SendUploadFileEvent(*res)
+			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
+				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
 
 			c.JSON(http.StatusOK, res)
 		})
@@ -1429,7 +1436,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*fileMeta)
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
 
 				return nil
 			})
@@ -1532,7 +1540,8 @@ func FileRoutes(r *gin.Engine) {
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
-				_ = nats.SendDownloadFileEvent(*fileMeta)
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
 
 				return nil
 			})
