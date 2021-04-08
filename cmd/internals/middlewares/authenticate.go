@@ -65,6 +65,9 @@ func UserAuthenticate(c *gin.Context) {
 
 			c.Writer.Header().Set("AccessToken", *newAccessToken)
 			c.Writer.Header().Set("RefreshToken", *newRfToken)
+			c.Set("uid", userClaims.Id)
+			c.Next()
+			return
 		}
 
 		if err == jwt.ErrSignatureInvalid {
@@ -73,11 +76,13 @@ func UserAuthenticate(c *gin.Context) {
 			})
 			c.Abort()
 			return
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "access key invalid",
+			})
+			c.Abort()
+			return
 		}
-
-		c.Set("uid", userClaims.Id)
-		c.Next()
-		return
 	}
 
 	if !token.Valid {
