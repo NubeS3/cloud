@@ -78,7 +78,7 @@ func UserAuthenticate(c *gin.Context) {
 			return
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "access key invalid",
+				"error": "access token invalid",
 			})
 			c.Abort()
 			return
