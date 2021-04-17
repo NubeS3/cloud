@@ -12,29 +12,11 @@ services:
       - seaweedfs-volume
     networks:
       - nw_nubes3
-  arango:
-    image: arangodb:latest
-    environment:
-      ARANGO_ROOT_PASSWORD: "${ARANGO_PASSWORD}"
-    volumes:
-      - arangodb_data_container:/var/lib/arangodb3
-      - arangodb_apps_data_container:/var/lib/arangodb3-apps
-    networks:
-      - nw_nubes3
   seaweedfs-master:
     image: chrislusf/seaweedfs
     command: 'master -ip=seaweedfs-master -mdir="/mdata"'
     volumes:
       - seaweedfs_mdata:/mdata
-    networks:
-      - nw_nubes3
-  seaweedfs-volume:
-    image: chrislusf/seaweedfs # use a remote image
-    command: 'volume -mserver="seaweedfs-master:9333" -port=8080 -dir="/data" -max=0'
-    depends_on:
-      - seaweedfs-master
-    volumes:
-      - seaweedfs_data:/data
     networks:
       - nw_nubes3
   seaweedfs-filer:
@@ -45,18 +27,27 @@ services:
       - seaweedfs-volume
     networks:
       - nw_nubes3
-  cronjob:
-    image: chrislusf/seaweedfs # use a remote image
-    command: 'cronjob'
-    environment:
-      # Run re-replication every 5 minutes
-      CRON_SCHEDULE: '*/5 * * * * *' # Default: '*/5 * * * * *'
-      WEED_MASTER: seaweedfs-master:9333 # Default: localhost:9333
-    depends_on:
-      - seaweedfs-master
-      - seaweedfs-volume
-    networks:
-      - nw_nubes3
+  nats-streaming:
+    image: nats-streaming
+    command:
+      - "--cluster_id"
+      - "nats-streaming"
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+#  cronjob:
+#    image: chrislusf/seaweedfs # use a remote image
+#    command: 'cronjob'
+#    environment:
+#      # Run re-replication every 5 minutes
+#      CRON_SCHEDULE: '*/5 * * * * *' # Default: '*/5 * * * * *'
+#      WEED_MASTER: seaweedfs-master:9333 # Default: localhost:9333
+#    depends_on:
+#      - seaweedfs-master
+#      - seaweedfs-volume
+#    networks:
+#      - nw_nubes3
 
 networks:
   nw_nubes3: { }
