@@ -425,11 +425,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
-				}
+				//extraHeaders := map[string]string{
+				//	"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				//}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, nil)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
