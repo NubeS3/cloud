@@ -311,11 +311,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
-				}
+				//extraHeaders := map[string]string{
+				//	"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				//}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, nil)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -425,11 +425,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
-				}
+				//extraHeaders := map[string]string{
+				//	"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				//}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, nil)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -801,11 +801,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + metadata.Name,
-				}
+				//extraHeaders := map[string]string{
+				//	"Content-Disposition": `attachment; filename=` + metadata.Name,
+				//}
 
-				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, extraHeaders)
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, nil)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
