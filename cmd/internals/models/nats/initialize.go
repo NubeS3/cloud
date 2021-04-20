@@ -25,9 +25,10 @@ var (
 
 func InitNats() error {
 	url := viper.GetString("NATS_URL")
+	clusterId := viper.GetString("STAN_CLUSTER_ID")
 
 	var err error
-	sc, err = stan.Connect("nats-streaming", "nubes3", stan.NatsURL("nats://"+url))
+	sc, err = stan.Connect(clusterId, "nubes3", stan.NatsURL("nats://"+url))
 	if err != nil {
 		return err
 	}
