@@ -82,10 +82,11 @@ func Run() {
 	Routing(r)
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
+		//AllowOrigins:     []string{"*"},
+		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Authorization", "Refresh"},
-		ExposeHeaders:    []string{"Content-Length", "AccessToken", "RefreshToken"},
+		AllowHeaders:     []string{"Origin", "Authorization", "Refresh", "content-type"},
+		ExposeHeaders:    []string{"Content-Length", "AccessToken", "RefreshToken", "content-type"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
