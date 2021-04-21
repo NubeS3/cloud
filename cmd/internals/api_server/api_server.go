@@ -5,10 +5,6 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
-	"log"
-	"net/http"
-	"time"
-
 	"github.com/NubeS3/cloud/cmd/internals/routes"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-contrib/cors"
@@ -16,6 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/acme/autocert"
+	"log"
+	"net/http"
+	"time"
 )
 
 func init() {
@@ -74,22 +73,21 @@ func Run() {
 	fmt.Println("Starting Cloud Server")
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "OK!",
-		})
-	})
-	Routing(r)
-
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Authorization", "Refresh", "Content-Length", "Content-Type"},
 		ExposeHeaders:    []string{"Content-Length", "AccessToken", "RefreshToken", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "OK!",
+		})
+	})
+	Routing(r)
 
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
