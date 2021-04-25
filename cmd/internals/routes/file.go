@@ -311,11 +311,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				//extraHeaders := map[string]string{
-				//	"Content-Disposition": `attachment; filename=` + fileMeta.Name,
-				//}
+				extraHeaders := map[string]string{
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, nil)
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -425,11 +425,11 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				//extraHeaders := map[string]string{
-				//	"Content-Disposition": `attachment; filename=` + fileMeta.Name,
-				//}
+				extraHeaders := map[string]string{
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, nil)
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -737,9 +737,17 @@ func FileRoutes(r *gin.Engine) {
 			res, err := arango.SaveFile(fileContent, bid, path, fileName, isHidden,
 				cType, fileSize, time.Duration(ttl))
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
+				if err, ok := err.(*models.ModelError); ok {
+					if err.ErrType == models.NotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": err.Msg,
+						})
+					}
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+				}
 				return
 			}
 
@@ -908,7 +916,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
@@ -1430,7 +1438,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
@@ -1534,7 +1542,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 
 				extraHeaders := map[string]string{
-					"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)

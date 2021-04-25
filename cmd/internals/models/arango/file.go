@@ -309,6 +309,11 @@ func SaveFile(reader io.Reader, bid string,
 	//CHECK BUCKET ID AND NAME
 	_, err := FindBucketById(bid)
 	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.NotFound {
+				return nil, err
+			}
+		}
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
