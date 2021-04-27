@@ -36,6 +36,7 @@ func Routing(r *gin.Engine) {
 	routes.KeyPairsRoutes(r)
 	routes.FileRoutes(r)
 	routes.FolderRoutes(r)
+	routes.AdminRoutes(r)
 }
 
 func Run() {

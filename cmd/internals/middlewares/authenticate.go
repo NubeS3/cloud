@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
@@ -93,6 +94,27 @@ func UserAuthenticate(c *gin.Context) {
 			c.Abort()
 			return
 		}
+	}
+
+	user, err := arango.FindUserById(userClaims.Id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		c.Abort()
+
+		_ = nats.SendErrorEvent(err.Error(), "auth error")
+		return
+	}
+
+	if user.IsBanned {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "account disabled",
+		})
+
+		c.Abort()
+		return
 	}
 
 	c.Set("uid", userClaims.Id)

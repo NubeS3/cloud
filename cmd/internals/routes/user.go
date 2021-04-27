@@ -51,6 +51,13 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
+			if !user.IsBanned {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "account disabled",
+				})
+				return
+			}
+
 			accessToken, err := ultis.CreateToken(user.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{

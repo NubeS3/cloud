@@ -4,6 +4,7 @@ import (
 	"context"
 	arangoDriver "github.com/arangodb/go-driver"
 	arangoHttp "github.com/arangodb/go-driver/http"
+	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/spf13/viper"
 	"time"
 )
@@ -22,6 +23,7 @@ var (
 	apiKeyCol        arangoDriver.Collection
 	rfTokenCol       arangoDriver.Collection
 	fileMetadataCol  arangoDriver.Collection
+	adminCol         arangoDriver.Collection
 )
 
 func InitArangoDb() error {
@@ -158,5 +160,45 @@ func initArangoDb() error {
 		fileMetadataCol, _ = arangoDb.Collection(ctx, "fileMetadata")
 	}
 
+	exist, err = arangoDb.CollectionExists(ctx, "admin")
+	if err != nil {
+		return err
+	}
+	if !exist {
+		adminCol, _ = arangoDb.CreateCollection(ctx, "admin", &arangoDriver.CreateCollectionOptions{})
+	} else {
+		adminCol, _ = arangoDb.Collection(ctx, "admin")
+	}
+
+	initAdmin()
+
 	return nil
+}
+
+func initAdmin() {
+	adminUsername := viper.GetString("ADMIN_ROOT_USERNAME")
+	adminPassword := viper.GetString("ADMIN_ROOT_PASSWORD")
+	passwordHashed, err := scrypt.GenerateFromPassword([]byte(adminPassword), scrypt.DefaultParams)
+	if err != nil {
+		panic(err)
+	}
+
+	query := "UPSERT { username: @u } " +
+		"INSERT { username: @u, password: @p, is_disabled: false, type: @t, created_at: @time, updated_at: @time } " +
+		"UPDATE {} " +
+		"IN admin"
+	bindVars := map[string]interface{}{
+		"u":    adminUsername,
+		"p":    string(passwordHashed),
+		"t":    RootAdmin,
+		"time": time.Now(),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	_, err = arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		panic(err)
+	}
 }

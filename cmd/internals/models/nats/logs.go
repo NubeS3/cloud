@@ -305,3 +305,28 @@ func SendKeyPairEvent(public, private, bid string, expiredDate time.Time,
 
 	return sc.Publish(keyPairSubj, jsonData)
 }
+
+type AdminLog struct {
+	EventLog Event  `json:"event_log"`
+	AdminId  string `json:"admin_id"`
+	Admin    string `json:"admin"`
+	Content  string `json:"content"`
+}
+
+func SendAdminEvent(id, admin, content string) error {
+	jsonData, err := json.Marshal(AdminLog{
+		EventLog: Event{
+			Type: "Admin",
+			Date: time.Now(),
+		},
+		AdminId: id,
+		Admin:   admin,
+		Content: content,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return sc.Publish(keyPairSubj, jsonData)
+}
