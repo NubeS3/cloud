@@ -1,8 +1,10 @@
 package nats
 
 import (
+	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
 	"github.com/spf13/viper"
+	"time"
 )
 
 const (
@@ -17,10 +19,12 @@ const (
 	folderSubj            = "nubes3_folder"
 	accessKeySubj         = "nubes3_accessKey"
 	keyPairSubj           = "nubes3_keyPair"
+	contextExpTime        = time.Second * 10
 )
 
 var (
 	sc stan.Conn
+	nc *nats.Conn
 )
 
 func InitNats() error {
@@ -33,11 +37,19 @@ func InitNats() error {
 		return err
 	}
 
+	nc, err = nats.Connect("nats://" + url)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func CleanUp() {
 	if sc != nil {
 		_ = sc.Close()
+	}
+	if nc != nil {
+		nc.Close()
 	}
 }

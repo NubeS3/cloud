@@ -8,6 +8,8 @@ import (
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
+	"time"
 )
 
 func AdminSigninHandler(c *gin.Context) {
@@ -169,4 +171,115 @@ func AdminBanUser(c *gin.Context) {
 	user, err = arango.UpdateBanStatus(user.Id, *req.IsBan)
 
 	c.JSON(http.StatusOK, user)
+}
+
+func AdminGetErrLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	logs, err := nats.GetErrLog(int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetErrLogByType(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	t := c.DefaultQuery("type", "")
+
+	logs, err := nats.GetErrLogByType(t, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetErrLogByDate(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	logs, err := nats.GetErrLogByDate(fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
 }

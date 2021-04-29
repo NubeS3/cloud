@@ -7,33 +7,14 @@ import (
 
 type Event struct {
 	Type string    `json:"type"`
-	Date time.Time `json:"event_time"`
+	Date time.Time `json:"at"`
 }
 
-type errLogMessage struct {
-	Content string    `json:"content"`
-	Type    string    `json:"type"`
-	At      time.Time `json:"at"`
-}
-
-func SendErrorEvent(content, t string) error {
-	jsonData, err := json.Marshal(errLogMessage{
-		Content: content,
-		Type:    t,
-		At:      time.Now(),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return sc.Publish(errSubj, jsonData)
-}
-
-type fileLog struct {
+type FileLog struct {
+	Event
 	Id          string    `json:"id"`
-	FId         string    `json:"f_id"`
-	Name        string    `json:"name"`
+	FId         string    `json:"file_id"`
+	FileName    string    `json:"file_name"`
 	Size        int64     `json:"size"`
 	BucketId    string    `json:"bucket_id"`
 	ContentType string    `json:"content_type"`
@@ -44,10 +25,14 @@ type fileLog struct {
 
 func SendUploadFileEvent(id, fid, name string, size int64,
 	bid, contentType string, uploadDate time.Time, path string, isHidden bool) error {
-	jsonData, err := json.Marshal(fileLog{
+	jsonData, err := json.Marshal(FileLog{
+		Event: Event{
+			Type: "Upload",
+			Date: time.Now(),
+		},
 		Id:          id,
 		FId:         fid,
-		Name:        name,
+		FileName:    name,
 		Size:        size,
 		BucketId:    bid,
 		ContentType: contentType,
@@ -65,10 +50,14 @@ func SendUploadFileEvent(id, fid, name string, size int64,
 
 func SendDownloadFileEvent(id, fid, name string, size int64,
 	bid, contentType string, uploadDate time.Time, path string, isHidden bool) error {
-	jsonData, err := json.Marshal(fileLog{
+	jsonData, err := json.Marshal(FileLog{
+		Event: Event{
+			Type: "Download",
+			Date: time.Now(),
+		},
 		Id:          id,
 		FId:         fid,
-		Name:        name,
+		FileName:    name,
 		Size:        size,
 		BucketId:    bid,
 		ContentType: contentType,
@@ -84,66 +73,66 @@ func SendDownloadFileEvent(id, fid, name string, size int64,
 	return sc.Publish(downloadFileSubj, jsonData)
 }
 
-type stagingFileLog struct {
-	Name        string    `json:"name"`
-	Size        int64     `json:"size"`
-	BucketId    string    `json:"bucket_id"`
-	ContentType string    `json:"content_type"`
-	UploadDate  time.Time `json:"upload_date"`
-	Path        string    `json:"path"`
-	IsHidden    bool      `json:"is_hidden"`
-}
-
-func SendStagingFileEvent(name string, size int64, bid, contentType, path string, isHidden bool) error {
-	jsonData, err := json.Marshal(stagingFileLog{
-		Name:        name,
-		Size:        size,
-		BucketId:    bid,
-		ContentType: contentType,
-		UploadDate:  time.Now(),
-		Path:        path,
-		IsHidden:    isHidden,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return sc.Publish(stagingFileSubj, jsonData)
-}
-
-type uploadSuccessFileLog struct {
-	Id          string    `json:"id"`
-	FId         string    `json:"f_id"`
-	Name        string    `json:"name"`
-	Size        int64     `json:"size"`
-	BucketId    string    `json:"bucket_id"`
-	ContentType string    `json:"content_type"`
-	UploadDate  time.Time `json:"upload_date"`
-	Path        string    `json:"path"`
-	IsHidden    bool      `json:"is_hidden"`
-}
-
-func SendUploadSuccessFileEvent(id, fid, name string, size int64,
-	bid, contentType string, uploadDate time.Time, path string, isHidden bool) error {
-	jsonData, err := json.Marshal(uploadSuccessFileLog{
-		Id:          id,
-		FId:         fid,
-		Name:        name,
-		Size:        size,
-		BucketId:    bid,
-		ContentType: contentType,
-		UploadDate:  uploadDate,
-		Path:        path,
-		IsHidden:    isHidden,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return sc.Publish(uploadFileSuccessSubj, jsonData)
-}
+//type stagingFileLog struct {
+//	Name        string    `json:"name"`
+//	Size        int64     `json:"size"`
+//	BucketId    string    `json:"bucket_id"`
+//	ContentType string    `json:"content_type"`
+//	UploadDate  time.Time `json:"upload_date"`
+//	Path        string    `json:"path"`
+//	IsHidden    bool      `json:"is_hidden"`
+//}
+//
+//func SendStagingFileEvent(name string, size int64, bid, contentType, path string, isHidden bool) error {
+//	jsonData, err := json.Marshal(stagingFileLog{
+//		Name:        name,
+//		Size:        size,
+//		BucketId:    bid,
+//		ContentType: contentType,
+//		UploadDate:  time.Now(),
+//		Path:        path,
+//		IsHidden:    isHidden,
+//	})
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return sc.Publish(stagingFileSubj, jsonData)
+//}
+//
+//type uploadSuccessFileLog struct {
+//	Id          string    `json:"id"`
+//	FId         string    `json:"f_id"`
+//	Name        string    `json:"name"`
+//	Size        int64     `json:"size"`
+//	BucketId    string    `json:"bucket_id"`
+//	ContentType string    `json:"content_type"`
+//	UploadDate  time.Time `json:"upload_date"`
+//	Path        string    `json:"path"`
+//	IsHidden    bool      `json:"is_hidden"`
+//}
+//
+//func SendUploadSuccessFileEvent(id, fid, name string, size int64,
+//	bid, contentType string, uploadDate time.Time, path string, isHidden bool) error {
+//	jsonData, err := json.Marshal(uploadSuccessFileLog{
+//		Id:          id,
+//		FId:         fid,
+//		Name:        name,
+//		Size:        size,
+//		BucketId:    bid,
+//		ContentType: contentType,
+//		UploadDate:  uploadDate,
+//		Path:        path,
+//		IsHidden:    isHidden,
+//	})
+//
+//	if err != nil {
+//		return err
+//	}
+//
+//	return sc.Publish(uploadFileSuccessSubj, jsonData)
+//}
 
 type UserEvent struct {
 	EventLog Event `json:"event_log"`
