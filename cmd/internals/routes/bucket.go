@@ -94,11 +94,13 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at buckets/create:",
+				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/create:",
 					"Db Error")
 
 				return
 			}
+			_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region,
+				"create bucket at POST: auth/buckets/create", "Add")
 			c.JSON(http.StatusOK, bucket)
 		})
 		ar.DELETE("/:bucket_id", func(c *gin.Context) {
@@ -108,7 +110,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
+				_ = nats.SendErrorEvent("uid not found in authenticated route at auth/buckets/create:",
 					"Unknown Error")
 
 				return
@@ -131,11 +133,13 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /buckets/delete:",
+				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
 					"Db Error")
 
 				return
 			}
+			_ = nats.SendBucketEvent(bucketId, uid.(string), "", "",
+				"delete bucket at DELETE: auth/buckets/:bucket_id", "Delete")
 			c.JSON(http.StatusOK, gin.H{
 				"message": "delete success.",
 			})

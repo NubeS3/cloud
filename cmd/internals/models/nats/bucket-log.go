@@ -5,17 +5,25 @@ import (
 	"time"
 )
 
-type ErrLogMessage struct {
+type BucketLogMessage struct {
 	Event
+	Id      string `json:"id"`
+	Uid     string `json:"uid"`
+	Name    string `json:"name"`
+	Region  string `json:region`
 	Content string `json:"content"`
 }
 
-func SendErrorEvent(content, t string) error {
-	jsonData, err := json.Marshal(ErrLogMessage{
+func SendBucketEvent(id, uid, name, region, content, t string) error {
+	jsonData, err := json.Marshal(BucketLogMessage{
 		Event: Event{
 			Type: t,
 			Date: time.Now(),
 		},
+		Id:      id,
+		Uid:     uid,
+		Name:    name,
+		Region:  region,
 		Content: content,
 	})
 
@@ -23,10 +31,10 @@ func SendErrorEvent(content, t string) error {
 		return err
 	}
 
-	return sc.Publish(errSubj, jsonData)
+	return sc.Publish(bucketSubj, jsonData)
 }
 
-func GetErrLog(limit, offset int) ([]ErrLogMessage, error) {
+func GetBucketLog(limit, offset int) ([]BucketLogMessage, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
@@ -36,17 +44,17 @@ func GetErrLog(limit, offset int) ([]ErrLogMessage, error) {
 
 	jsonReq, _ := json.Marshal(request)
 
-	res, err := nc.Request(errSubj+"query", jsonReq, contextExpTime)
+	res, err := nc.Request(bucketSubj+"query", jsonReq, contextExpTime)
 	if err != nil {
 		return nil, err
 	}
 
-	var logs []ErrLogMessage
+	var logs []BucketLogMessage
 	_ = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
-func GetErrLogByDate(from, to time.Time, limit, offset int) ([]ErrLogMessage, error) {
+func GetBucketLogByDate(from, to time.Time, limit, offset int) ([]BucketLogMessage, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
@@ -56,17 +64,17 @@ func GetErrLogByDate(from, to time.Time, limit, offset int) ([]ErrLogMessage, er
 
 	jsonReq, _ := json.Marshal(request)
 
-	res, err := nc.Request(errSubj+"query", jsonReq, contextExpTime)
+	res, err := nc.Request(bucketSubj+"query", jsonReq, contextExpTime)
 	if err != nil {
 		return nil, err
 	}
 
-	var logs []ErrLogMessage
+	var logs []BucketLogMessage
 	_ = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
-func GetErrLogByType(t string, limit, offset int) ([]ErrLogMessage, error) {
+func GetBucketLogByType(t string, limit, offset int) ([]BucketLogMessage, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
@@ -76,12 +84,12 @@ func GetErrLogByType(t string, limit, offset int) ([]ErrLogMessage, error) {
 
 	jsonReq, _ := json.Marshal(request)
 
-	res, err := nc.Request(errSubj+"query", jsonReq, contextExpTime)
+	res, err := nc.Request(bucketSubj+"query", jsonReq, contextExpTime)
 	if err != nil {
 		return nil, err
 	}
 
-	var logs []ErrLogMessage
+	var logs []BucketLogMessage
 	_ = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
