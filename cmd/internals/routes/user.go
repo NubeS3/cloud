@@ -15,7 +15,7 @@ import (
 func UserRoutes(route *gin.Engine) {
 	userRoutesGroup := route.Group("/users")
 	{
-		userRoutesGroup.POST("/signin", func(c *gin.Context) {
+		userRoutesGroup.POST("/signin", middlewares.UnauthReqCount, func(c *gin.Context) {
 			type signinUser struct {
 				Username string `json:"username" binding:"required"`
 				Password string `json:"password" binding:"required"`
@@ -84,7 +84,7 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 
-		userRoutesGroup.POST("/signup", func(c *gin.Context) {
+		userRoutesGroup.POST("/signup", middlewares.UnauthReqCount, func(c *gin.Context) {
 			var user arango.User
 			if err := c.ShouldBind(&user); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -148,7 +148,7 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 
-		userRoutesGroup.PUT("/resend-otp", func(c *gin.Context) {
+		userRoutesGroup.PUT("/resend-otp", middlewares.UnauthReqCount, func(c *gin.Context) {
 			type resendUser struct {
 				Username string `json:"username"`
 			}
@@ -192,7 +192,7 @@ func UserRoutes(route *gin.Engine) {
 
 		})
 
-		userRoutesGroup.POST("/confirm-otp", func(c *gin.Context) {
+		userRoutesGroup.POST("/confirm-otp", middlewares.UnauthReqCount, func(c *gin.Context) {
 			type otpValidate struct {
 				Username string `json:"username"`
 				Otp      string `json:"otp"`
@@ -245,7 +245,7 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 
-		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, func(c *gin.Context) {
+		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
 			type updateUser struct {
 				Firstname string    `json:"firstname" binding:"required"`
 				Lastname  string    `json:"lastname" binding:"required"`

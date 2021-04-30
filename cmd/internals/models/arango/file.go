@@ -91,8 +91,17 @@ func saveFileMetadata(fid string, bid string,
 	}
 
 	//LOG UPLOAD SUCCESS
-	_ = nats.SendUploadSuccessFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size,
-		doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
+	//_ = nats.SendUploadSuccessFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size,
+	//	doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
+
+	_ = nats.SendUploadFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size, doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
+	_, err = IncreaseBucketSize(meta.Key, float64(doc.Size))
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     "failed to increase bucket size, " + err.Error(),
+			ErrType: models.DbError,
+		}
+	}
 
 	return &FileMetadata{
 		Id:           meta.Key,
@@ -334,7 +343,7 @@ func SaveFile(reader io.Reader, bid string,
 	}
 
 	//LOG STAGING
-	_ = nats.SendStagingFileEvent(name, size, bid, contentType, path, isHidden)
+	//_ = nats.SendStagingFileEvent(name, size, bid, contentType, path, isHidden)
 
 	meta, err := seaweedfs.UploadFile(name, size, reader)
 	if err != nil {
@@ -457,4 +466,55 @@ func ToggleHidden(fullpath string, isHidden bool) (*FileMetadata, error) {
 	}
 
 	return &fileMetadata, nil
+}
+
+func MarkDeleteFile(path string, name string, bid string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	deleteDate := time.Now()
+	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name LIMIT 1 " +
+		"UPDATE fm " +
+		"WITH { is_deleted: true, deleted_date: @del_date } " +
+		"IN bucketSize RETURN NEW"
+	bindVars := map[string]interface{}{
+		"bid":      bid,
+		"path":     path,
+		"name":     name,
+		"del_date": deleteDate,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	fm := FileMetadata{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fm)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		fm.Id = meta.Key
+	}
+
+	if fm.Id == "" {
+		return &models.ModelError{
+			Msg:     "file not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	_, _ = DecreaseBucketSize(fm.BucketId, float64(fm.Size))
+
+	return nil
 }

@@ -15,7 +15,7 @@ import (
 )
 
 func FileRoutes(r *gin.Engine) {
-	acr := r.Group("/accessKey/files", middlewares.ApiKeyAuthenticate)
+	acr := r.Group("/accessKey/files", middlewares.ApiKeyAuthenticate, middlewares.AccessKeyReqCount)
 	{
 		acr.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
@@ -542,9 +542,99 @@ func FileRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, file)
 		})
+
+		acr.DELETE("/*fullpath", func(c *gin.Context) {
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bid := c.DefaultQuery("bucketId", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+							"Db Error")
+						return
+					}
+				}
+			}
+
+			if ak, ok := c.Get("accessKey"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				if ak.(arango.AccessKey).BucketId != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			if bucket.Name != bucketName {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid bucket name",
+				})
+
+				return
+			}
+
+			err = arango.MarkDeleteFile(parentPath, fileName, bucket.Id)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at signed files/auth/upload:",
+							"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at signed files/auth/download:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "successfully deleted",
+			})
+		})
 	}
 
-	ar := r.Group("/auth/files", middlewares.UserAuthenticate)
+	ar := r.Group("/auth/files", middlewares.UserAuthenticate, middlewares.AuthReqCount)
 	{
 		ar.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
@@ -1150,9 +1240,99 @@ func FileRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, file)
 		})
+
+		ar.DELETE("/*fullpath", func(c *gin.Context) {
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bid := c.DefaultQuery("bucketId", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+							"Db Error")
+						return
+					}
+				}
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			if bucket.Name != bucketName {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid bucket name",
+				})
+
+				return
+			}
+
+			err = arango.MarkDeleteFile(parentPath, fileName, bucket.Id)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+							"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "successfully deleted",
+			})
+		})
 	}
 
-	kpr := r.Group("/signed/files", middlewares.CheckSigned)
+	kpr := r.Group("/signed/files", middlewares.CheckSigned, middlewares.SignedReqCount)
 	{
 		kpr.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
@@ -1657,6 +1837,96 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, file)
+		})
+
+		kpr.DELETE("/*fullpath", func(c *gin.Context) {
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bid := c.DefaultQuery("bucketId", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+							"Db Error")
+						return
+					}
+				}
+			}
+
+			if kp, ok := c.Get("keyPair"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				if kp.(arango.KeyPair).BucketId != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			if bucket.Name != bucketName {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid bucket name",
+				})
+
+				return
+			}
+
+			err = arango.MarkDeleteFile(parentPath, fileName, bucket.Id)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						_ = nats.SendErrorEvent(err.Error()+" at signed files/auth/upload:",
+							"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at signed files/auth/download:",
+					"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "successfully deleted",
+			})
 		})
 	}
 }

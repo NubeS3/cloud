@@ -11,7 +11,7 @@ import (
 )
 
 func BucketRoutes(r *gin.Engine) {
-	ar := r.Group("/auth/buckets", middlewares.UserAuthenticate)
+	ar := r.Group("/auth/buckets", middlewares.UserAuthenticate, middlewares.AuthReqCount)
 	{
 		ar.GET("/all", func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
