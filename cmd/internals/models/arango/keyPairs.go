@@ -106,8 +106,7 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 	for _, p := range doc.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendKeyPairEvent(doc.Public, doc.BucketId, doc.GeneratorUid,
-		"Key Pair Created", "Add")
+	_ = nats.SendKeyPairEvent(doc.Public, doc.BucketId, doc.GeneratorUid, "Add")
 
 	return &KeyPair{
 		Public:       doc.Public,
@@ -245,8 +244,7 @@ func RemoveKeyPair(public, bid, uid string) error {
 	for _, p := range kp.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendKeyPairEvent(kp.Public, kp.BucketId, kp.GeneratorUid,
-		"Key Pair Deleted", "Delete")
+	_ = nats.SendKeyPairEvent(kp.Public, kp.BucketId, kp.GeneratorUid, "Delete")
 
 	return nil
 }

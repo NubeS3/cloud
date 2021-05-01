@@ -7,24 +7,22 @@ import (
 
 type BucketLogMessage struct {
 	Event
-	Id      string `json:"id"`
-	Uid     string `json:"uid"`
-	Name    string `json:"name"`
-	Region  string `json:region`
-	Content string `json:"content"`
+	Id     string `json:"id"`
+	Uid    string `json:"uid"`
+	Name   string `json:"name"`
+	Region string `json:"region"`
 }
 
-func SendBucketEvent(id, uid, name, region, content, t string) error {
+func SendBucketEvent(id, uid, name, region, t string) error {
 	jsonData, err := json.Marshal(BucketLogMessage{
 		Event: Event{
 			Type: t,
 			Date: time.Now(),
 		},
-		Id:      id,
-		Uid:     uid,
-		Name:    name,
-		Region:  region,
-		Content: content,
+		Id:     id,
+		Uid:    uid,
+		Name:   name,
+		Region: region,
 	})
 
 	if err != nil {

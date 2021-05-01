@@ -10,10 +10,9 @@ type AccessKeyLogMessage struct {
 	Key      string `json:"id"`
 	BucketId string `json:"bid"`
 	Uid      string `json:"uid"`
-	Content  string `json:"content"`
 }
 
-func SendAccessKeyEvent(key, bid, uid, content, t string) error {
+func SendAccessKeyEvent(key, bid, uid, t string) error {
 	jsonData, err := json.Marshal(AccessKeyLogMessage{
 		Event: Event{
 			Type: t,
@@ -22,7 +21,6 @@ func SendAccessKeyEvent(key, bid, uid, content, t string) error {
 		Key:      key,
 		BucketId: bid,
 		Uid:      uid,
-		Content:  content,
 	})
 
 	if err != nil {
