@@ -20,6 +20,18 @@ func AdminRoutes(route *gin.Engine) {
 			aar.GET("/err-log", adminHandler.AdminGetErrLog)
 			aar.GET("/err-log/type", adminHandler.AdminGetErrLogByType)
 			aar.GET("/err-log/date", adminHandler.AdminGetErrLogByDate)
+			aar.GET("/bucket-log", adminHandler.AdminGetBucketLog)
+			aar.GET("/bucket-log/type", adminHandler.AdminGetBucketLogByType)
+			aar.GET("/bucket-log/date", adminHandler.AdminGetBucketLogByDate)
+			aar.GET("/user-log", adminHandler.AdminGetUserLog)
+			aar.GET("/user-log/type", adminHandler.AdminGetUserLogByType)
+			aar.GET("/user-log/date", adminHandler.AdminGetUserLogByDate)
+			aar.GET("/accessKey-log", adminHandler.AdminGetAccessKeyLog)
+			aar.GET("/accessKey-log/type", adminHandler.AdminGetAccessKeyLogByType)
+			aar.GET("/accessKey-log/date", adminHandler.AdminGetAccessKeyLogByDate)
+			aar.GET("/keyPair-log", adminHandler.AdminGetKeyPairLog)
+			aar.GET("/keyPair-log/type", adminHandler.AdminGetKeyPairLogByType)
+			aar.GET("/keyPair-log/date", adminHandler.AdminGetKeyPairLogByDate)
 		}
 	}
 }

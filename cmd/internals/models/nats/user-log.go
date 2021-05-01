@@ -7,13 +7,12 @@ import (
 
 type UserLogMessage struct {
 	Event
-	Uid      string
+	Uid      string `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
-	Content  string `json:"content"`
 }
 
-func SendUserEvent(uid, username, email, content, t string) error {
+func SendUserEvent(uid, username, email, t string) error {
 	jsonData, err := json.Marshal(UserLogMessage{
 		Event: Event{
 			Type: t,
@@ -22,7 +21,6 @@ func SendUserEvent(uid, username, email, content, t string) error {
 		Uid:      uid,
 		Username: username,
 		Email:    email,
-		Content:  content,
 	})
 
 	if err != nil {
