@@ -3,7 +3,6 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
-	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
 	"time"
@@ -108,7 +107,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	}
 
 	//LOG CREATE BUCKET FOLDER
-	_ = nats.SendFolderEvent(doc.Id, doc.OwnerId, doc.Name, doc.Fullpath, "create")
+	//_ = nats.SendFolderEvent(doc.Id, doc.OwnerId, doc.Name, doc.Fullpath, "create")
 
 	return doc, nil
 }

@@ -37,6 +37,7 @@ type SignedReqLog struct {
 func SendReqCountEvent(data, t, method, source, req string) error {
 	var jsonData []byte
 	var err error
+	var subjectSuffix string
 	if t == "Req" {
 		jsonData, err = json.Marshal(UnauthReqLog{
 			Event: Event{
@@ -49,6 +50,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 				Req:      req,
 			},
 		})
+		subjectSuffix = "unauth"
 	} else if t == "Auth" {
 		jsonData, err = json.Marshal(AuthReqLog{
 			Event: Event{
@@ -62,6 +64,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 			},
 			UserId: data,
 		})
+		subjectSuffix = "auth"
 	} else if t == "AccessKey" {
 		jsonData, err = json.Marshal(AccessKeyReqLog{
 			Event: Event{
@@ -75,6 +78,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 			},
 			Key: data,
 		})
+		subjectSuffix = "access-key"
 	} else if t == "Signed" {
 		jsonData, err = json.Marshal(SignedReqLog{
 			Event: Event{
@@ -88,11 +92,12 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 			},
 			Public: data,
 		})
+		subjectSuffix = "signed"
 	}
 
 	if err != nil {
 		return err
 	}
 
-	return sc.Publish(reqSubj, jsonData)
+	return sc.Publish(reqSubj+subjectSuffix, jsonData)
 }
