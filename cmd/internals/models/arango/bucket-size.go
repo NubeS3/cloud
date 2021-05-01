@@ -21,7 +21,7 @@ func CreateBucketSize(bucketId string) (*BucketSize, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	_, err := bucketCol.CreateDocument(ctx, doc)
+	_, err := bucketSizeCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -36,7 +36,7 @@ func IncreaseBucketSize(bucketId string, size float64) (*BucketSize, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR bs IN bucketSize FILTER bs.bucket_id == @bid UPDATE bs " +
+	query := "FOR bs IN bucketSize FILTER bs.bucket_id == @bid LIMIT 1 UPDATE bs " +
 		"WITH { size: bs.size + @size } " +
 		"IN bucketSize RETURN NEW"
 	bindVars := map[string]interface{}{
@@ -73,12 +73,47 @@ func DecreaseBucketSize(bucketId string, size float64) (*BucketSize, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR bs IN bucketSize FILTER bs.bucket_id == @bid UPDATE bs " +
+	query := "FOR bs IN bucketSize FILTER bs.bucket_id == @bid LIMIT 1 UPDATE bs " +
 		"WITH { size: bs.size - @size } " +
 		"IN bucketSize RETURN NEW"
 	bindVars := map[string]interface{}{
 		"bid":  bucketId,
 		"size": size,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	bucketSize := BucketSize{}
+	for {
+		_, err := cursor.ReadDocument(ctx, &bucketSize)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	return &bucketSize, err
+}
+
+func GetBucketSizeById(bucketId string) (*BucketSize, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR bs IN bucketSize FILTER bs.bucket_id == @bid LIMIT 1 " +
+		"RETURN bs"
+	bindVars := map[string]interface{}{
+		"bid": bucketId,
 	}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)

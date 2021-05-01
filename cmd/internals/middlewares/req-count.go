@@ -31,7 +31,7 @@ func AccessKeyReqCount(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	nats.SendReqCountEvent(key.(arango.AccessKey).Key, "AccessKey", c.Request.Method, senderIp, c.Request.URL.String())
+	nats.SendReqCountEvent(key.(*arango.AccessKey).Key, "AccessKey", c.Request.Method, senderIp, c.Request.URL.String())
 }
 
 func SignedReqCount(c *gin.Context) {
@@ -42,7 +42,7 @@ func SignedReqCount(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	nats.SendReqCountEvent(kp.(arango.KeyPair).Public, "Signed", c.Request.Method, senderIp, c.Request.URL.String())
+	nats.SendReqCountEvent(kp.(*arango.KeyPair).Public, "Signed", c.Request.Method, senderIp, c.Request.URL.String())
 }
 
 func readUserIP(r *http.Request) string {

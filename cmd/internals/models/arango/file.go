@@ -82,7 +82,7 @@ func saveFileMetadata(fid string, bid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Id, isHidden)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, isHidden)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
@@ -95,7 +95,7 @@ func saveFileMetadata(fid string, bid string,
 	//	doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
 
 	_ = nats.SendUploadFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size, doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
-	_, err = IncreaseBucketSize(meta.Key, float64(doc.Size))
+	_, err = IncreaseBucketSize(doc.BucketId, float64(doc.Size))
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "failed to increase bucket size, " + err.Error(),
@@ -125,10 +125,10 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 
 	var query string
 	if showHidden {
-		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
+		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.is_deleted != true " +
 			"LIMIT @offset, @limit RETURN fm"
 	} else {
-		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid " +
+		query = "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.is_deleted != true " +
 			"AND fm.is_hidden == false LIMIT @offset, @limit RETURN fm"
 	}
 
@@ -139,7 +139,7 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 	}
 
 	fileMetadatas := []FileMetadata{}
-	fileMetadata := FileMetadata{}
+	fileMetadata := fileMetadata{}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
@@ -160,8 +160,22 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 				ErrType: models.DbError,
 			}
 		}
-		fileMetadata.Id = meta.Key
-		fileMetadatas = append(fileMetadatas, fileMetadata)
+		if !fileMetadata.IsDeleted {
+			fileMetadatas = append(fileMetadatas, FileMetadata{
+				Id:           meta.Key,
+				FileId:       fileMetadata.FileId,
+				BucketId:     fileMetadata.BucketId,
+				Path:         fileMetadata.Path,
+				Name:         fileMetadata.Name,
+				ContentType:  fileMetadata.ContentType,
+				Size:         fileMetadata.Size,
+				IsHidden:     fileMetadata.IsHidden,
+				IsDeleted:    fileMetadata.IsDeleted,
+				DeletedDate:  fileMetadata.DeletedDate,
+				UploadedDate: fileMetadata.UploadedDate,
+				ExpiredDate:  fileMetadata.ExpiredDate,
+			})
+		}
 	}
 
 	return fileMetadatas, nil
@@ -171,7 +185,7 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name LIMIT 1 RETURN fm"
+	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name AND fm.is_deleted != true LIMIT 1 RETURN fm"
 	bindVars := map[string]interface{}{
 		"bid":  bid,
 		"path": path,
@@ -216,7 +230,7 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 		}
 	}
 
-	if retMeta.Id == "" {
+	if retMeta.Id == "" || retMeta.IsDeleted || retMeta.ExpiredDate.Before(time.Now()) {
 		return nil, &models.ModelError{
 			Msg:     "not found",
 			ErrType: models.NotFound,
@@ -230,7 +244,7 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR fm IN fileMetadata FILTER fm.fid == @fid LIMIT 1 RETURN fm"
+	query := "FOR fm IN fileMetadata FILTER fm.fid == @fid AND fm.is_deleted != true  LIMIT 1 RETURN fm"
 	bindVars := map[string]interface{}{
 		"fid": fid,
 	}
@@ -270,6 +284,13 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 			DeletedDate:  fm.DeletedDate,
 			UploadedDate: fm.UploadedDate,
 			ExpiredDate:  fm.ExpiredDate,
+		}
+	}
+
+	if retMeta.IsDeleted || retMeta.ExpiredDate.Before(time.Now()) {
+		return nil, &models.ModelError{
+			Msg:     "file not found",
+			ErrType: models.NotFound,
 		}
 	}
 
@@ -476,7 +497,7 @@ func MarkDeleteFile(path string, name string, bid string) error {
 	query := "FOR fm IN fileMetadata FILTER fm.bucket_id == @bid AND fm.path == @path AND fm.name == @name LIMIT 1 " +
 		"UPDATE fm " +
 		"WITH { is_deleted: true, deleted_date: @del_date } " +
-		"IN bucketSize RETURN NEW"
+		"IN fileMetadata RETURN NEW"
 	bindVars := map[string]interface{}{
 		"bid":      bid,
 		"path":     path,
@@ -514,7 +535,24 @@ func MarkDeleteFile(path string, name string, bid string) error {
 		}
 	}
 
-	_, _ = DecreaseBucketSize(fm.BucketId, float64(fm.Size))
+	_, err = RemoveChildOfFolderByPath(fm.Path, Child{
+		Id:       fm.Id,
+		Name:     fm.Name,
+		Type:     "file",
+		IsHidden: fm.IsHidden,
+		Metadata: ChildFileMetadata{
+			ContentType: fm.ContentType,
+			Size:        fm.Size,
+		},
+	})
+	if err != nil {
+		return err
+	}
+
+	_, err = DecreaseBucketSize(fm.BucketId, float64(fm.Size))
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

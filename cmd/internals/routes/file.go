@@ -550,7 +550,34 @@ func FileRoutes(r *gin.Engine) {
 			parentPath := ultis.GetParentPath(fullpath)
 			fileName := ultis.GetFileName(fullpath)
 
-			bid := c.DefaultQuery("bucketId", "")
+			var accessKey *arango.AccessKey
+			if ak, ok := c.Get("accessKey"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				accessKey = ak.(*arango.AccessKey)
+
+				var isDeletePerm bool
+				for _, perm := range accessKey.Permissions {
+					if perm == "DeleteFile" {
+						isDeletePerm = true
+						break
+					}
+				}
+				if !isDeletePerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			bid := accessKey.BucketId
 			bucket, err := arango.FindBucketById(bid)
 			if err != nil {
 				if e, ok := err.(*models.ModelError); ok {
@@ -570,23 +597,6 @@ func FileRoutes(r *gin.Engine) {
 							"Db Error")
 						return
 					}
-				}
-			}
-
-			if ak, ok := c.Get("accessKey"); !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
-				})
-
-				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-					"Unknown Error")
-				return
-			} else {
-				if ak.(arango.AccessKey).BucketId != bucket.Uid {
-					c.JSON(http.StatusForbidden, gin.H{
-						"error": "permission denied",
-					})
-					return
 				}
 			}
 
@@ -1049,109 +1059,109 @@ func FileRoutes(r *gin.Engine) {
 			}
 		})
 
-		ar.GET("/downloadFiles", func(c *gin.Context) {
-			type fileList struct {
-				FileIds  []string `json:"file_ids"`
-				BucketId string   `json:"bucket_id"`
-			}
-
-			var curFileList fileList
-			if err := c.ShouldBind(&curFileList); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-			}
-
-			bucket, err := arango.FindBucketById(curFileList.BucketId)
-			if err != nil {
-				if e, ok := err.(*models.ModelError); ok {
-					if e.ErrType == models.DocumentNotFound {
-						c.JSON(http.StatusBadRequest, gin.H{
-							"error": "bid invalid",
-						})
-
-						return
-					}
-					if e.ErrType == models.DbError {
-						c.JSON(http.StatusInternalServerError, gin.H{
-							"error": "something when wrong",
-						})
-
-						_ = nats.SendErrorEvent(err.Error()+" at authenticated /auth/files/download",
-							"Db Error")
-						return
-					}
-				}
-			}
-
-			if uid, ok := c.Get("uid"); !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
-				})
-
-				_ = nats.SendErrorEvent("uid not found at authenticated /auth/files/downloadFiles",
-					"Unknown Error")
-				return
-			} else {
-				if uid.(string) != bucket.Uid {
-					c.JSON(http.StatusForbidden, gin.H{
-						"error": "permission denied",
-					})
-					return
-				}
-			}
-
-			listFileMetadata := []arango.FileMetadata{}
-			for _, fid := range curFileList.FileIds {
-				fm, err := arango.FindMetadataByFid(fid)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
-					})
-					return
-				}
-				listFileMetadata = append(listFileMetadata, *fm)
-			}
-
-			validListFileMetadata := []arango.FileMetadata{}
-			for _, fm := range listFileMetadata {
-				if fm.BucketId == curFileList.BucketId {
-					validListFileMetadata = append(validListFileMetadata, fm)
-				}
-			}
-
-			var totalSize int64
-			for _, fm := range validListFileMetadata {
-				totalSize += fm.Size
-			}
-
-			const TotalSizeLimit = 10 << (10 * 3)
-			if totalSize > TotalSizeLimit {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Total File Size Over Limit (10GB)",
-				})
-				return
-			}
-
-			c.Writer.Header().Set("Content-type", "application/octet-stream")
-			zipw := zip.NewWriter(c.Writer)
-			defer zipw.Close()
-
-			for _, fm := range validListFileMetadata {
-				err := arango.GetFileByFidIgnoreQueryMetadata(fm.FileId, func(reader io.Reader) error {
-					if err = appendReaderToZip(reader, fm.Name, zipw); err != nil {
-						return err
-					}
-					return nil
-				})
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{
-						"error": err.Error(),
-					})
-					return
-				}
-			}
-		})
+		//ar.GET("/downloadFiles", func(c *gin.Context) {
+		//	type fileList struct {
+		//		FileIds  []string `json:"file_ids"`
+		//		BucketId string   `json:"bucket_id"`
+		//	}
+		//
+		//	var curFileList fileList
+		//	if err := c.ShouldBind(&curFileList); err != nil {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": err.Error(),
+		//		})
+		//	}
+		//
+		//	bucket, err := arango.FindBucketById(curFileList.BucketId)
+		//	if err != nil {
+		//		if e, ok := err.(*models.ModelError); ok {
+		//			if e.ErrType == models.DocumentNotFound {
+		//				c.JSON(http.StatusBadRequest, gin.H{
+		//					"error": "bid invalid",
+		//				})
+		//
+		//				return
+		//			}
+		//			if e.ErrType == models.DbError {
+		//				c.JSON(http.StatusInternalServerError, gin.H{
+		//					"error": "something when wrong",
+		//				})
+		//
+		//				_ = nats.SendErrorEvent(err.Error()+" at authenticated /auth/files/download",
+		//					"Db Error")
+		//				return
+		//			}
+		//		}
+		//	}
+		//
+		//	if uid, ok := c.Get("uid"); !ok {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something when wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent("uid not found at authenticated /auth/files/downloadFiles",
+		//			"Unknown Error")
+		//		return
+		//	} else {
+		//		if uid.(string) != bucket.Uid {
+		//			c.JSON(http.StatusForbidden, gin.H{
+		//				"error": "permission denied",
+		//			})
+		//			return
+		//		}
+		//	}
+		//
+		//	listFileMetadata := []arango.FileMetadata{}
+		//	for _, fid := range curFileList.FileIds {
+		//		fm, err := arango.FindMetadataByFid(fid)
+		//		if err != nil {
+		//			c.JSON(http.StatusInternalServerError, gin.H{
+		//				"error": err.Error(),
+		//			})
+		//			return
+		//		}
+		//		listFileMetadata = append(listFileMetadata, *fm)
+		//	}
+		//
+		//	validListFileMetadata := []arango.FileMetadata{}
+		//	for _, fm := range listFileMetadata {
+		//		if fm.BucketId == curFileList.BucketId {
+		//			validListFileMetadata = append(validListFileMetadata, fm)
+		//		}
+		//	}
+		//
+		//	var totalSize int64
+		//	for _, fm := range validListFileMetadata {
+		//		totalSize += fm.Size
+		//	}
+		//
+		//	const TotalSizeLimit = 10 << (10 * 3)
+		//	if totalSize > TotalSizeLimit {
+		//		c.JSON(http.StatusBadRequest, gin.H{
+		//			"error": "Total File Size Over Limit (10GB)",
+		//		})
+		//		return
+		//	}
+		//
+		//	c.Writer.Header().Set("Content-type", "application/octet-stream")
+		//	zipw := zip.NewWriter(c.Writer)
+		//	defer zipw.Close()
+		//
+		//	for _, fm := range validListFileMetadata {
+		//		err := arango.GetFileByFidIgnoreQueryMetadata(fm.FileId, func(reader io.Reader) error {
+		//			if err = appendReaderToZip(reader, fm.Name, zipw); err != nil {
+		//				return err
+		//			}
+		//			return nil
+		//		})
+		//		if err != nil {
+		//			c.JSON(http.StatusInternalServerError, gin.H{
+		//				"error": err.Error(),
+		//			})
+		//			return
+		//		}
+		//	}
+		//})
 
 		ar.POST("/hidden", func(c *gin.Context) {
 			qIsHidden := c.DefaultQuery("hidden", "false")
@@ -1846,7 +1856,34 @@ func FileRoutes(r *gin.Engine) {
 			parentPath := ultis.GetParentPath(fullpath)
 			fileName := ultis.GetFileName(fullpath)
 
-			bid := c.DefaultQuery("bucketId", "")
+			var keyPair *arango.KeyPair
+			if kp, ok := c.Get("keyPair"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+					"Unknown Error")
+				return
+			} else {
+				keyPair = kp.(*arango.KeyPair)
+
+				var isDeletePerm bool
+				for _, perm := range keyPair.Permissions {
+					if perm == "DeleteFile" {
+						isDeletePerm = true
+						break
+					}
+				}
+				if !isDeletePerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			bid := keyPair.BucketId
 			bucket, err := arango.FindBucketById(bid)
 			if err != nil {
 				if e, ok := err.(*models.ModelError); ok {
@@ -1866,23 +1903,6 @@ func FileRoutes(r *gin.Engine) {
 							"Db Error")
 						return
 					}
-				}
-			}
-
-			if kp, ok := c.Get("keyPair"); !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
-				})
-
-				_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-					"Unknown Error")
-				return
-			} else {
-				if kp.(arango.KeyPair).BucketId != bucket.Uid {
-					c.JSON(http.StatusForbidden, gin.H{
-						"error": "permission denied",
-					})
-					return
 				}
 			}
 

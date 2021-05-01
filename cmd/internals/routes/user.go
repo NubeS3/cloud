@@ -51,7 +51,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if !user.IsBanned {
+			if user.IsBanned {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "account disabled",
 				})

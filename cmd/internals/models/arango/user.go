@@ -377,27 +377,44 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	user := User{
-		IsBanned: isBan,
+	query := "FOR u IN users FILTER u._key == @uid LIMIT 1 UPDATE u WITH { is_banned: @isBan } IN users " +
+		"RETURN u"
+	bindVars := map[string]interface{}{
+		"uid":   uid,
+		"isBan": isBan,
 	}
 
-	meta, err := userCol.UpdateDocument(ctx, uid, &user)
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return nil, &models.ModelError{
-				Msg:     "user not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
 		}
 	}
+	defer cursor.Close()
 
-	user.Id = meta.Key
-	return &user, err
+	user := User{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		user.Id = meta.Key
+	}
+
+	if user.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "user not found",
+			ErrType: models.NotFound,
+		}
+	}
+
+	return &user, nil
 }
 
 func RemoveUser(uid string) error {

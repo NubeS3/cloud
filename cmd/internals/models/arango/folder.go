@@ -18,10 +18,16 @@ type Folder struct {
 }
 
 type Child struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	IsHidden bool   `json:"is_hidden"`
+	Id       string      `json:"id"`
+	Name     string      `json:"name"`
+	Type     string      `json:"type"`
+	IsHidden bool        `json:"is_hidden"`
+	Metadata interface{} `json:"metadata"`
+}
+
+type ChildFileMetadata struct {
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
@@ -107,12 +113,16 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFile(fid, fname, parentId string, isHidden bool) (*Folder, error) {
+func InsertFile(fid, fname, parentId, contentType string, size int64, isHidden bool) (*Folder, error) {
 	f, err := AppendChildToFolderById(parentId, Child{
 		Id:       fid,
 		Name:     fname,
 		Type:     "file",
 		IsHidden: isHidden,
+		Metadata: ChildFileMetadata{
+			ContentType: contentType,
+			Size:        size,
+		},
 	})
 	if err != nil {
 		return nil, &models.ModelError{
@@ -207,15 +217,17 @@ func MoveFolderById(targetId string, toId string) (*Folder, error) {
 	}
 
 	_, _ = RemoveChildOfFolderByPath(oldParentPath, Child{
-		Id:   target.Id,
-		Name: target.Name,
-		Type: target.Fullpath,
+		Id:       target.Id,
+		Name:     target.Name,
+		Type:     "folder",
+		IsHidden: false,
 	})
 
 	target, err = AppendChildToFolderById(to.Id, Child{
-		Id:   target.Id,
-		Name: target.Name,
-		Type: "folder",
+		Id:       target.Id,
+		Name:     target.Name,
+		Type:     "folder",
+		IsHidden: false,
 	})
 
 	return target, nil
@@ -262,7 +274,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(doc.children, @child, 1)} IN folders RETURN NEW"
+	query := "FOR f IN folders FILTER f.fullpath == @path UPDATE f WITH { children: REMOVE_VALUE(f.children, @child, 1)} IN folders RETURN NEW"
 	bindVars := map[string]interface{}{
 		"path":  path,
 		"child": child,
@@ -279,7 +291,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 
 	folder := Folder{}
 	for {
-		_, err := cursor.ReadDocument(ctx, &folder)
+		meta, err := cursor.ReadDocument(ctx, &folder)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -288,6 +300,7 @@ func RemoveChildOfFolderByPath(path string, child Child) (*Folder, error) {
 				ErrType: models.DbError,
 			}
 		}
+		folder.Id = meta.Key
 	}
 
 	if folder.Id == "" {
