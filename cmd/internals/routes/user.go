@@ -142,7 +142,6 @@ func UserRoutes(route *gin.Engine) {
 					"OTP Failed")
 				return
 			}
-
 			c.JSON(http.StatusOK, gin.H{
 				"message": "verify account via otp sent to your email",
 			})
@@ -284,7 +283,6 @@ func UserRoutes(route *gin.Engine) {
 					"Db Error")
 				return
 			}
-
 			c.JSON(http.StatusOK, gin.H{
 				"firstname": user.Firstname,
 				"lastname":  user.Lastname,
