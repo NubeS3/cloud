@@ -505,3 +505,225 @@ func AdminGetUserLogByDate(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, logs)
 }
+
+func AdminGetAccessKeyLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	logs, err := nats.GetAccessKeyLog(int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetAccessKeyLogByType(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	t := c.DefaultQuery("type", "")
+
+	logs, err := nats.GetAccessKeyLogByType(t, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetAccessKeyLogByDate(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	logs, err := nats.GetAccessKeyLogByDate(fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetKeyPairLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	logs, err := nats.GetKeyPairLog(int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetKeyPairLogByType(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	t := c.DefaultQuery("type", "")
+
+	logs, err := nats.GetKeyPairLogByType(t, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}
+
+func AdminGetKeyPairLogByDate(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	logs, err := nats.GetKeyPairLogByDate(fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
