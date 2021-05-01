@@ -93,9 +93,7 @@ func SaveUser(
 	}
 
 	//LOG CREATE USER
-	_ = nats.SendUserEvent(doc.Firstname, doc.Lastname, doc.Username,
-		doc.Pass, doc.Email, doc.Dob, doc.Company, doc.Gender, doc.IsActive, doc.IsBanned,
-		"create")
+	_ = nats.SendUserEvent(meta.Key, doc.Username, doc.Email, "User created", "Add")
 
 	return &User{
 		Id:        meta.Key,
@@ -278,9 +276,8 @@ func UpdateUserData(
 	}
 
 	//LOG UPDATE USER
-	_ = nats.SendUserEvent(user.Firstname, user.Lastname, user.Username,
-		user.Pass, user.Email, user.Dob, user.Company, user.Gender, user.IsActive, user.IsBanned,
-		"update")
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email,
+		"User Updated", "Update")
 
 	return &user, err
 }
@@ -370,6 +367,8 @@ func UpdateUserPassword(uid string, password string) (*User, error) {
 	}
 
 	user.Id = meta.Key
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email,
+		"User Password Updated", "Update")
 	return &user, err
 }
 
@@ -397,6 +396,8 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 	}
 
 	user.Id = meta.Key
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email,
+		"User Ban Status Updated", "Update")
 	return &user, err
 }
 
@@ -418,6 +419,8 @@ func RemoveUser(uid string) error {
 			ErrType: models.DbError,
 		}
 	}
+	_ = nats.SendUserEvent(uid, "", "",
+		"User Deleted", "Delete")
 
 	return nil
 }

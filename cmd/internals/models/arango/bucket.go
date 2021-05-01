@@ -69,7 +69,8 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 	}
 
 	//LOG CREATE BUCKET
-	_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region, "create")
+	_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region,
+		"Bucket Created", "Add")
 
 	return &Bucket{
 		Id:        meta.Key,
@@ -221,7 +222,7 @@ func RemoveBucket(uid string, bid string) error {
 	}
 
 	//LOG CREATE BUCKET
-	_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region, "delete")
-
+	_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region,
+		"Bucket Delete", "Delete")
 	return nil
 }

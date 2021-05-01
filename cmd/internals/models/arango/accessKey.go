@@ -141,8 +141,8 @@ func GenerateAccessKey(bId string, uid string,
 	for _, p := range doc.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendAccessKeyEvent(doc.Key, doc.BucketId, doc.ExpiredDate,
-		perm, doc.Uid, "create")
+	_ = nats.SendAccessKeyEvent(doc.Key, doc.BucketId, doc.Uid,
+		"Access Key Created", "Add")
 
 	return &AccessKey{
 		Key:         key,
@@ -279,8 +279,8 @@ func DeleteAccessKey(key, bid, uid string) error {
 	for _, p := range akey.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendAccessKeyEvent(akey.Key, akey.BucketId, akey.ExpiredDate,
-		perm, akey.Uid, "delete")
+	_ = nats.SendAccessKeyEvent(akey.Key, akey.BucketId, akey.Uid,
+		"Access Key Deleted", "Delete")
 
 	return nil
 }
