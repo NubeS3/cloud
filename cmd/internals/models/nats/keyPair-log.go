@@ -10,10 +10,9 @@ type KeyPairLogMessage struct {
 	Public       string `json:"public"`
 	BucketId     string `json:"bucket_id"`
 	GeneratorUid string `json:"generator_uid"`
-	Content      string `json:"content"`
 }
 
-func SendKeyPairEvent(pub, bid, uid, content, t string) error {
+func SendKeyPairEvent(pub, bid, uid, t string) error {
 	jsonData, err := json.Marshal(KeyPairLogMessage{
 		Event: Event{
 			Type: t,
@@ -22,7 +21,6 @@ func SendKeyPairEvent(pub, bid, uid, content, t string) error {
 		Public:       pub,
 		BucketId:     bid,
 		GeneratorUid: uid,
-		Content:      content,
 	})
 
 	if err != nil {
