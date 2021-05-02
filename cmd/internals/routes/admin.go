@@ -32,6 +32,11 @@ func AdminRoutes(route *gin.Engine) {
 			aar.GET("/keyPair-log", adminHandler.AdminGetKeyPairLog)
 			aar.GET("/keyPair-log/type", adminHandler.AdminGetKeyPairLogByType)
 			aar.GET("/keyPair-log/date", adminHandler.AdminGetKeyPairLogByDate)
+			aar.GET("/req-log/auth", adminHandler.AdminGetAuthReqLog)
+			aar.GET("/req-log/accessKey", adminHandler.AdminGetAccessKeyReqLog)
+			aar.GET("/req-log/signed", adminHandler.AdminGetSignedReqLog)
+			aar.GET("/req-log/count/accessKey", adminHandler.AdminCountAccessKeyReqLog)
+			aar.GET("/req-log/count/signed", adminHandler.AdminCountSignedReqLog)
 		}
 	}
 }

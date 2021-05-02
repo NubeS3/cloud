@@ -94,6 +94,153 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, accessKey)
 		})
+		ar.GET("/use-count/:access_key", func(c *gin.Context) {
+			key := c.Param("access_key")
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+					"Unknown Error")
+				return
+			}
+
+			accessKey, err := arango.FindAccessKeyByKey(key)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
+					"Db Error")
+				return
+			}
+
+			if accessKey.Uid != uid.(string) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "invalid user ownership",
+				})
+
+				return
+			}
+
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			count, err := nats.CountAccessKeyReqCount(accessKey.Key, int(limit), int(offset))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("count access key usage err: "+err.Error(), "nats")
+				return
+			}
+
+			c.JSON(http.StatusOK, count)
+		})
+		ar.GET("/use-count/date/:access_key", func(c *gin.Context) {
+			key := c.Param("access_key")
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+					"Unknown Error")
+				return
+			}
+
+			accessKey, err := arango.FindAccessKeyByKey(key)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
+					"Db Error")
+				return
+			}
+
+			if accessKey.Uid != uid.(string) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "invalid user ownership",
+				})
+
+				return
+			}
+
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			fromT := time.Unix(from, 0)
+			toT := time.Unix(to, 0)
+
+			count, err := nats.CountAccessKeyReqCountByDateRange(accessKey.Key, fromT, toT, int(limit), int(offset))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("count access key usage err: "+err.Error(), "nats")
+				return
+			}
+
+			c.JSON(http.StatusOK, count)
+		})
 		ar.POST("/", func(c *gin.Context) {
 			type createAKeyData struct {
 				BucketId    string    `json:"bucket_id"`

@@ -2,6 +2,7 @@ package nats
 
 import (
 	"encoding/json"
+	"strconv"
 	"time"
 )
 
@@ -100,4 +101,264 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 	}
 
 	return sc.Publish(reqSubj+subjectSuffix, jsonData)
+}
+
+func ReadUnauthReqCount(limit, offset int) ([]UnauthReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "All",
+		Data:   []string{},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"unauth"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []UnauthReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func ReadUnauthReqCountByDateRange(from, to time.Time, limit, offset int) ([]UnauthReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339)},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"unauth"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []UnauthReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountUnauthReqCountByDateRange(from, to time.Time, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date-count",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339)},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"unauth"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
+}
+
+//
+
+func ReadAuthReqCountByDateRange(uid string, from, to time.Time, limit, offset int) ([]AuthReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), uid},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"auth"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []AuthReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountAuthReqCountByDateRange(uid string, from, to time.Time, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), uid},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"auth"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
+}
+
+//
+
+func ReadAccessKeyReqCountByDateRange(key string, from, to time.Time, limit, offset int) ([]AccessKeyReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), key},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"access-key"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []AccessKeyReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountAccessKeyReqCountByDateRange(key string, from, to time.Time, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), key},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"access-key"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
+}
+
+func ReadAccessKeyReqCount(key string, limit, offset int) ([]AccessKeyReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "All",
+		Data:   []string{key},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"access-key"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []AccessKeyReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountAccessKeyReqCount(key string, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "All",
+		Data:   []string{key},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"access-key"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
+}
+
+//
+
+func ReadSignedReqCountByDateRange(public string, from, to time.Time, limit, offset int) ([]SignedReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), public},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"signed"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []SignedReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountSignedReqCountByDateRange(public string, from, to time.Time, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), public},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"signed"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
+}
+
+func ReadSignedReqCount(public string, limit, offset int) ([]SignedReqLog, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{public},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"signed"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var logs []SignedReqLog
+	_ = json.Unmarshal(res.Data, &logs)
+	return logs, err
+}
+
+func CountSignedReqCount(public string, limit, offset int) (int64, error) {
+	request := Req{
+		Limit:  limit,
+		Offset: offset,
+		Type:   "Date",
+		Data:   []string{public},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"signed"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return 0, err
+	}
+
+	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
+	return count, nil
 }

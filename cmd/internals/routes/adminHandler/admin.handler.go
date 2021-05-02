@@ -727,3 +727,268 @@ func AdminGetKeyPairLogByDate(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, logs)
 }
+
+func AdminGetAuthReqLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	uid := c.DefaultQuery("uid", "")
+
+	res, err := nats.ReadAuthReqCountByDateRange(uid, fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetAccessKeyReqLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	key := c.DefaultQuery("key", "")
+
+	res, err := nats.ReadAccessKeyReqCountByDateRange(key, fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminCountAccessKeyReqLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	key := c.DefaultQuery("key", "")
+
+	res, err := nats.CountAccessKeyReqCountByDateRange(key, fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetSignedReqLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	public := c.DefaultQuery("public", "")
+
+	res, err := nats.ReadSignedReqCountByDateRange(public, fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminCountSignedReqLog(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	public := c.DefaultQuery("public", "")
+
+	res, err := nats.CountSignedReqCountByDateRange(public, fromT, toT, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
