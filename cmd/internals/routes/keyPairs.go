@@ -94,7 +94,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keyPair)
 		})
-		ar.GET("/use-count/:public", func(c *gin.Context) {
+		ar.GET("/use-count/all/:public", func(c *gin.Context) {
 			key := c.Param("public")
 
 			uid, ok := c.Get("uid")

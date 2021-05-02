@@ -811,7 +811,7 @@ func AdminGetAccessKeyReqLog(c *gin.Context) {
 	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid from format",
+			"error": "invalid to format",
 		})
 
 		return

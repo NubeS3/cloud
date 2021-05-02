@@ -188,7 +188,7 @@ func CountAuthReqCountByDateRange(uid string, from, to time.Time, limit, offset 
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date",
+		Type:   "Date-count",
 		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), uid},
 	}
 
@@ -229,7 +229,7 @@ func CountAccessKeyReqCountByDateRange(key string, from, to time.Time, limit, of
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date",
+		Type:   "Date-count",
 		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), key},
 	}
 
@@ -268,7 +268,7 @@ func CountAccessKeyReqCount(key string, limit, offset int) (int64, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "All",
+		Type:   "All-count",
 		Data:   []string{key},
 	}
 
@@ -309,7 +309,7 @@ func CountSignedReqCountByDateRange(public string, from, to time.Time, limit, of
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date",
+		Type:   "Date-count",
 		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), public},
 	}
 
@@ -348,7 +348,7 @@ func CountSignedReqCount(public string, limit, offset int) (int64, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date",
+		Type:   "Date-count",
 		Data:   []string{public},
 	}
 

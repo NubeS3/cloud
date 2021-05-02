@@ -94,7 +94,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, accessKey)
 		})
-		ar.GET("/use-count/:access_key", func(c *gin.Context) {
+		ar.GET("/use-count/all/:access_key", func(c *gin.Context) {
 			key := c.Param("access_key")
 
 			uid, ok := c.Get("uid")
