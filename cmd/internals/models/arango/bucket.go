@@ -60,6 +60,14 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 		}
 	}
 
+	_, err = CreateBucketSize(meta.Key)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
 	//LOG CREATE BUCKET
 	_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region, "Add")
 

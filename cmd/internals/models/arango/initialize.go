@@ -24,6 +24,7 @@ var (
 	rfTokenCol       arangoDriver.Collection
 	fileMetadataCol  arangoDriver.Collection
 	adminCol         arangoDriver.Collection
+	bucketSizeCol    arangoDriver.Collection
 )
 
 func InitArangoDb() error {
@@ -158,6 +159,16 @@ func initArangoDb() error {
 		fileMetadataCol, _ = arangoDb.CreateCollection(ctx, "fileMetadata", &arangoDriver.CreateCollectionOptions{})
 	} else {
 		fileMetadataCol, _ = arangoDb.Collection(ctx, "fileMetadata")
+	}
+
+	exist, err = arangoDb.CollectionExists(ctx, "bucketSize")
+	if err != nil {
+		return err
+	}
+	if !exist {
+		bucketSizeCol, _ = arangoDb.CreateCollection(ctx, "bucketSize", &arangoDriver.CreateCollectionOptions{})
+	} else {
+		bucketSizeCol, _ = arangoDb.Collection(ctx, "bucketSize")
 	}
 
 	exist, err = arangoDb.CollectionExists(ctx, "admin")
