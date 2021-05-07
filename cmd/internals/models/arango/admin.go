@@ -2,10 +2,11 @@ package arango
 
 import (
 	"context"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/arangodb/go-driver"
 	scrypt "github.com/elithrar/simple-scrypt"
-	"time"
 )
 
 const (
@@ -178,4 +179,42 @@ func ToggleAdmin(username string, disable bool) (*Admin, error) {
 	}
 
 	return &admin, nil
+}
+
+func GetAllMods(offset int, limit int) ([]Admin, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR a IN admin LIMIT @offset, @limit RETURN a"
+	bindVars := map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	admins := []Admin{}
+	for {
+		admin := Admin{}
+		meta, err := cursor.ReadDocument(ctx, &admin)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		admin.Id = meta.Key
+		admins = append(admins, admin)
+	}
+
+	return admins, nil
 }
