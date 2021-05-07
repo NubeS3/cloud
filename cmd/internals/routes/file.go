@@ -315,7 +315,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        accessKey.Uid,
+					From:       accessKey.Key,
+					BucketId:   accessKey.BucketId,
+					SourceType: "accessKey",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -429,7 +436,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        accessKey.Uid,
+					From:       accessKey.Key,
+					BucketId:   accessKey.BucketId,
+					SourceType: "accessKey",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -916,6 +930,7 @@ func FileRoutes(r *gin.Engine) {
 				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
 					From:       userId,
+					BucketId:   bucket.Id,
 					SourceType: "auth",
 				})
 
@@ -1030,6 +1045,7 @@ func FileRoutes(r *gin.Engine) {
 				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
 					From:       userId,
+					BucketId:   bucket.Id,
 					SourceType: "auth",
 				})
 
@@ -1648,6 +1664,7 @@ func FileRoutes(r *gin.Engine) {
 				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
 					Uid:        keyPair.GeneratorUid,
 					From:       keyPair.Public,
+					BucketId:   keyPair.BucketId,
 					SourceType: "signed",
 				})
 
@@ -1758,6 +1775,7 @@ func FileRoutes(r *gin.Engine) {
 				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
 					Uid:        keyPair.GeneratorUid,
 					From:       keyPair.Public,
+					BucketId:   keyPair.BucketId,
 					SourceType: "signed",
 				})
 
