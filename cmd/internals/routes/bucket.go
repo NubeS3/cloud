@@ -197,6 +197,70 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, bucketSize)
 		})
+		ar.GET("/object-count/:bucket_id", func(c *gin.Context) {
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
+					"Unknown Error")
+
+				return
+			}
+
+			bucketId := c.Param("bucket_id")
+			bucket, err := arango.FindBucketById(bucketId)
+			if err != nil {
+				if err, ok := err.(*models.ModelError); ok {
+					if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": "bucket not found",
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
+				return
+			}
+
+			if bucket.Uid != uid {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "not your bucket",
+				})
+
+				return
+			}
+
+			count, err := arango.CountMetadataByBucketId(bucket.Id)
+			if err != nil {
+				if err, ok := err.(*models.ModelError); ok {
+					if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": "bucket not found",
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
+				return
+			}
+
+			c.JSON(http.StatusOK, count)
+		})
 	}
 
 }

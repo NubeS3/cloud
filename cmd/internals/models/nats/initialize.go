@@ -13,6 +13,7 @@ const (
 	uploadFileSubj   = "nubes3_upload_file"
 	downloadFileSubj = "nubes3_download_file"
 	reqSubj          = "nubes3_req_"
+	bandwidthSubj    = "nubes3_bandwidth"
 	userSubj         = "nubes3_user"
 	bucketSubj       = "nubes3_bucket"
 	folderSubj       = "nubes3_folder"

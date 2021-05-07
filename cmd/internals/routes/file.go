@@ -884,6 +884,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 
+			var userId string
 			if uid, ok := c.Get("uid"); !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -893,6 +894,7 @@ func FileRoutes(r *gin.Engine) {
 					"Unknown Error")
 				return
 			} else {
+				userId = uid.(string)
 				if uid.(string) != bucket.Uid {
 					c.JSON(http.StatusForbidden, gin.H{
 						"error": "permission denied",
@@ -909,11 +911,15 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				//extraHeaders := map[string]string{
-				//	"Content-Disposition": `attachment; filename=` + metadata.Name,
-				//}
+				extraHeaders := map[string]string{}
 
-				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, nil)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
@@ -973,6 +979,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 
+			var userId string
 			if uid, ok := c.Get("uid"); !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -982,7 +989,8 @@ func FileRoutes(r *gin.Engine) {
 					"Unknown Error")
 				return
 			} else {
-				if uid.(string) != bucket.Uid {
+				userId = uid.(string)
+				if userId != bucket.Uid {
 					c.JSON(http.StatusForbidden, gin.H{
 						"error": "permission denied",
 					})
@@ -1019,7 +1027,13 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -1631,7 +1645,13 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        keyPair.GeneratorUid,
+					From:       keyPair.Public,
+					SourceType: "signed",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -1735,7 +1755,13 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        keyPair.GeneratorUid,
+					From:       keyPair.Public,
+					SourceType: "signed",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,

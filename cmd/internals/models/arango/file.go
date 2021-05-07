@@ -556,3 +556,40 @@ func MarkDeleteFile(path string, name string, bid string) error {
 
 	return nil
 }
+
+func CountMetadataByBucketId(bid string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "for fm in fileMetadata " +
+		"filter fm.is_deleted != false AND fm.bucket_id == @bid " +
+		"collect with count into c " +
+		"return c"
+	bindVars := map[string]interface{}{
+		"bid": bid,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return 0, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	var count int64
+	for {
+		_, err := cursor.ReadDocument(ctx, &count)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return 0, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	return count, nil
+}

@@ -92,7 +92,7 @@ func Run() {
 
 	m := autocert.Manager{
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
+		HostPolicy: autocert.HostWhitelist("nubes3.xyz", "104.155.176.68"),
 		Cache:      autocert.DirCache("/var/www/.cache"),
 	}
 
