@@ -22,6 +22,6 @@ require (
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/spf13/viper v1.7.1
 	github.com/thanhpk/randstr v1.0.4
-	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 	google.golang.org/protobuf v1.25.0 // indirect
 )

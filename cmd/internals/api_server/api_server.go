@@ -2,6 +2,10 @@ package api_server
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
@@ -12,9 +16,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/acme/autocert"
-	"log"
-	"net/http"
-	"time"
 )
 
 func init() {
@@ -43,11 +44,11 @@ func Run() {
 	fmt.Println("Initializing utilities...")
 	ultis.InitUtilities()
 
-	//fmt.Println("Initialize Log DB connection")
-	//err := cassandra.InitCassandraDb()
-	//if err != nil {
-	//	panic(err)
-	//}
+	// fmt.Println("Initialize Log DB connection")
+	// err := cassandra.InitCassandraDb()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	fmt.Println("Initialize DB connection")
 	err := arango.InitArangoDb()
@@ -62,7 +63,6 @@ func Run() {
 	}
 	defer seaweedfs.CleanUp()
 
-	fmt.Println("Initialize NATS connection")
 	err = nats.InitNats()
 	if err != nil {
 		panic(err)
@@ -97,5 +97,5 @@ func Run() {
 	}
 
 	log.Fatal(autotls.RunWithManager(r, &m))
-	r.Run(":6160")
+	//r.Run(":6160")
 }
