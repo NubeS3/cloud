@@ -2,10 +2,11 @@ package arango
 
 import (
 	"context"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/arangodb/go-driver"
 	scrypt "github.com/elithrar/simple-scrypt"
-	"time"
 )
 
 const (
@@ -180,13 +181,11 @@ func ToggleAdmin(username string, disable bool) (*Admin, error) {
 	return &admin, nil
 }
 
-
-
 func GetAllMods(offset int, limit int) ([]Admin, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR k IN admin LIMIT @offset, @limit RETURN k"
+	query := "FOR a IN admin LIMIT @offset, @limit RETURN a"
 	bindVars := map[string]interface{}{
 		"limit":  limit,
 		"offset": offset,
@@ -217,6 +216,5 @@ func GetAllMods(offset int, limit int) ([]Admin, error) {
 		admins = append(admins, admin)
 	}
 
-	
 	return admins, nil
 }

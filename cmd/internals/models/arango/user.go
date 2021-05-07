@@ -441,7 +441,7 @@ func GetAllUser(offset int, limit int) ([]User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR k IN users LIMIT @offset, @limit RETURN k"
+	query := "FOR u IN users LIMIT @offset, @limit RETURN u"
 	bindVars := map[string]interface{}{
 		"limit":  limit,
 		"offset": offset,
