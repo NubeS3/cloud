@@ -992,3 +992,63 @@ func AdminCountSignedReqLog(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func AdminGetAccessKeyByBid(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	bucketId := c.Param("bucket_id")
+	res, err := arango.FindAccessKeyByBid(bucketId, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetKeyPairByBid(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	bucketId := c.Param("bucket_id")
+	res, err := arango.FindKeyByBid(bucketId, int(limit), int(offset))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	c.JSON(http.StatusOK, res)
+}
