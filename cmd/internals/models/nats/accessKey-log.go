@@ -7,8 +7,8 @@ import (
 
 type AccessKeyLogMessage struct {
 	Event
-	Key      string `json:"id"`
-	BucketId string `json:"bid"`
+	Key      string `json:"key"`
+	BucketId string `json:"bucket_id"`
 	Uid      string `json:"uid"`
 }
 
