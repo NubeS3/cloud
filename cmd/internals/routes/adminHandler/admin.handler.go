@@ -1054,7 +1054,6 @@ func AdminGetKeyPairByBid(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-
 func AdminGetUsers(c *gin.Context) {
 	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 	if err != nil {
@@ -1076,15 +1075,6 @@ func AdminGetUsers(c *gin.Context) {
 	users, err := arango.GetAllUser(int(offset), int(limit))
 
 	if err != nil {
-		if err, ok := err.(*models.ModelError); ok {
-			if err.ErrType == models.Duplicated {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
-		}
-
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -1101,6 +1091,7 @@ func AdminGetMods(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "admin not found.",
 		})
+		return
 	}
 	admin := a.(ultis.AdminClaims)
 
@@ -1131,14 +1122,6 @@ func AdminGetMods(c *gin.Context) {
 	users, err := arango.GetAllMods(int(offset), int(limit))
 
 	if err != nil {
-		if err, ok := err.(*models.ModelError); ok {
-			if err.ErrType == models.Duplicated {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
-		}
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
