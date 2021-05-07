@@ -309,3 +309,4 @@ func SendOTP(username string, email string, otp string, expiredTime time.Time) e
 
 	return nats.SendEmailEvent(email, username, otp, expiredTime)
 }
+

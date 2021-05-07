@@ -1,15 +1,16 @@
 package adminHandler
 
 import (
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 func AdminSigninHandler(c *gin.Context) {
@@ -991,4 +992,99 @@ func AdminCountSignedReqLog(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetUsers(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	users, err := arango.GetAllUser(int(offset), int(limit))
+
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.Duplicated {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+func AdminGetMods(c *gin.Context) {
+	a, ok := c.Get("admin")
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "admin not found.",
+		})
+	}
+	admin := a.(ultis.AdminClaims)
+
+	if admin.AdminType != 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "You are not allowed",
+		})
+		return
+	}
+
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	users, err := arango.GetAllMods(int(offset), int(limit))
+
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.Duplicated {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
 }
