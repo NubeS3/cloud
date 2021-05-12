@@ -220,6 +220,11 @@ func RemoveBucket(uid string, bid string) error {
 		}
 	}
 
+	err = RemoveFolderAndItsChild("", bucket.Name)
+	if err != nil {
+		return err
+	}
+
 	//LOG CREATE BUCKET
 	_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region, "Delete")
 	return nil

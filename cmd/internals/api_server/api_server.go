@@ -2,7 +2,6 @@ package api_server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -12,10 +11,8 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/routes"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/autotls"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func init() {
@@ -90,12 +87,12 @@ func Run() {
 	})
 	Routing(r)
 
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
-		Cache:      autocert.DirCache("/var/www/.cache"),
-	}
+	// m := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
+	// 	Cache:      autocert.DirCache("/var/www/.cache"),
+	// }
 
-	log.Fatal(autotls.RunWithManager(r, &m))
-	//r.Run(":6160")
+	// log.Fatal(autotls.RunWithManager(r, &m))
+	r.Run(":6160")
 }

@@ -2,10 +2,11 @@ package arango
 
 import (
 	"context"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
-	"time"
 )
 
 type Folder struct {
@@ -517,4 +518,33 @@ func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) 
 	}
 
 	return &folder, nil
+}
+
+func RemoveFolderAndItsChild(parentPath, name string) error {
+	fullpath := parentPath + "/" + name
+
+	f, err := FindFolderByFullpath(fullpath)
+	if err != nil {
+		return err
+	}
+
+	for _, child := range f.Children {
+		if child.Type == "file" {
+			err = MarkDeleteFile(fullpath, child.Name, ultis.GetBucketName(fullpath))
+		} else {
+			err = RemoveFolderAndItsChild(fullpath, child.Name)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	_, _ = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       f.Id,
+		Name:     f.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+
+	return nil
 }
