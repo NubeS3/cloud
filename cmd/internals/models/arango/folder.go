@@ -540,7 +540,11 @@ func RemoveFolderAndItsChild(parentPath, name string) error {
 
 	for _, child := range f.Children {
 		if child.Type == "file" {
-			err = MarkDeleteFile(fullpath, child.Name, ultis.GetBucketName(fullpath))
+			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
+			if e != nil {
+				return e
+			}
+			err = MarkDeleteFile(fullpath, child.Name, bucket.Id)
 		} else {
 			err = RemoveFolderAndItsChild(fullpath, child.Name)
 		}
