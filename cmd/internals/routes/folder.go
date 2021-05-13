@@ -218,7 +218,7 @@ func FolderRoutes(r *gin.Engine) {
 				return
 			}
 
-			err = arango.RemoveFolderAndItsChild(ultis.GetParentPath(path), folder.Name)
+			err = arango.RemoveFolderAndItsChildren(ultis.GetParentPath(path), folder.Name)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),

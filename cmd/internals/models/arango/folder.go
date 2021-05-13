@@ -520,15 +520,57 @@ func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) 
 	return &folder, nil
 }
 
-func RemoveFolderAndItsChild(parentPath, name string) error {
+func RemoveFolderAndItsChildren(parentPath, name string) error {
 	fullpath := parentPath + "/" + name
 
-	f, err := FindFolderByFullpath(fullpath)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @fullpath  REMOVE f in folders LET removed = OLD RETURN removed"
+	bindVars := map[string]interface{}{
+		"fullpath": fullpath,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	folder := Folder{}
+	for {
+		_, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	if folder.Id == "" {
+		return &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
 	if err != nil {
 		return err
 	}
 
-	for _, child := range f.Children {
+	for _, child := range folder.Children {
 		if child.Type == "file" {
 			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
 			if e != nil {
@@ -536,21 +578,11 @@ func RemoveFolderAndItsChild(parentPath, name string) error {
 			}
 			err = MarkDeleteFile(fullpath, child.Name, bucket.Id)
 		} else {
-			err = RemoveFolderAndItsChild(fullpath, child.Name)
+			err = RemoveFolderAndItsChildren(fullpath, child.Name)
 		}
 		if err != nil {
 			return err
 		}
-	}
-
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       f.Id,
-		Name:     f.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
-	if err != nil {
-		return err
 	}
 
 	return nil

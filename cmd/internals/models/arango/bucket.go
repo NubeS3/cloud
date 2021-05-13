@@ -220,7 +220,7 @@ func RemoveBucket(uid string, bid string) error {
 		}
 	}
 
-	err = RemoveFolderAndItsChild("", bucket.Name)
+	err = RemoveFolderAndItsChildren("", bucket.Name)
 	if err != nil {
 		return err
 	}
