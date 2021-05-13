@@ -521,13 +521,11 @@ func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) 
 }
 
 func RemoveFolderAndItsChildren(parentPath, name string) error {
-	//Declare fullpath for current deleting folder
 	fullpath := parentPath + "/" + name
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	//Setup query string
 	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f in folders LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"fullpath": fullpath,
@@ -545,7 +543,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	//Check out the folder is already removed or not
 	folder := Folder{}
 	for {
-		_, err := cursor.ReadDocument(ctx, &folder)
+		meta, err := cursor.ReadDocument(ctx, &folder)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -554,6 +552,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 				ErrType: models.DbError,
 			}
 		}
+		folder.Id = meta.Key
 	}
 
 	//Check out the folder does exist or not
@@ -567,7 +566,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	//Remove all the folder's children
 	for _, child := range folder.Children {
 		if child.Type == "file" {
-			bucket, e := FindBucketByName(ultis.GetBucketName(parentPath))
+			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
 			if e != nil {
 				return e
 			}
