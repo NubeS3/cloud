@@ -540,6 +540,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	}
 	defer cursor.Close()
 
+	//Check out the folder is already removed or not
 	folder := Folder{}
 	for {
 		meta, err := cursor.ReadDocument(ctx, &folder)
@@ -554,6 +555,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		folder.Id = meta.Key
 	}
 
+	//Check out the folder does exist or not
 	if folder.Id == "" {
 		return &models.ModelError{
 			Msg:     "folder not found",
@@ -561,6 +563,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		}
 	}
 
+	//Remove the folder from its parent
 	_, err = RemoveChildOfFolderByPath(parentPath, Child{
 		Id:       folder.Id,
 		Name:     folder.Name,
@@ -571,6 +574,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		return err
 	}
 
+	//Remove all the folder's children
 	for _, child := range folder.Children {
 		if child.Type == "file" {
 			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
