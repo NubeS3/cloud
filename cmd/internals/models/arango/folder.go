@@ -526,7 +526,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f.fullpath == @fullpath  REMOVE f in folders LET removed = OLD RETURN removed"
+	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f in folders LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"fullpath": fullpath,
 	}
@@ -542,7 +542,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 
 	folder := Folder{}
 	for {
-		_, err := cursor.ReadDocument(ctx, &folder)
+		meta, err := cursor.ReadDocument(ctx, &folder)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -551,6 +551,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 				ErrType: models.DbError,
 			}
 		}
+		folder.Id = meta.Key
 	}
 
 	if folder.Id == "" {
