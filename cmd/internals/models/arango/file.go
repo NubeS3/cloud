@@ -45,6 +45,11 @@ type fileMetadata struct {
 	ExpiredDate  time.Time `json:"expired_date"`
 }
 
+type SimpleFileMetadata struct {
+	Id  string `json:"id"`
+	Fid string `json:"fid"`
+}
+
 func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
@@ -592,4 +597,57 @@ func CountMetadataByBucketId(bid string) (int64, error) {
 	}
 
 	return count, nil
+}
+
+func GetMarkedDeleteFileList(limit, offset int64) ([]SimpleFileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "for fm in fileMetadata " +
+		"filter fm.is_deleted != true " +
+		"limit @offset, @limit " +
+		"return fm"
+	bindVars := map[string]interface{}{
+		"offset": offset,
+		"limit":  limit,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	fileMetadata := fileMetadata{}
+	simpleMetadata := []SimpleFileMetadata{}
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		simpleMetadata = append(simpleMetadata, SimpleFileMetadata{
+			Id:  meta.Key,
+			Fid: fileMetadata.FileId,
+		})
+	}
+
+	return simpleMetadata, nil
+}
+
+func DeleteMarkedFileMetadata(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	_, err := fileMetadataCol.RemoveDocument(ctx, id)
+	return err
 }

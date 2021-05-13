@@ -2,6 +2,9 @@ package api_server
 
 import (
 	"fmt"
+	"github.com/NubeS3/cloud/cmd/internals/cron"
+	"github.com/gin-gonic/autotls"
+	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
 	"time"
@@ -14,7 +17,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 func init() {
@@ -68,7 +70,9 @@ func Run() {
 	}
 	defer nats.CleanUp()
 
-	ultis.InitMailService()
+	//ultis.InitMailService()
+
+	defer cron.CleanUp()
 
 	fmt.Println("Starting Cloud Server")
 	gin.SetMode(gin.ReleaseMode)

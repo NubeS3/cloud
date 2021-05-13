@@ -15,9 +15,10 @@ require (
 	github.com/linxGnu/goseaweedfs v0.1.5
 	github.com/m1ome/randstr v0.0.0-20170328115817-50e7f2dc0288
 	github.com/mediocregopher/radix/v3 v3.7.0
-	github.com/nats-io/nats-server/v2 v2.1.9 // indirect
+	github.com/nats-io/nats-streaming-server v0.21.2 // indirect
 	github.com/nats-io/nats.go v1.10.0
 	github.com/nats-io/stan.go v0.8.3
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/sendgrid/rest v2.6.2+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.7.2+incompatible
 	github.com/spf13/viper v1.7.1
