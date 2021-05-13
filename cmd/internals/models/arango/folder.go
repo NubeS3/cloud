@@ -528,16 +528,6 @@ func RemoveFolderAndItsChild(parentPath, name string) error {
 		return err
 	}
 
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       f.Id,
-		Name:     f.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
-	if err != nil {
-		return err
-	}
-
 	for _, child := range f.Children {
 		if child.Type == "file" {
 			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
@@ -551,6 +541,16 @@ func RemoveFolderAndItsChild(parentPath, name string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       f.Id,
+		Name:     f.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
