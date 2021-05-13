@@ -564,17 +564,6 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		}
 	}
 
-	//Remove the folder from its parent
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       folder.Id,
-		Name:     folder.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
-	if err != nil {
-		return err
-	}
-
 	//Remove all the folder's children
 	for _, child := range folder.Children {
 		if child.Type == "file" {
@@ -589,6 +578,17 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	//Remove the folder from its parent
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
