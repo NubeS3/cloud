@@ -523,53 +523,7 @@ func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) 
 func RemoveFolderAndItsChildren(parentPath, name string) error {
 	fullpath := parentPath + "/" + name
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f in folders LET removed = OLD RETURN removed"
-	bindVars := map[string]interface{}{
-		"fullpath": fullpath,
-	}
-
-	cursor, err := arangoDb.Query(ctx, query, bindVars)
-	if err != nil {
-		return &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
-	defer cursor.Close()
-
-	//Get the removed folder after execute query
-	folder := Folder{}
-	for {
-		meta, err := cursor.ReadDocument(ctx, &folder)
-		if driver.IsNoMoreDocuments(err) {
-			break
-		} else if err != nil {
-			return &models.ModelError{
-				Msg:     err.Error(),
-				ErrType: models.DbError,
-			}
-		}
-		folder.Id = meta.Key
-	}
-
-	//Check out the folder does exist or not
-	if folder.Id == "" {
-		return &models.ModelError{
-			Msg:     "folder not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-
-	//Remove the folder from its parent
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       folder.Id,
-		Name:     folder.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
+	folder, err := FindFolderByFullpath(fullpath)
 	if err != nil {
 		return err
 	}
@@ -589,6 +543,56 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		}
 		if err != nil {
 			return err
+		}
+	}
+
+	//Remove the folder from its parent
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f in folders LET removed = OLD RETURN removed"
+	bindVars := map[string]interface{}{
+		"fullpath": fullpath,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	//Get the removed folder after execute query
+	for {
+		meta, err := cursor.ReadDocument(ctx, &folder)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		folder.Id = meta.Key
+	}
+
+	//Check out the folder does exist or not
+	if folder.Id == "" {
+		return &models.ModelError{
+			Msg:     "folder not found",
+			ErrType: models.DocumentNotFound,
 		}
 	}
 
