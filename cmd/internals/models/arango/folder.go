@@ -546,17 +546,6 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		}
 	}
 
-	//Remove the folder from its parent
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       folder.Id,
-		Name:     folder.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
-	if err != nil {
-		return err
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -594,6 +583,17 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 			Msg:     "folder not found",
 			ErrType: models.DocumentNotFound,
 		}
+	}
+
+	//Remove the folder from its parent
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
