@@ -540,7 +540,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	}
 	defer cursor.Close()
 
-	//Check out the folder is already removed or not
+	//Get the removed folder after execute query
 	folder := Folder{}
 	for {
 		meta, err := cursor.ReadDocument(ctx, &folder)
@@ -563,22 +563,6 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 		}
 	}
 
-	//Remove all the folder's children
-	for _, child := range folder.Children {
-		if child.Type == "file" {
-			bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
-			if e != nil {
-				return e
-			}
-			err = MarkDeleteFile(fullpath, child.Name, bucket.Id)
-		} else {
-			err = RemoveFolderAndItsChildren(fullpath, child.Name)
-		}
-		if err != nil {
-			return err
-		}
-	}
-
 	//Remove the folder from its parent
 	_, err = RemoveChildOfFolderByPath(parentPath, Child{
 		Id:       folder.Id,
@@ -588,6 +572,24 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	})
 	if err != nil {
 		return err
+	}
+
+	//Find bucket parent of the folder's children
+	bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
+	if e != nil {
+		return e
+	}
+
+	//Remove all the folder's children
+	for _, child := range folder.Children {
+		if child.Type == "file" {
+			err = MarkDeleteFile(fullpath, child.Name, bucket.Id)
+		} else {
+			err = RemoveFolderAndItsChildren(fullpath, child.Name)
+		}
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
