@@ -81,6 +81,36 @@ func AdminCreateMod(c *gin.Context) {
 		return
 	}
 
+	if ok, err := ultis.ValidateUsername(newAdmin.Username); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Username must be 8-24 characters, does not start or end with _ or ., does not contain __, _., ._, ..",
+		})
+
+		return
+	}
+
+	if ok, err := ultis.ValidatePassword(newAdmin.Password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Password must be 8-32 characters, contains at least one uppercase, one lowercase, one number and one special character",
+		})
+
+		return
+	}
+
 	resAdmin, err := arango.CreateAdmin(newAdmin.Username, newAdmin.Password, arango.ModAdmin)
 	if err != nil {
 		if err, ok := err.(*models.ModelError); ok {
@@ -1131,4 +1161,228 @@ func AdminGetMods(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+func AdminGetUidTotalBandwidth(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	uid := c.Param("uid")
+
+	user, err := arango.FindUserById(uid)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "user not found",
+				})
+
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		return
+	}
+
+	res, err := nats.SumBandwidthByDateRangeWithUid(user.Id, fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetBidTotalBandwidth(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	bid := c.Param("bid")
+
+	bucket, err := arango.FindBucketById(bid)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "bucket not found",
+				})
+
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		return
+	}
+
+	res, err := nats.SumBandwidthByDateRangeWithBucketId(bucket.Id, fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetAkTotalBandwidth(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	k := c.Param("key")
+
+	key, err := arango.FindAccessKeyByKey(k)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "key not found",
+				})
+
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		return
+	}
+
+	res, err := nats.SumBandwidthByDateRangeWithFrom(key.Key, fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminGetSignedTotalBandwidth(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	k := c.Param("key")
+
+	key, err := arango.FindKeyPairByPublic(k)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "key not found",
+				})
+
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		return
+	}
+
+	res, err := nats.SumBandwidthByDateRangeWithFrom(key.Public, fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
 }

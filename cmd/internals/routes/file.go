@@ -182,6 +182,21 @@ func FileRoutes(r *gin.Engine) {
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
 
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file access key > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
+
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -315,7 +330,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        accessKey.Uid,
+					From:       accessKey.Key,
+					BucketId:   accessKey.BucketId,
+					SourceType: "accessKey",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -429,7 +451,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        accessKey.Uid,
+					From:       accessKey.Key,
+					BucketId:   accessKey.BucketId,
+					SourceType: "accessKey",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -795,6 +824,21 @@ func FileRoutes(r *gin.Engine) {
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
 
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file auth > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
+
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -884,6 +928,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 
+			var userId string
 			if uid, ok := c.Get("uid"); !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -893,6 +938,7 @@ func FileRoutes(r *gin.Engine) {
 					"Unknown Error")
 				return
 			} else {
+				userId = uid.(string)
 				if uid.(string) != bucket.Uid {
 					c.JSON(http.StatusForbidden, gin.H{
 						"error": "permission denied",
@@ -909,11 +955,16 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				//extraHeaders := map[string]string{
-				//	"Content-Disposition": `attachment; filename=` + metadata.Name,
-				//}
+				extraHeaders := map[string]string{}
 
-				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, reader, nil)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
@@ -973,6 +1024,7 @@ func FileRoutes(r *gin.Engine) {
 				}
 			}
 
+			var userId string
 			if uid, ok := c.Get("uid"); !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -982,7 +1034,8 @@ func FileRoutes(r *gin.Engine) {
 					"Unknown Error")
 				return
 			} else {
-				if uid.(string) != bucket.Uid {
+				userId = uid.(string)
+				if userId != bucket.Uid {
 					c.JSON(http.StatusForbidden, gin.H{
 						"error": "permission denied",
 					})
@@ -1019,7 +1072,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -1511,6 +1571,21 @@ func FileRoutes(r *gin.Engine) {
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
 
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file signed > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
+
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -1631,7 +1706,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        keyPair.GeneratorUid,
+					From:       keyPair.Public,
+					BucketId:   keyPair.BucketId,
+					SourceType: "signed",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
@@ -1735,7 +1817,14 @@ func FileRoutes(r *gin.Engine) {
 					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
 				}
 
-				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, reader, extraHeaders)
+				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+					Uid:        keyPair.GeneratorUid,
+					From:       keyPair.Public,
+					BucketId:   keyPair.BucketId,
+					SourceType: "signed",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,

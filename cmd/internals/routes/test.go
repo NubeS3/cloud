@@ -5,6 +5,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -42,6 +43,16 @@ func TestRoute(r *gin.Engine) {
 		}
 
 		c.JSON(http.StatusOK, "sent")
+	})
+
+	r.GET("/test/validate/:target", func(c *gin.Context) {
+		target := c.Param("target")
+		ok, err := ultis.ValidateBucketName(target)
+		println(target)
+		println(ok)
+		if err != nil {
+			println(err.Error())
+		}
 	})
 
 	r.GET("/test/signed", middlewares.CheckSigned, func(c *gin.Context) {

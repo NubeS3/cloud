@@ -52,6 +52,22 @@ func SaveUser(
 	company string,
 	gender bool,
 ) (*User, error) {
+	u, _ := FindUserByUsername(username)
+	if u != nil {
+		return nil, &models.ModelError{
+			Msg:     "duplicated username",
+			ErrType: models.Duplicated,
+		}
+	}
+
+	u, _ = FindUserByEmail(email)
+	if u != nil {
+		return nil, &models.ModelError{
+			Msg:     "duplicated username",
+			ErrType: models.Duplicated,
+		}
+	}
+
 	createdTime := time.Now()
 	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
 	if err != nil {
@@ -75,14 +91,6 @@ func SaveUser(
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
-
-	user, _ := FindUserByUsername(username)
-	if user != nil {
-		return nil, &models.ModelError{
-			Msg:     "duplicated username",
-			ErrType: models.Duplicated,
-		}
-	}
 
 	meta, err := userCol.CreateDocument(ctx, doc)
 	if err != nil {
@@ -486,6 +494,5 @@ func GetAllUser(offset int, limit int) ([]User, error) {
 		})
 	}
 
-	
 	return users, nil
 }

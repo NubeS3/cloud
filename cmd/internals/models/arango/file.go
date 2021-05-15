@@ -45,6 +45,11 @@ type fileMetadata struct {
 	ExpiredDate  time.Time `json:"expired_date"`
 }
 
+type SimpleFileMetadata struct {
+	Id  string `json:"id"`
+	Fid string `json:"fid"`
+}
+
 func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, expiredDate time.Time) (*FileMetadata, error) {
@@ -82,7 +87,7 @@ func saveFileMetadata(fid string, bid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, isHidden)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, doc.ExpiredDate, isHidden)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
@@ -555,4 +560,94 @@ func MarkDeleteFile(path string, name string, bid string) error {
 	}
 
 	return nil
+}
+
+func CountMetadataByBucketId(bid string) (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "for fm in fileMetadata " +
+		"filter fm.is_deleted != false AND fm.bucket_id == @bid " +
+		"collect with count into c " +
+		"return c"
+	bindVars := map[string]interface{}{
+		"bid": bid,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return 0, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	var count int64
+	for {
+		_, err := cursor.ReadDocument(ctx, &count)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return 0, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	return count, nil
+}
+
+func GetMarkedDeleteFileList(limit, offset int64) ([]SimpleFileMetadata, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "for fm in fileMetadata " +
+		"filter  fm.expired_date < DATE_NOW() or fm.is_deleted == true " +
+		"limit @offset, @limit " +
+		"return fm"
+	bindVars := map[string]interface{}{
+		"offset": offset,
+		"limit":  limit,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	fileMetadata := fileMetadata{}
+	simpleMetadata := []SimpleFileMetadata{}
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &fileMetadata)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		simpleMetadata = append(simpleMetadata, SimpleFileMetadata{
+			Id:  meta.Key,
+			Fid: fileMetadata.FileId,
+		})
+	}
+
+	return simpleMetadata, nil
+}
+
+func DeleteMarkedFileMetadata(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	_, err := fileMetadataCol.RemoveDocument(ctx, id)
+	return err
 }
