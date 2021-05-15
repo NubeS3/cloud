@@ -564,16 +564,17 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	defer cursor.Close()
 
 	//Remove the folder from its parent
-	if parentPath != "" {
-		_, err = RemoveChildOfFolderByPath(parentPath, Child{
-			Id:       folder.Id,
-			Name:     folder.Name,
-			Type:     "folder",
-			IsHidden: false,
-		})
-		if err != nil {
-			return err
-		}
+	if parentPath == "" {
+		return nil
+	}
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil
