@@ -505,7 +505,7 @@ func MarkDeleteFile(path string, name string, bid string) error {
 		"IN fileMetadata RETURN NEW"
 	bindVars := map[string]interface{}{
 		"bid":      bid,
-		"path":     path,
+		"path":     path,	
 		"name":     name,
 		"del_date": deleteDate,
 	}

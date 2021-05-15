@@ -2,10 +2,11 @@ package arango
 
 import (
 	"context"
+	"time"
+
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/arangodb/go-driver"
-	"time"
 )
 
 type Folder struct {
@@ -519,4 +520,66 @@ func UpdateHiddenStatusOfFolderChild(path, fid, name string, hiddenStatus bool) 
 	}
 
 	return &folder, nil
+}
+
+func RemoveFolderAndItsChildren(parentPath, name string) error {
+	fullpath := parentPath + "/" + name
+
+	folder, err := FindFolderByFullpath(fullpath)
+	if err != nil {
+		return err
+	}
+
+	//Find bucket parent of the folder's children
+	bucket, e := FindBucketByName(ultis.GetBucketName(fullpath))
+	if e != nil {
+		return e
+	}
+
+	//Remove all the folder's children
+	for _, child := range folder.Children {
+		if child.Type == "file" {
+			err = MarkDeleteFile(fullpath, child.Name, bucket.Id)
+		} else {
+			err = RemoveFolderAndItsChildren(fullpath, child.Name)
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f IN folders LET removed = OLD RETURN removed"
+	bindVars := map[string]interface{}{
+		"fullpath": fullpath,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	//parentPath == "" means that the removed folder is a bucket, it does not have parent to call the next section
+	if parentPath == "" {
+		return nil
+	}
+
+	//Remove the folder from its parent
+	_, err = RemoveChildOfFolderByPath(parentPath, Child{
+		Id:       folder.Id,
+		Name:     folder.Name,
+		Type:     "folder",
+		IsHidden: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

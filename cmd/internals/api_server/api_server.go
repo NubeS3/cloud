@@ -93,12 +93,12 @@ func Run() {
 	})
 	Routing(r)
 
-	m := autocert.Manager{
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
-		Cache:      autocert.DirCache("/var/www/.cache"),
-	}
+	// m := autocert.Manager{
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
+	// 	Cache:      autocert.DirCache("/var/www/.cache"),
+	// }
 
-	log.Fatal(autotls.RunWithManager(r, &m))
-	//r.Run(":6160")
+	// log.Fatal(autotls.RunWithManager(r, &m))
+	r.Run(":6160")
 }
