@@ -549,7 +549,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f in folders LET removed = OLD RETURN removed"
+	query := "FOR f IN folders FILTER f.fullpath == @fullpath REMOVE f IN folders LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
 		"fullpath": fullpath,
 	}
