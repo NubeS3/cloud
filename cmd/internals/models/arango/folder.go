@@ -563,37 +563,17 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	}
 	defer cursor.Close()
 
-	//Get the removed folder after execute query
-	for {
-		meta, err := cursor.ReadDocument(ctx, &folder)
-		if driver.IsNoMoreDocuments(err) {
-			break
-		} else if err != nil {
-			return &models.ModelError{
-				Msg:     err.Error(),
-				ErrType: models.DbError,
-			}
-		}
-		folder.Id = meta.Key
-	}
-
-	//Check out the folder does exist or not
-	if folder.Id == "" {
-		return &models.ModelError{
-			Msg:     "folder not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-
 	//Remove the folder from its parent
-	_, err = RemoveChildOfFolderByPath(parentPath, Child{
-		Id:       folder.Id,
-		Name:     folder.Name,
-		Type:     "folder",
-		IsHidden: false,
-	})
-	if err != nil {
-		return err
+	if parentPath != "" {
+		_, err = RemoveChildOfFolderByPath(parentPath, Child{
+			Id:       folder.Id,
+			Name:     folder.Name,
+			Type:     "folder",
+			IsHidden: false,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
