@@ -81,6 +81,36 @@ func AdminCreateMod(c *gin.Context) {
 		return
 	}
 
+	if ok, err := ultis.ValidateUsername(newAdmin.Username); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Username must be 8-24 characters, does not start or end with _ or ., does not contain __, _., ._, ..",
+		})
+
+		return
+	}
+
+	if ok, err := ultis.ValidatePassword(newAdmin.Password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Password must be 8-32 characters, contains at least one uppercase, one lowercase, one number and one special character",
+		})
+
+		return
+	}
+
 	resAdmin, err := arango.CreateAdmin(newAdmin.Username, newAdmin.Password, arango.ModAdmin)
 	if err != nil {
 		if err, ok := err.(*models.ModelError); ok {

@@ -95,19 +95,50 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			// if _, err := models.FindUserByUsername(user.Username); err != nil {
-			// 	c.JSON(http.StatusBadRequest, gin.H{
-			// 		"error": "username already used",
-			// 	})
-			// 	return
-			// }
+			if ok, err := ultis.ValidateUsername(user.Username); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
 
-			// if _, err := models.FindUserByEmail(user.Email); err != nil {
-			// 	c.JSON(http.StatusBadRequest, gin.H{
-			// 		"error": "email already used",
-			// 	})
-			// 	return
-			// }
+				_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Username must be 8-24 characters, does not start or end with _ or ., does not contain __, _., ._, ..",
+				})
+
+				return
+			}
+
+			if ok, err := ultis.ValidateEmail(user.Email); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Email must be <something>@<something.com>",
+				})
+
+				return
+			}
+
+			if ok, err := ultis.ValidatePassword(user.Pass); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Password must be 8-32 characters, contains at least one uppercase, one lowercase, one number and one special character",
+				})
+
+				return
+			}
 
 			var curUser, err = arango.SaveUser(
 				user.Firstname,
@@ -120,9 +151,21 @@ func UserRoutes(route *gin.Engine) {
 				user.Gender,
 			)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
+				if err.(*models.ModelError).ErrType == models.Duplicated {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
 				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at user/signup:",
+					"Db Error")
+
 				return
 			}
 

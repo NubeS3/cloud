@@ -5,6 +5,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -68,6 +69,22 @@ func BucketRoutes(r *gin.Engine) {
 				})
 				return
 			}
+
+			if ok, err := ultis.ValidateBucketName(curCreateBucket.Name); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("create bucket > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Bucket name must be 8-64 characters, contains only alphanumeric",
+				})
+
+				return
+			}
+
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{

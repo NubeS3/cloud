@@ -182,6 +182,21 @@ func FileRoutes(r *gin.Engine) {
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
 
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file access key > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
+
 			fileContent, err := uploadFile.Open()
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -808,6 +823,21 @@ func FileRoutes(r *gin.Engine) {
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
+
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file auth > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
 
 			fileContent, err := uploadFile.Open()
 			if err != nil {
@@ -1540,6 +1570,21 @@ func FileRoutes(r *gin.Engine) {
 
 			fileName := c.DefaultPostForm("name", uploadFile.Filename)
 			//newPath := bucket.Name + path + fileName
+
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("upload file signed > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
 
 			fileContent, err := uploadFile.Open()
 			if err != nil {

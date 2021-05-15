@@ -69,10 +69,25 @@ func FolderRoutes(r *gin.Engine) {
 				})
 			}
 
-			folderParent, err := arango.FindFolderByFullpath(curInsertedFolder.ParentPath)
-			if err != nil {
+			if ok, err := ultis.ValidateFolderName(curInsertedFolder.Name); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("create folder auth > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Folder name must be 8-32 characters, contains only alphanumeric",
+				})
+
+				return
+			}
+
+			folderParent, err := arango.FindFolderByFullpath(ultis.StandardizedPath(curInsertedFolder.ParentPath, true))
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": err.Error(),
 				})
 
 				_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/insertFolder:",
@@ -98,9 +113,17 @@ func FolderRoutes(r *gin.Engine) {
 				return
 			}
 
+			_, err = arango.FindFolderByFullpath(folderParent.Fullpath + "/" + curInsertedFolder.Name)
+			if err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "folder duplicated",
+				})
+
+				return
+			}
+
 			folder, err := arango.InsertFolder(curInsertedFolder.Name,
 				folderParent.Id, uid.(string))
-
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",

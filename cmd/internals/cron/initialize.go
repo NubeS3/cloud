@@ -9,7 +9,9 @@ var c *cron.Cron
 func init() {
 	c = cron.New()
 
+	//_, _ = c.AddFunc("@daily", DeleteFile)
 	_, _ = c.AddFunc("@daily", DeleteFile)
+	c.Start()
 }
 
 func CleanUp() {
