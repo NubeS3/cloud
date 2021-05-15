@@ -563,7 +563,7 @@ func RemoveFolderAndItsChildren(parentPath, name string) error {
 	}
 	defer cursor.Close()
 
-	//parentPath == "" means that the remove folder is a bucket, it does not have parent to call the next section
+	//parentPath == "" means that the removed folder is a bucket, it does not have parent to call the next section
 	if parentPath == "" {
 		return nil
 	}
