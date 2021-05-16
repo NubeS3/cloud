@@ -63,7 +63,7 @@ func SaveUser(
 	u, _ = FindUserByEmail(email)
 	if u != nil {
 		return nil, &models.ModelError{
-			Msg:     "duplicated username",
+			Msg:     "duplicated email",
 			ErrType: models.Duplicated,
 		}
 	}

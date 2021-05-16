@@ -41,6 +41,8 @@ func AdminRoutes(route *gin.Engine) {
 			aar.GET("/admins-list", adminHandler.AdminGetMods)
 			aar.GET("/accessKey/:bucket_id", adminHandler.AdminGetAccessKeyByBid)
 			aar.GET("/keyPair/:bucket_id", adminHandler.AdminGetKeyPairByBid)
+			aar.GET("/buckets/:uid", adminHandler.AdminGetBucketByUid)
+			aar.GET("/buckets", adminHandler.AdminGetAllBucket)
 
 			aar.GET("/bandwidth-report/user/:uid", adminHandler.AdminGetUidTotalBandwidth)
 			aar.GET("/bandwidth-report/bucket/:bid", adminHandler.AdminGetBidTotalBandwidth)

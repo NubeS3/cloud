@@ -147,6 +147,45 @@ func FindBucketById(bid string) (*Bucket, error) {
 	return &bucket, nil
 }
 
+func FindAllBucket(limit int64, offset int64) ([]Bucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR b IN buckets LIMIT @offset, @limit RETURN b"
+	bindVars := map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	buckets := []Bucket{}
+	bucket := Bucket{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		bucket.Id = meta.Key
+		buckets = append(buckets, bucket)
+	}
+
+	return buckets, nil
+}
+
 func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
@@ -205,6 +244,11 @@ func RemoveBucket(uid string, bid string) error {
 		}
 	}
 
+	err = RemoveFolderAndItsChildren("", bucket.Name)
+	if err != nil {
+		return err
+	}
+
 	_, err = bucketCol.RemoveDocument(ctx, bid)
 	if err != nil {
 		if driver.IsNotFound(err) {
@@ -218,11 +262,6 @@ func RemoveBucket(uid string, bid string) error {
 			Msg:     err.Error(),
 			ErrType: models.DbError,
 		}
-	}
-
-	err = RemoveFolderAndItsChildren("", bucket.Name)
-	if err != nil {
-		return err
 	}
 
 	//LOG CREATE BUCKET
