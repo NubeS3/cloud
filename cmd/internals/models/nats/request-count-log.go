@@ -328,7 +328,7 @@ func ReadSignedReqCount(public string, limit, offset int) ([]SignedReqLog, error
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date",
+		Type:   "All",
 		Data:   []string{public},
 	}
 
@@ -348,7 +348,7 @@ func CountSignedReqCount(public string, limit, offset int) (int64, error) {
 	request := Req{
 		Limit:  limit,
 		Offset: offset,
-		Type:   "Date-count",
+		Type:   "All-count",
 		Data:   []string{public},
 	}
 

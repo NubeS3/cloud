@@ -171,7 +171,7 @@ func FolderRoutes(r *gin.Engine) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
-			bucketName := token[1]
+			bucketName := token[0]
 			if _, err := arango.FindBucketByName(bucketName); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),

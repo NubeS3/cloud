@@ -10,7 +10,7 @@ const (
 	UsernamePattern   = `^[a-zA-Z][a-zA-Z0-9_\.]{7,24}$`
 	BucketNamePattern = `^[a-zA-Z_]*[a-zA-Z0-9\-]{4,64}$`
 	FolderNamePattern = `^[a-zA-Z_]*[a-zA-Z0-9]{1,32}$`
-	FileNamePattern   = `^[0-9a-zA-Z_\-.]{1, 255}$`
+	FileNamePattern   = `^[0-9a-zA-Z_\-. ]{1,255}$`
 )
 
 func ValidateEmail(email string) (bool, error) {

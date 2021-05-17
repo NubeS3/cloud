@@ -3,6 +3,9 @@ package api_server
 import (
 	"fmt"
 	"github.com/NubeS3/cloud/cmd/internals/cron"
+	"github.com/gin-gonic/autotls"
+	"golang.org/x/crypto/acme/autocert"
+	"log"
 	"net/http"
 	"time"
 
@@ -90,12 +93,12 @@ func Run() {
 	})
 	Routing(r)
 
-	//m := autocert.Manager{
-	//	Prompt:     autocert.AcceptTOS,
-	//	HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
-	//	Cache:      autocert.DirCache("/var/www/.cache"),
-	//}
-	//
-	//log.Fatal(autotls.RunWithManager(r, &m))
-	r.Run(":6160")
+	m := autocert.Manager{
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
+		Cache:      autocert.DirCache("/var/www/.cache"),
+	}
+
+	log.Fatal(autotls.RunWithManager(r, &m))
+	//r.Run(":6160")
 }
