@@ -1,14 +1,15 @@
 package routes
 
 import (
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 func FolderRoutes(r *gin.Engine) {
@@ -69,10 +70,25 @@ func FolderRoutes(r *gin.Engine) {
 				})
 			}
 
-			folderParent, err := arango.FindFolderByFullpath(curInsertedFolder.ParentPath)
-			if err != nil {
+			if ok, err := ultis.ValidateFolderName(curInsertedFolder.Name); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("create folder auth > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Folder name must be 8-32 characters, contains only alphanumeric",
+				})
+
+				return
+			}
+
+			folderParent, err := arango.FindFolderByFullpath(ultis.StandardizedPath(curInsertedFolder.ParentPath, true))
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": err.Error(),
 				})
 
 				_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/insertFolder:",
@@ -98,9 +114,17 @@ func FolderRoutes(r *gin.Engine) {
 				return
 			}
 
+			_, err = arango.FindFolderByFullpath(folderParent.Fullpath + "/" + curInsertedFolder.Name)
+			if err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "folder duplicated",
+				})
+
+				return
+			}
+
 			folder, err := arango.InsertFolder(curInsertedFolder.Name,
 				folderParent.Id, uid.(string))
-
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -225,6 +249,52 @@ func FolderRoutes(r *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, folder.Children)
+		})
+		ar.DELETE("/*full_path", func(c *gin.Context) {
+			queryPath := c.Param("full_path")
+			path := ultis.StandardizedPath(queryPath, true)
+			token := strings.Split(path, "/")
+			bucketName := token[1]
+			if _, err := arango.FindBucketByName(bucketName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			folder, err := arango.FindFolderByFullpath(path)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allByPath",
+					"Unknown Error")
+				return
+			}
+
+			if folder.OwnerId != uid.(string) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			err = arango.RemoveFolderAndItsChildren(ultis.GetParentPath(path), folder.Name)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, folder.Id)
 		})
 	}
 

@@ -369,6 +369,45 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 
 	for {
 		akey := accessKey{}
+		_, err := cursor.ReadDocument(ctx, &akey)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		keys = append(keys, *akey.toAccessKey())
+	}
+
+	return keys, nil
+}
+
+func FindAccessKeyByBid(bid string, limit, offset int) ([]AccessKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR k IN apiKeys FILTER k.bucket_id == @bid LIMIT @offset, @limit RETURN k"
+	bindVars := map[string]interface{}{
+		"bid":    bid,
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	keys := []AccessKey{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		akey := accessKey{}
 		meta, err := cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
@@ -438,8 +477,7 @@ func DeleteAccessKey(key, bid, uid string) error {
 	for _, p := range akey.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendAccessKeyEvent(akey.Key, akey.BucketId, akey.ExpiredDate,
-		perm, akey.Uid, "delete")
+	_ = nats.SendAccessKeyEvent(akey.Key, akey.BucketId, akey.Uid, "Delete")
 
 	return nil
 }

@@ -78,7 +78,12 @@ func CheckSigned(c *gin.Context) {
 		return
 	}
 
-	pHash, err := hashFunc(kp.Private + strconv.FormatInt(exp, 10))
+	expStr := strconv.FormatInt(exp, 10)
+	method := c.Request.Method
+	host := "https://" + c.Request.Host
+	path := c.Request.URL.Path
+
+	pHash, err := hashFunc(kp.Private + method + host + path + expStr)
 	if pHash == sig {
 		c.Set("keyPair", kp)
 		c.Next()

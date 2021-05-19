@@ -31,3 +31,7 @@ func DownloadFile(id string, callback func(reader io.Reader) error) error {
 
 	return nil
 }
+
+func DeleteFile(id string) error {
+	return sw.DeleteFile(id, nil)
+}

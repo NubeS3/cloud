@@ -52,6 +52,22 @@ func SaveUser(
 	company string,
 	gender bool,
 ) (*User, error) {
+	u, _ := FindUserByUsername(username)
+	if u != nil {
+		return nil, &models.ModelError{
+			Msg:     "duplicated username",
+			ErrType: models.Duplicated,
+		}
+	}
+
+	u, _ = FindUserByEmail(email)
+	if u != nil {
+		return nil, &models.ModelError{
+			Msg:     "duplicated email",
+			ErrType: models.Duplicated,
+		}
+	}
+
 	createdTime := time.Now()
 	passwordHashed, err := scrypt.GenerateFromPassword([]byte(password), scrypt.DefaultParams)
 	if err != nil {
@@ -76,14 +92,6 @@ func SaveUser(
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	user, _ := FindUserByUsername(username)
-	if user != nil {
-		return nil, &models.ModelError{
-			Msg:     "duplicated username",
-			ErrType: models.Duplicated,
-		}
-	}
-
 	meta, err := userCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -93,9 +101,7 @@ func SaveUser(
 	}
 
 	//LOG CREATE USER
-	_ = nats.SendUserEvent(doc.Firstname, doc.Lastname, doc.Username,
-		doc.Pass, doc.Email, doc.Dob, doc.Company, doc.Gender, doc.IsActive, doc.IsBanned,
-		"create")
+	_ = nats.SendUserEvent(meta.Key, doc.Username, doc.Email, "Add")
 
 	return &User{
 		Id:        meta.Key,
@@ -278,9 +284,7 @@ func UpdateUserData(
 	}
 
 	//LOG UPDATE USER
-	_ = nats.SendUserEvent(user.Firstname, user.Lastname, user.Username,
-		user.Pass, user.Email, user.Dob, user.Company, user.Gender, user.IsActive, user.IsBanned,
-		"update")
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
 
 	return &user, err
 }
@@ -370,6 +374,7 @@ func UpdateUserPassword(uid string, password string) (*User, error) {
 	}
 
 	user.Id = meta.Key
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
 	return &user, err
 }
 
@@ -377,27 +382,44 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	user := User{
-		IsBanned: isBan,
+	query := "FOR u IN users FILTER u._key == @uid LIMIT 1 UPDATE u WITH { is_banned: @isBan } IN users " +
+		"RETURN u"
+	bindVars := map[string]interface{}{
+		"uid":   uid,
+		"isBan": isBan,
 	}
 
-	meta, err := userCol.UpdateDocument(ctx, uid, &user)
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
-		if driver.IsNotFound(err) {
-			return nil, &models.ModelError{
-				Msg:     "user not found",
-				ErrType: models.DocumentNotFound,
-			}
-		}
-
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
 			ErrType: models.DbError,
 		}
 	}
+	defer cursor.Close()
 
-	user.Id = meta.Key
-	return &user, err
+	user := User{}
+	for {
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		user.Id = meta.Key
+	}
+
+	if user.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "user not found",
+			ErrType: models.NotFound,
+		}
+	}
+	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
+	return &user, nil
 }
 
 func RemoveUser(uid string) error {
@@ -418,6 +440,59 @@ func RemoveUser(uid string) error {
 			ErrType: models.DbError,
 		}
 	}
+	_ = nats.SendUserEvent(uid, "", "", "Delete")
 
 	return nil
+}
+
+func GetAllUser(offset int, limit int) ([]User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR u IN users LIMIT @offset, @limit RETURN u"
+	bindVars := map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	users := []User{}
+	for {
+		user := user{}
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		users = append(users, User{
+			Id:        meta.Key,
+			Firstname: user.Firstname,
+			Lastname:  user.Lastname,
+			Username:  user.Username,
+			Pass:      user.Pass,
+			Email:     user.Email,
+			Dob:       user.Dob,
+			Company:   user.Company,
+			Gender:    user.Gender,
+			IsActive:  user.IsActive,
+			IsBanned:  user.IsBanned,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
+	}
+
+	return users, nil
 }

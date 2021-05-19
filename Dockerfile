@@ -6,8 +6,8 @@ RUN go mod download
 COPY . .
 RUN go build -o /bin/main ./cmd/main.go
 #=========
-FROM alpine:latest AS runtime
-COPY --from=build /bin /
-COPY --from=build /src/config.json .
-EXPOSE 6160:6160
-CMD ["./main"]
+#FROM alpine:latest AS runtime
+#COPY --from=build /bin /
+#COPY --from=build /src/config.json .
+#EXPOSE 6160:6160
+#CMD ["./main"]

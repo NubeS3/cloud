@@ -106,8 +106,7 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 	for _, p := range doc.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendKeyPairEvent(doc.Public, doc.Private, doc.BucketId, doc.ExpiredDate,
-		perm, doc.GeneratorUid, "create")
+	_ = nats.SendKeyPairEvent(doc.Public, doc.BucketId, doc.GeneratorUid, "Add")
 
 	return &KeyPair{
 		Public:       doc.Public,
@@ -127,6 +126,45 @@ func FindKeyByUidBid(uid, bid string, limit, offset int) ([]KeyPair, error) {
 	bindVars := map[string]interface{}{
 		"bid":    bid,
 		"uid":    uid,
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	keys := []KeyPair{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		keypair := keyPair{}
+		_, err := cursor.ReadDocument(ctx, &keypair)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		keys = append(keys, *keypair.toKeyPair())
+	}
+
+	return keys, nil
+}
+
+func FindKeyByBid(bid string, limit, offset int) ([]KeyPair, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR k IN keyPairs FILTER k.bucket_id == @bid LIMIT @offset, @limit RETURN k"
+	bindVars := map[string]interface{}{
+		"bid":    bid,
 		"limit":  limit,
 		"offset": offset,
 	}
@@ -245,8 +283,7 @@ func RemoveKeyPair(public, bid, uid string) error {
 	for _, p := range kp.Permissions {
 		perm = append(perm, p.String())
 	}
-	_ = nats.SendKeyPairEvent(kp.Public, kp.Private, kp.BucketId, kp.ExpiredDate,
-		perm, kp.GeneratorUid, "delete")
+	_ = nats.SendKeyPairEvent(kp.Public, kp.BucketId, kp.GeneratorUid, "Delete")
 
 	return nil
 }
