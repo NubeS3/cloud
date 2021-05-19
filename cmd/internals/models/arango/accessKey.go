@@ -248,6 +248,48 @@ func GenerateMasterKey(uid string) (*AccessKey, error) {
 	return doc.toAccessKey(meta.Key), nil
 }
 
+func FindMasterKeyByUid(uid string) (*AccessKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR k IN apiKeys FILTER k.uid == @uid AND k.type == MASTER LIMIT 1 RETURN k"
+	bindVars := map[string]interface{}{
+		"uid": uid,
+	}
+
+	akey := accessKey{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	var meta driver.DocumentMeta
+	for {
+		meta, err = cursor.ReadDocument(ctx, &akey)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+	}
+
+	if meta.Key == "" {
+		return nil, &models.ModelError{
+			Msg:     "key not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return akey.toAccessKey(meta.Key), nil
+}
+
 func FindAccessKeyById(id string) (*AccessKey, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -297,6 +339,7 @@ func GetAccessKeyByUid(uid string, limit, offset int) ([]AccessKey, error) {
 			}
 		}
 
+		akey.Key = ""
 		keys = append(keys, *akey.toAccessKey(meta.Key))
 	}
 
@@ -369,7 +412,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 
 	for {
 		akey := accessKey{}
-		_, err := cursor.ReadDocument(ctx, &akey)
+		meta, err := cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -379,7 +422,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 			}
 		}
 
-		keys = append(keys, *akey.toAccessKey())
+		keys = append(keys, *akey.toAccessKey(meta.Key))
 	}
 
 	return keys, nil

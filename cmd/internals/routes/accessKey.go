@@ -2,14 +2,71 @@ package routes
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/middlewares"
+	"github.com/NubeS3/cloud/cmd/internals/models"
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
+	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"strconv"
 	"time"
 )
 
 func AccessKeyRoutes(r *gin.Engine) {
+	uar := r.Group("/get-auth-token")
+	{
+		uar.GET("/", func(c *gin.Context) {
+			type reqKey struct {
+				KeyId string `json:"key_id" binding:"required"`
+				Key   string `json:"key"  binding:"required"`
+			}
+
+			var keyData reqKey
+			if err := c.ShouldBind(&keyData); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			key, err := arango.FindAccessKeyById(keyData.KeyId)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "key not found",
+					})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at key/resolve:",
+					"Db Error")
+
+				return
+			}
+
+			token, err := ultis.CreateKeyToken(key.Id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("at /get-auth-token: "+err.Error(), "unknown")
+				return
+			}
+
+			key.Key = "*****"
+			c.JSON(http.StatusOK, gin.H{
+				"auth_token": token,
+				"key_info":   key,
+			})
+		})
+	}
+
 	ar := r.Group("/auth/accessKey", middlewares.UserAuthenticate, middlewares.AuthReqCount)
 	{
 		//ar.GET("/all/:bucket_id", func(c *gin.Context) {
@@ -105,6 +162,37 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			keys, err := arango.GetAccessKeyByUid(uid.(string), int(limit), int(offset))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at get all key:",
+					"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, keys)
 		})
 		ar.GET("/use-count/all/:access_key", func(c *gin.Context) {
 			key := c.Param("access_key")
@@ -253,7 +341,45 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, count)
 		})
-		ar.POST("/", func(c *gin.Context) {
+		ar.POST("/master", func(c *gin.Context) {
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/create:",
+					"Unknown Error")
+				return
+			}
+
+			key, err := arango.FindMasterKeyByUid(uid.(string))
+			if err == nil {
+				err = arango.DeleteAccessKeyById(key.Id)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something when wrong",
+					})
+
+					_ = nats.SendErrorEvent(err.Error()+" at buckets/create:",
+						"Db Error")
+
+					return
+				}
+			}
+
+			res, err := arango.GenerateMasterKey(uid.(string))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+
+			c.JSON(http.StatusOK, res.Key)
+		})
+		ar.POST("/app", func(c *gin.Context) {
 			type createAKeyData struct {
 				Name                   string    `json:"name" binding:"required"`
 				BucketId               *string   `json:"bucket_id"`
@@ -292,9 +418,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res.Key)
 		})
-		ar.DELETE("/:bucket_id/:access_key", func(c *gin.Context) {
-			key := c.Param("access_key")
-			bucketId := c.Param("bucket_id")
+		ar.DELETE("/:id", func(c *gin.Context) {
+			id := c.Param("id")
 
 			uid, ok := c.Get("uid")
 			if !ok {
@@ -307,18 +432,77 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if err := arango.DeleteAccessKey(key, bucketId, uid.(string)); err != nil {
+			key, err := arango.FindAccessKeyById(id)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "key not found",
+					})
+
+					return
+				}
+
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
+					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /accessKeys/delete:",
+				_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
 					"Db Error")
 
 				return
 			}
 
-			c.JSON(http.StatusOK, key)
+			if key.Uid != uid.(string) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "not your key",
+				})
+
+				return
+			}
+
+			err = arango.DeleteAccessKeyById(id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
+					"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"key": key.Id,
+			})
 		})
+		//ar.DELETE("/:bucket_id/:access_key", func(c *gin.Context) {
+		//	key := c.Param("access_key")
+		//	bucketId := c.Param("bucket_id")
+		//
+		//	uid, ok := c.Get("uid")
+		//	if !ok {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something went wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/delete:",
+		//			"Unknown Error")
+		//		return
+		//	}
+		//
+		//	if err := arango.DeleteAccessKey(key, bucketId, uid.(string)); err != nil {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something went wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent(err.Error()+" at /accessKeys/delete:",
+		//			"Db Error")
+		//
+		//		return
+		//	}
+		//
+		//	c.JSON(http.StatusOK, key)
+		//})
 	}
 }

@@ -17,9 +17,32 @@ import (
 func UserRoutes(route *gin.Engine) {
 	userRoutesGroup := route.Group("/users")
 	{
+		userRoutesGroup.GET("/validate-email/:email", middlewares.UnauthReqCount, func(c *gin.Context) {
+			email := c.Param("emai")
+			_, err := arango.FindUserByEmail(email)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
+					c.JSON(http.StatusNotFound, gin.H{})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at user/signup:",
+					"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{})
+		})
+
 		userRoutesGroup.POST("/signin", middlewares.UnauthReqCount, func(c *gin.Context) {
 			type signinUser struct {
-				Username string `json:"username" binding:"required"`
+				Email    string `json:"email" binding:"required"`
 				Password string `json:"password" binding:"required"`
 			}
 			var curSigninUser signinUser
@@ -30,7 +53,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			user, err := arango.FindUserByUsername(curSigninUser.Username)
+			user, err := arango.FindUserByEmail(curSigninUser.Email)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "invalid username",
@@ -87,7 +110,12 @@ func UserRoutes(route *gin.Engine) {
 		})
 
 		userRoutesGroup.POST("/signup", middlewares.UnauthReqCount, func(c *gin.Context) {
-			var user arango.User
+			type signupUser struct {
+				Email    string `json:"email" binding:"required"`
+				Password string `json:"password" binding:"required"`
+			}
+
+			var user signupUser
 			if err := c.ShouldBind(&user); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": err.Error(),
@@ -95,20 +123,20 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if ok, err := ultis.ValidateUsername(user.Username); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
-				return
-			} else if !ok {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": "Username must be 8-24 characters, does not start or end with _ or ., does not contain __, _., ._, ..",
-				})
-
-				return
-			}
+			//if ok, err := ultis.ValidateUsername(user.Username); err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something went wrong",
+			//	})
+			//
+			//	_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+			//	return
+			//} else if !ok {
+			//	c.JSON(http.StatusBadRequest, gin.H{
+			//		"error": "Username must be 8-24 characters, does not start or end with _ or ., does not contain __, _., ._, ..",
+			//	})
+			//
+			//	return
+			//}
 
 			if ok, err := ultis.ValidateEmail(user.Email); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -125,7 +153,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if ok, err := ultis.ValidatePassword(user.Pass); err != nil {
+			if ok, err := ultis.ValidatePassword(user.Password); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
@@ -140,16 +168,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			var curUser, err = arango.SaveUser(
-				user.Firstname,
-				user.Lastname,
-				user.Username,
-				user.Pass,
-				user.Email,
-				user.Dob,
-				user.Company,
-				user.Gender,
-			)
+			createdUser, err := arango.SaveUser(user.Email, user.Password)
 			if err != nil {
 				if err.(*models.ModelError).ErrType == models.Duplicated {
 					c.JSON(http.StatusInternalServerError, gin.H{
@@ -169,70 +188,68 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			otp, err := arango.GenerateOTP(user.Username, curUser.Email)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "internal server error",
-				})
-				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
-					"Db Error")
-				return
-			}
+			//otp, err := arango.GenerateOTP(user.Username, curUser.Email)
+			//if err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "internal server error",
+			//	})
+			//	_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
+			//		"Db Error")
+			//	return
+			//}
 
-			if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "internal server error",
-				})
-				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
-					"OTP Failed")
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"message": "verify account via otp sent to your email",
-			})
+			//if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "internal server error",
+			//	})
+			//	_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
+			//		"OTP Failed")
+			//	return
+			//}
+			c.JSON(http.StatusOK, createdUser)
 		})
 
 		userRoutesGroup.PUT("/resend-otp", middlewares.UnauthReqCount, func(c *gin.Context) {
-			type resendUser struct {
-				Username string `json:"username"`
-			}
-			var curUser resendUser
-			if err := c.ShouldBind(&curUser); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": err.Error(),
-				})
-			}
-
-			user, err := arango.FindUserByUsername(curUser.Username)
-			if err != nil {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "user not found",
-				})
-				return
-			}
-
-			otp, err := arango.GenerateOTP(user.Username, user.Email)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "internal server error",
-				})
-				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/generate otp",
-					"Db Error")
-				return
-			}
-
-			if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "internal server error",
-				})
-				_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
-					"OTP Error")
-				return
-			}
-
-			c.JSON(http.StatusOK, gin.H{
-				"message": "otp resent",
-			})
+			//type resendUser struct {
+			//	Username string `json:"username"`
+			//}
+			//var curUser resendUser
+			//if err := c.ShouldBind(&curUser); err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": err.Error(),
+			//	})
+			//}
+			//
+			//user, err := arango.FindUserByUsername(curUser.Username)
+			//if err != nil {
+			//	c.JSON(http.StatusNotFound, gin.H{
+			//		"error": "user not found",
+			//	})
+			//	return
+			//}
+			//
+			//otp, err := arango.GenerateOTP(user.Username, user.Email)
+			//if err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "internal server error",
+			//	})
+			//	_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/generate otp",
+			//		"Db Error")
+			//	return
+			//}
+			//
+			//if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "internal server error",
+			//	})
+			//	_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
+			//		"OTP Error")
+			//	return
+			//}
+			//
+			//c.JSON(http.StatusOK, gin.H{
+			//	"message": "otp resent",
+			//})
 
 		})
 
@@ -290,51 +307,51 @@ func UserRoutes(route *gin.Engine) {
 		})
 
 		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
-			type updateUser struct {
-				Firstname string    `json:"firstname" binding:"required"`
-				Lastname  string    `json:"lastname" binding:"required"`
-				Dob       time.Time `json:"dob" binding:"required"`
-				Company   string    `json:"company" binding:"required"`
-				Gender    bool      `json:"gender" binding:"required"`
-			}
-
-			var curUpdateUser updateUser
-			if err := c.ShouldBind(&curUpdateUser); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
-
-			uid, ok := c.Get("uid")
-			if !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
-				})
-
-				_ = nats.SendErrorEvent("uid not found in authenticate at /users/update",
-					"Unknown Error")
-				return
-			}
-
-			user, err := arango.UpdateUserData(uid.(string), curUpdateUser.Firstname, curUpdateUser.Lastname,
-				curUpdateUser.Dob, curUpdateUser.Company, curUpdateUser.Gender)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
-				})
-
-				_ = nats.SendErrorEvent(err.Error()+" at authenticated users/update",
-					"Db Error")
-				return
-			}
-			c.JSON(http.StatusOK, gin.H{
-				"firstname": user.Firstname,
-				"lastname":  user.Lastname,
-				"dob":       user.Dob,
-				"company":   user.Company,
-				"gender":    user.Gender,
-			})
+			//type updateUser struct {
+			//	Firstname string    `json:"firstname" binding:"required"`
+			//	Lastname  string    `json:"lastname" binding:"required"`
+			//	Dob       time.Time `json:"dob" binding:"required"`
+			//	Company   string    `json:"company" binding:"required"`
+			//	Gender    bool      `json:"gender" binding:"required"`
+			//}
+			//
+			//var curUpdateUser updateUser
+			//if err := c.ShouldBind(&curUpdateUser); err != nil {
+			//	c.JSON(http.StatusBadRequest, gin.H{
+			//		"error": err.Error(),
+			//	})
+			//	return
+			//}
+			//
+			//uid, ok := c.Get("uid")
+			//if !ok {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something when wrong",
+			//	})
+			//
+			//	_ = nats.SendErrorEvent("uid not found in authenticate at /users/update",
+			//		"Unknown Error")
+			//	return
+			//}
+			//
+			//user, err := arango.UpdateUserData(uid.(string), curUpdateUser.Firstname, curUpdateUser.Lastname,
+			//	curUpdateUser.Dob, curUpdateUser.Company, curUpdateUser.Gender)
+			//if err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something when wrong",
+			//	})
+			//
+			//	_ = nats.SendErrorEvent(err.Error()+" at authenticated users/update",
+			//		"Db Error")
+			//	return
+			//}
+			//c.JSON(http.StatusOK, gin.H{
+			//	"firstname": user.Firstname,
+			//	"lastname":  user.Lastname,
+			//	"dob":       user.Dob,
+			//	"company":   user.Company,
+			//	"gender":    user.Gender,
+			//})
 		})
 
 		userRoutesGroup.GET("/bandwidth-report", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {

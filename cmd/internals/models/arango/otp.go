@@ -10,7 +10,6 @@ import (
 )
 
 type Otp struct {
-	Username    string    `json:"username" binding:"required"`
 	Otp         string    `json:"otp" binding:"required"`
 	Email       string    `json:"email"`
 	LastUpdated time.Time `json:"lastUpdated"`
@@ -19,21 +18,20 @@ type Otp struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func GenerateOTP(username string, email string) (*Otp, error) {
+func GenerateOTP(email string) (*Otp, error) {
 	newOtp := strings.ToUpper(randstr.Hex(4))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "UPSERT { username: @username } " +
-		"INSERT { username: @username, otp: @newOtp, email: @email, " +
+	query := "UPSERT { email: @email } " +
+		"INSERT { otp: @newOtp, email: @email, " +
 		"lastUpdated: @lastUpdated, expiredTime: @expiredTime } " +
 		"UPDATE { otp: @newOtp, expiredTime: @expiredTime, lastUpdated: @lastUpdated } IN otps " +
 		"RETURN NEW"
 	bindVars := map[string]interface{}{
 		"newOtp":      newOtp,
 		"email":       email,
-		"username":    username,
 		"expiredTime": time.Now().Add(time.Minute * 5),
 		"lastUpdated": time.Now(),
 	}
@@ -86,7 +84,7 @@ func OTPConfirm(uname string, otp string) error {
 			ErrType: models.DbError,
 		}
 	}
-	err = RemoveOTP(userOtp.Username)
+	err = RemoveOTP(userOtp.Email)
 	if err != nil {
 		return &models.ModelError{
 			Msg:     err.Error(),
@@ -125,13 +123,13 @@ func FindOTPByUsername(uname string) (*Otp, error) {
 	return &otp, nil
 }
 
-func RemoveOTP(username string) error {
+func RemoveOTP(email string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR o IN otps FILTER o.username == @username REMOVE o in otps LET removed = OLD RETURN removed"
+	query := "FOR o IN otps FILTER o.email == @email REMOVE o in otps LET removed = OLD RETURN removed"
 	bindVars := map[string]interface{}{
-		"username": username,
+		"email": email,
 	}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)

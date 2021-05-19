@@ -10,57 +10,35 @@ import (
 )
 
 type User struct {
-	Id        string    `json:"id"`
-	Firstname string    `json:"firstname" binding:"required"`
-	Lastname  string    `json:"lastname" binding:"required"`
-	Username  string    `json:"username" binding:"required"`
-	Pass      string    `json:"password" binding:"required"`
-	Email     string    `json:"email" binding:"required"`
-	Dob       time.Time `json:"dob" binding:"required"`
-	Company   string    `json:"company" binding:"required"`
-	Gender    bool      `json:"gender" binding:"required"`
-	IsActive  bool      `json:"is_active"`
-	IsBanned  bool      `json:"is_banned"`
+	Id       string    `json:"id"`
+	Fullname string    `json:"fullname"`
+	Email    string    `json:"email"`
+	Pass     string    `json:"password"`
+	Dob      time.Time `json:"dob"`
+	IsActive bool      `json:"is_active"`
+	IsBanned bool      `json:"is_banned"`
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type user struct {
-	Firstname string    `json:"firstname" binding:"required"`
-	Lastname  string    `json:"lastname" binding:"required"`
-	Username  string    `json:"username" binding:"required"`
-	Pass      string    `json:"password" binding:"required"`
-	Email     string    `json:"email" binding:"required"`
-	Dob       time.Time `json:"dob" binding:"required"`
-	Company   string    `json:"company" binding:"required"`
-	Gender    bool      `json:"gender" binding:"required"`
-	IsActive  bool      `json:"is_active"`
-	IsBanned  bool      `json:"is_banned"`
+	Fullname string    `json:"fullname"`
+	Email    string    `json:"email"`
+	Pass     string    `json:"password"`
+	Dob      time.Time `json:"dob"`
+	IsActive bool      `json:"is_active"`
+	IsBanned bool      `json:"is_banned"`
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func SaveUser(
-	firstname string,
-	lastname string,
-	username string,
 	password string,
 	email string,
-	dob time.Time,
-	company string,
-	gender bool,
 ) (*User, error) {
-	u, _ := FindUserByUsername(username)
-	if u != nil {
-		return nil, &models.ModelError{
-			Msg:     "duplicated username",
-			ErrType: models.Duplicated,
-		}
-	}
-
-	u, _ = FindUserByEmail(email)
+	u, _ := FindUserByEmail(email)
 	if u != nil {
 		return nil, &models.ModelError{
 			Msg:     "duplicated email",
@@ -75,14 +53,8 @@ func SaveUser(
 	}
 
 	doc := user{
-		Firstname: firstname,
-		Lastname:  lastname,
-		Username:  username,
 		Pass:      string(passwordHashed),
 		Email:     email,
-		Dob:       dob,
-		Company:   company,
-		Gender:    gender,
 		IsActive:  false,
 		IsBanned:  false,
 		CreatedAt: createdTime,
@@ -101,18 +73,13 @@ func SaveUser(
 	}
 
 	//LOG CREATE USER
-	_ = nats.SendUserEvent(meta.Key, doc.Username, doc.Email, "Add")
+	//_ = nats.SendUserEvent(meta.Key, doc.Username, doc.Email, "Add")
 
 	return &User{
 		Id:        meta.Key,
-		Firstname: doc.Firstname,
-		Lastname:  doc.Lastname,
-		Username:  doc.Username,
 		Pass:      doc.Pass,
 		Email:     doc.Email,
 		Dob:       doc.Dob,
-		Company:   doc.Company,
-		Gender:    doc.Gender,
 		IsActive:  doc.IsActive,
 		IsBanned:  doc.IsBanned,
 		CreatedAt: doc.CreatedAt,
@@ -146,39 +113,40 @@ func FindUserById(uid string) (*User, error) {
 }
 
 func FindUserByUsername(uname string) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
-	defer cancel()
-
-	query := "FOR u IN users FILTER u.username == @uname LIMIT 1 RETURN u"
-	bindVars := map[string]interface{}{
-		"uname": uname,
-	}
-
-	user := User{}
-	cursor, err := arangoDb.Query(ctx, query, bindVars)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close()
-
-	for {
-		meta, err := cursor.ReadDocument(ctx, &user)
-		if driver.IsNoMoreDocuments(err) {
-			break
-		} else if err != nil {
-			return nil, err
-		}
-		user.Id = meta.Key
-	}
-
-	if user.Id == "" {
-		return nil, &models.ModelError{
-			Msg:     "user not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-
-	return &user, nil
+	//ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	//defer cancel()
+	//
+	//query := "FOR u IN users FILTER u.username == @uname LIMIT 1 RETURN u"
+	//bindVars := map[string]interface{}{
+	//	"uname": uname,
+	//}
+	//
+	//user := User{}
+	//cursor, err := arangoDb.Query(ctx, query, bindVars)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//defer cursor.Close()
+	//
+	//for {
+	//	meta, err := cursor.ReadDocument(ctx, &user)
+	//	if driver.IsNoMoreDocuments(err) {
+	//		break
+	//	} else if err != nil {
+	//		return nil, err
+	//	}
+	//	user.Id = meta.Key
+	//}
+	//
+	//if user.Id == "" {
+	//	return nil, &models.ModelError{
+	//		Msg:     "user not found",
+	//		ErrType: models.DocumentNotFound,
+	//	}
+	//}
+	//
+	//return &user, nil
+	return nil, nil
 }
 
 func FindUserByEmail(mail string) (*User, error) {
@@ -223,71 +191,70 @@ func FindUserByEmail(mail string) (*User, error) {
 	return &user, nil
 }
 
-func UpdateUserData(
-	uid string,
-	firstname string,
-	lastname string,
-	dob time.Time,
-	company string,
-	gender bool) (*User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
-	defer cancel()
-
-	updatedTime := time.Now()
-
-	query := "FOR u IN users FILTER u._key == @uid UPDATE u " +
-		"WITH { firstname: @firstname, " +
-		"lastname: @lastname, " +
-		"dob: @dob, " +
-		"company: @company, " +
-		"gender: @gender, " +
-		"updated_at: @updatedAt } " +
-		"IN users RETURN NEW"
-	bindVars := map[string]interface{}{
-		"uid":       uid,
-		"firstname": firstname,
-		"lastname":  lastname,
-		"dob":       dob,
-		"company":   company,
-		"gender":    gender,
-		"updatedAt": updatedTime,
-	}
-
-	cursor, err := arangoDb.Query(ctx, query, bindVars)
-	if err != nil {
-		return nil, &models.ModelError{
-			Msg:     err.Error(),
-			ErrType: models.DbError,
-		}
-	}
-	defer cursor.Close()
-
-	user := User{}
-	for {
-		meta, err := cursor.ReadDocument(ctx, &user)
-		if driver.IsNoMoreDocuments(err) {
-			break
-		} else if err != nil {
-			return nil, &models.ModelError{
-				Msg:     err.Error(),
-				ErrType: models.DbError,
-			}
-		}
-		user.Id = meta.Key
-	}
-
-	if user.Id == "" {
-		return nil, &models.ModelError{
-			Msg:     "folder not found",
-			ErrType: models.DocumentNotFound,
-		}
-	}
-
-	//LOG UPDATE USER
-	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
-
-	return &user, err
-}
+//func UpdateUserData(
+//	uid string,
+//	fullname string,
+//	dob time.Time,
+//	company string,
+//	gender bool) (*User, error) {
+//	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+//	defer cancel()
+//
+//	updatedTime := time.Now()
+//
+//	query := "FOR u IN users FILTER u._key == @uid UPDATE u " +
+//		"WITH { firstname: @firstname, " +
+//		"lastname: @lastname, " +
+//		"dob: @dob, " +
+//		"company: @company, " +
+//		"gender: @gender, " +
+//		"updated_at: @updatedAt } " +
+//		"IN users RETURN NEW"
+//	bindVars := map[string]interface{}{
+//		"uid":       uid,
+//		"firstname": firstname,
+//		"lastname":  lastname,
+//		"dob":       dob,
+//		"company":   company,
+//		"gender":    gender,
+//		"updatedAt": updatedTime,
+//	}
+//
+//	cursor, err := arangoDb.Query(ctx, query, bindVars)
+//	if err != nil {
+//		return nil, &models.ModelError{
+//			Msg:     err.Error(),
+//			ErrType: models.DbError,
+//		}
+//	}
+//	defer cursor.Close()
+//
+//	user := User{}
+//	for {
+//		meta, err := cursor.ReadDocument(ctx, &user)
+//		if driver.IsNoMoreDocuments(err) {
+//			break
+//		} else if err != nil {
+//			return nil, &models.ModelError{
+//				Msg:     err.Error(),
+//				ErrType: models.DbError,
+//			}
+//		}
+//		user.Id = meta.Key
+//	}
+//
+//	if user.Id == "" {
+//		return nil, &models.ModelError{
+//			Msg:     "folder not found",
+//			ErrType: models.DocumentNotFound,
+//		}
+//	}
+//
+//	//LOG UPDATE USER
+//	//_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
+//
+//	return &user, err
+//}
 
 func UpdateActive(uname string, isActive bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
@@ -374,7 +341,7 @@ func UpdateUserPassword(uid string, password string) (*User, error) {
 	}
 
 	user.Id = meta.Key
-	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
+	//_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
 	return &user, err
 }
 
@@ -418,7 +385,7 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 			ErrType: models.NotFound,
 		}
 	}
-	_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
+	//_ = nats.SendUserEvent(user.Id, user.Username, user.Email, "Update")
 	return &user, nil
 }
 
@@ -479,14 +446,9 @@ func GetAllUser(offset int, limit int) ([]User, error) {
 
 		users = append(users, User{
 			Id:        meta.Key,
-			Firstname: user.Firstname,
-			Lastname:  user.Lastname,
-			Username:  user.Username,
 			Pass:      user.Pass,
 			Email:     user.Email,
 			Dob:       user.Dob,
-			Company:   user.Company,
-			Gender:    user.Gender,
 			IsActive:  user.IsActive,
 			IsBanned:  user.IsBanned,
 			CreatedAt: user.CreatedAt,
