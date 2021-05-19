@@ -3,34 +3,46 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
-	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/arangodb/go-driver"
 	"time"
 )
 
 type Bucket struct {
-	Id     string `json:"id"`
-	Uid    string `json:"uid"`
-	Name   string `json:"name" binding:"required"`
-	Region string `json:"region" binding:"required"`
+	Id   string `json:"id"`
+	Uid  string `json:"uid"`
+	Name string `json:"name" binding:"required"`
+	//Region string `json:"region" binding:"required"`
+
+	IsPublic     bool `json:"is_public"`
+	IsEncrypted  bool `json:"is_encrypted"`
+	IsObjectLock bool `json:"is_object_lock"`
+
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type bucket struct {
-	Uid    string `json:"uid"`
-	Name   string `json:"name" binding:"required"`
-	Region string `json:"region" binding:"required"`
+	Uid          string `json:"uid"`
+	Name         string `json:"name"`
+	IsPublic     bool   `json:"is_public"`
+	IsEncrypted  bool   `json:"is_encrypted"`
+	IsObjectLock bool   `json:"is_object_lock"`
+
+	//Region string `json:"region" binding:"required"`
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func InsertBucket(uid string, name string, region string) (*Bucket, error) {
+func InsertBucket(uid string, name string, isPublic, isEncrypted, isObjectLock bool) (*Bucket, error) {
 	createdTime := time.Now()
 	doc := bucket{
-		Uid:       uid,
-		Name:      name,
-		Region:    region,
+		Uid:          uid,
+		Name:         name,
+		IsPublic:     isPublic,
+		IsEncrypted:  isEncrypted,
+		IsObjectLock: isObjectLock,
+		//Region:    region,
 		CreatedAt: createdTime,
 	}
 
@@ -61,13 +73,16 @@ func InsertBucket(uid string, name string, region string) (*Bucket, error) {
 	}
 
 	//LOG CREATE BUCKET
-	_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region, "create")
+	//_ = nats.SendBucketEvent(meta.Key, doc.Uid, doc.Name, doc.Region, "create")
 
 	return &Bucket{
-		Id:        meta.Key,
-		Uid:       doc.Uid,
-		Name:      doc.Name,
-		Region:    doc.Region,
+		Id:           meta.Key,
+		Uid:          doc.Uid,
+		Name:         doc.Name,
+		IsPublic:     doc.IsPublic,
+		IsEncrypted:  doc.IsEncrypted,
+		IsObjectLock: doc.IsObjectLock,
+
 		CreatedAt: doc.CreatedAt,
 	}, nil
 }
@@ -179,6 +194,71 @@ func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 	return buckets, nil
 }
 
+func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*Bucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	updateTarget := "{ "
+	addComa := false
+	if isPublic != nil {
+		updateTarget += "is_public: @isPublic"
+		addComa = true
+	}
+	if isEncrypted != nil {
+		if addComa {
+			updateTarget += ", "
+		}
+
+		updateTarget += "is_encrypted: @isEncrypted"
+	}
+	if isObjectLock != nil {
+		if addComa {
+			updateTarget += ", "
+		}
+
+		updateTarget += "is_object_lock: @isLock"
+	}
+	updateTarget += " }"
+
+	query := "FOR b IN buckets FILTER b._key == @id " +
+		"UPDATE b WITH " + updateTarget + " IN buckets RETURN NEW"
+	bindVars := map[string]interface{}{
+		"id":          bid,
+		"isPublic":    isPublic,
+		"isEncrypted": isEncrypted,
+		"isLock":      isObjectLock,
+	}
+
+	bucket := Bucket{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, err
+		}
+		bucket.Id = meta.Key
+	}
+
+	if bucket.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return &bucket, nil
+}
+
 func RemoveBucket(uid string, bid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
@@ -213,7 +293,7 @@ func RemoveBucket(uid string, bid string) error {
 	}
 
 	//LOG CREATE BUCKET
-	_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region, "delete")
+	//_ = nats.SendBucketEvent(bucket.Id, bucket.Uid, bucket.Name, bucket.Region, "delete")
 
 	return nil
 }

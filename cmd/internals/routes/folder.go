@@ -147,6 +147,51 @@ func FolderRoutes(r *gin.Engine) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
+			if len(token) < 2 {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "empty path is disallowed",
+				})
+
+				return
+			}
+			bucketName := token[1]
+			if _, err := arango.FindBucketByName(bucketName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			folder, err := arango.FindFolderByFullpath(path)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allByPath",
+					"Unknown Error")
+				return
+			}
+
+			if folder.OwnerId != uid.(string) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			c.JSON(http.StatusOK, folder.Children)
+		})
+		ar.DELETE("/*full_path", func(c *gin.Context) {
+			queryPath := c.Param("full_path")
+			path := ultis.StandardizedPath(queryPath, true)
+			token := strings.Split(path, "/")
 			bucketName := token[1]
 			if _, err := arango.FindBucketByName(bucketName); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{

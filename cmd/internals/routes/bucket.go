@@ -57,8 +57,11 @@ func BucketRoutes(r *gin.Engine) {
 		})
 		ar.POST("/", func(c *gin.Context) {
 			type createBucket struct {
-				Name   string `json:"name" binding:"required"`
-				Region string `json:"region" binding:"required"`
+				Name string `json:"name" binding:"required"`
+				//Region string `json:"region" binding:"required"`
+				IsPublic     *bool `json:"is_public" binding:"required"`
+				IsEncrypted  *bool `json:"is_encrypted" binding:"required"`
+				IsObjectLock *bool `json:"is_object_lock" binding:"required"`
 			}
 
 			var curCreateBucket createBucket
@@ -80,11 +83,50 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			bucket, err := arango.InsertBucket(uid.(string), curCreateBucket.Name, curCreateBucket.Region)
+			bucket, err := arango.InsertBucket(uid.(string), curCreateBucket.Name, *curCreateBucket.IsPublic, *curCreateBucket.IsEncrypted, *curCreateBucket.IsObjectLock)
 			if err != nil {
 				if err.(*models.ModelError).ErrType == models.Duplicated {
 					c.JSON(http.StatusInternalServerError, gin.H{
 						"error": "duplicated bucket name",
+					})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at buckets/create:",
+					"Db Error")
+
+				return
+			}
+			c.JSON(http.StatusOK, bucket)
+		})
+		ar.PUT("/:bucket_id", func(c *gin.Context) {
+			type updateBucket struct {
+				//Region string `json:"region" binding:"required"`
+				IsPublic     *bool `json:"is_public"`
+				IsEncrypted  *bool `json:"is_encrypted"`
+				IsObjectLock *bool `json:"is_object_lock"`
+			}
+
+			var curUpdateBucket updateBucket
+			if err := c.ShouldBind(&curUpdateBucket); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			bid := c.Param("bucket_id")
+
+			bucket, err := arango.UpdateBucketById(bid, curUpdateBucket.IsPublic, curUpdateBucket.IsEncrypted, curUpdateBucket.IsObjectLock)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "bucket not found",
 					})
 
 					return
@@ -141,5 +183,4 @@ func BucketRoutes(r *gin.Engine) {
 			})
 		})
 	}
-
 }

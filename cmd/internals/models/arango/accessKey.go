@@ -12,100 +12,149 @@ import (
 type Permission int
 
 const (
-	GetFileList Permission = iota
-	GetFileListHidden
-	Download
-	DownloadHidden
-	Upload
-	MarkHidden
-	DeleteFile
-	RecoverFile
+	ListKeys Permission = iota
+	WriteKey
+	DeleteKey
+	ListBuckets
+	WriteBucket
+	DeleteBucket
+	ReadBucketEncryption
+	WriteBucketEncryption
+	ReadBucketRetentions
+	WriteBucketRetentions
+	ListFiles
+	ReadFiles
+	ShareFiles
+	WriteFiles
+	DeleteFiles
+	LockFiles
+	NA
 )
 
 func (perm Permission) String() string {
 	return [...]string{
-		"GetFileList",
-		"GetFileListHidden",
-		"Download",
-		"DownloadHidden",
-		"Upload",
-		"MarkHidden",
-		"DeleteFile",
-		"RecoverFile",
+		"ListKeys",
+		"WriteKey",
+		"DeleteKey",
+		"ListBuckets",
+		"WriteBucket",
+		"DeleteBucket",
+		"ReadBucketEncryption",
+		"WriteBucketEncryption",
+		"ReadBucketRetentions",
+		"WriteBucketRetentions",
+		"ListFiles",
+		"ReadFiles",
+		"ShareFiles",
+		"WriteFiles",
+		"DeleteFiles",
+		"LockFiles",
 	}[perm]
 }
 
 func parsePerm(p string) (Permission, error) {
 	switch p {
-	case "GetFileList":
-		return GetFileList, nil
-	case "GetFileListHidden":
-		return GetFileListHidden, nil
-	case "Download":
-		return Download, nil
-	case "DownloadHidden":
-		return DownloadHidden, nil
-	case "Upload":
-		return Upload, nil
-	case "MarkHidden":
-		return MarkHidden, nil
-	case "DeleteFile":
-		return DeleteFile, nil
-	case "RecoverFile":
-		return RecoverFile, nil
+	case "ListKeys":
+		return ListKeys, nil
+	case "WriteKey":
+		return WriteKey, nil
+	case "DeleteKey":
+		return DeleteKey, nil
+	case "ListBuckets":
+		return ListBuckets, nil
+	case "WriteBucket":
+		return WriteBucket, nil
+	case "DeleteBucket":
+		return DeleteBucket, nil
+	case "ReadBucketEncryption":
+		return ReadBucketEncryption, nil
+	case "WriteBucketEncryption":
+		return WriteBucketEncryption, nil
+	case "ReadBucketRetentions":
+		return ListFiles, nil
+	case "WriteBucketRetentions":
+		return ListFiles, nil
+	case "ListFiles":
+		return ListFiles, nil
+	case "ReadFiles":
+		return ReadFiles, nil
+	case "ShareFiles":
+		return ShareFiles, nil
+	case "WriteFiles":
+		return WriteFiles, nil
+	case "DeleteFiles":
+		return DeleteFiles, nil
+	case "LockFiles":
+		return LockFiles, nil
 	default:
-		return -1, &models.ModelError{
-			Msg:     "invalid permission: " + p,
+		return NA, &models.ModelError{
+			Msg:     "Invalid Permission",
 			ErrType: models.InvalidAccessKey,
 		}
 	}
 }
 
+const (
+	MASTER_KEY_TYPE = "MASTER"
+	APP_KEY         = "APP"
+)
+
 type accessKey struct {
-	Key         string       `json:"key"`
-	BucketId    string       `json:"bucket_id"`
-	ExpiredDate time.Time    `json:"expired_date"`
-	Permissions []Permission `json:"permissions"`
-	Uid         string       `json:"uid"`
+	Name                   string       `json:"name"`
+	Key                    string       `json:"key"`
+	BucketId               string       `json:"bucket_id"`
+	ExpiredDate            time.Time    `json:"expired_date"`
+	FileNamePrefixRestrict string       `json:"file_name_prefix_restrict"`
+	Permissions            []Permission `json:"permissions"`
+	Uid                    string       `json:"uid"`
+	KeyType                string       `json:"type"`
 }
 
 type AccessKey struct {
-	Key         string    `json:"key"`
-	BucketId    string    `json:"bucket_id"`
-	ExpiredDate time.Time `json:"expired_date"`
-	Permissions []string  `json:"permissions"`
-	Uid         string    `json:"uid"`
+	Id                     string    `json:"id"`
+	Name                   string    `json:"name"`
+	Key                    string    `json:"key"`
+	BucketId               string    `json:"bucket_id"`
+	ExpiredDate            time.Time `json:"expired_date"`
+	FileNamePrefixRestrict string    `json:"file_name_prefix_restrict"`
+	Permissions            []string  `json:"permissions"`
+	Uid                    string    `json:"uid"`
+	KeyType                string    `json:"type"`
 }
 
-func (a *accessKey) toAccessKey() *AccessKey {
+func (a *accessKey) toAccessKey(id string) *AccessKey {
 	var perms []string
 	for _, perm := range a.Permissions {
 		perms = append(perms, perm.String())
 	}
 
 	return &AccessKey{
-		Key:         a.Key,
-		BucketId:    a.BucketId,
-		ExpiredDate: a.ExpiredDate,
-		Permissions: perms,
-		Uid:         a.Uid,
+		Id:                     id,
+		Name:                   a.Name,
+		Key:                    a.Key,
+		BucketId:               a.BucketId,
+		ExpiredDate:            a.ExpiredDate,
+		Permissions:            perms,
+		Uid:                    a.Uid,
+		KeyType:                a.KeyType,
+		FileNamePrefixRestrict: a.FileNamePrefixRestrict,
 	}
 }
 
-func GenerateAccessKey(bId string, uid string,
-	perms []string, expiredDate time.Time) (*AccessKey, error) {
+func GenerateApplicationKey(name string, bid *string, uid string,
+	perms []string, expiredDate time.Time, filenamePrefix string) (*AccessKey, error) {
 	key := randstr.GetString(16)
 
-	bucket, err := FindBucketById(bId)
-	if err != nil {
-		return nil, err
-	}
-
-	if bucket.Uid != uid {
-		return nil, &models.ModelError{
-			Msg:     "invalid user",
-			ErrType: models.UidMismatch,
+	var targetBucketId string
+	if bid != nil {
+		_, err := FindBucketById(*bid)
+		if err != nil {
+			return nil, err
 		}
+
+		targetBucketId = *bid
+	} else {
+		targetBucketId = ""
 	}
 
 	var permissions []Permission
@@ -121,14 +170,16 @@ func GenerateAccessKey(bId string, uid string,
 	defer cancel()
 
 	doc := accessKey{
+		Name:        name,
 		Key:         key,
-		BucketId:    bId,
+		BucketId:    targetBucketId,
 		ExpiredDate: expiredDate,
 		Permissions: permissions,
 		Uid:         uid,
+		KeyType:     APP_KEY,
 	}
 
-	_, err = apiKeyCol.CreateDocument(ctx, doc)
+	meta, err := apiKeyCol.CreateDocument(ctx, doc)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     err.Error(),
@@ -137,20 +188,119 @@ func GenerateAccessKey(bId string, uid string,
 	}
 
 	//LOG CREATE ACCESS KEY
-	var perm []string
-	for _, p := range doc.Permissions {
-		perm = append(perm, p.String())
-	}
-	_ = nats.SendAccessKeyEvent(doc.Key, doc.BucketId, doc.ExpiredDate,
-		perm, doc.Uid, "create")
+	//var perm []string
+	//for _, p := range doc.Permissions {
+	//	perm = append(perm, p.String())
+	//}
+	//_ = nats.SendAccessKeyEvent(doc.Key, doc.BucketId, doc.ExpiredDate,
+	//	perm, doc.Uid, "create")
 
-	return &AccessKey{
-		Key:         key,
-		BucketId:    bId,
-		ExpiredDate: expiredDate,
-		Permissions: perms,
-		Uid:         uid,
-	}, nil
+	return doc.toAccessKey(meta.Key), nil
+}
+
+func GenerateMasterKey(uid string) (*AccessKey, error) {
+	key := randstr.GetString(16)
+
+	user, err := FindUserById(uid)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	doc := accessKey{
+		Name:                   "Master Key",
+		Key:                    key,
+		BucketId:               "*",
+		ExpiredDate:            time.Time{},
+		FileNamePrefixRestrict: "",
+		Permissions: []Permission{
+			ListKeys,
+			WriteKey,
+			DeleteKey,
+			ListBuckets,
+			WriteBucket,
+			DeleteBucket,
+			ReadBucketEncryption,
+			WriteBucketEncryption,
+			ReadBucketRetentions,
+			WriteBucketRetentions,
+			ListFiles,
+			ReadFiles,
+			ShareFiles,
+			WriteFiles,
+			DeleteFiles,
+			LockFiles,
+		},
+		Uid:     user.Id,
+		KeyType: MASTER_KEY_TYPE,
+	}
+
+	meta, err := apiKeyCol.CreateDocument(ctx, doc)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	return doc.toAccessKey(meta.Key), nil
+}
+
+func FindAccessKeyById(id string) (*AccessKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	var key accessKey
+	meta, err := apiKeyCol.ReadDocument(ctx, id, &key)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+
+	return key.toAccessKey(meta.Key), err
+}
+
+func GetAccessKeyByUid(uid string, limit, offset int) ([]AccessKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR k IN apiKeys FILTER k.uid == @uid LIMIT @offset, @limit RETURN k"
+	bindVars := map[string]interface{}{
+		"uid":    uid,
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	keys := []AccessKey{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		akey := accessKey{}
+		meta, err := cursor.ReadDocument(ctx, &akey)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		keys = append(keys, *akey.toAccessKey(meta.Key))
+	}
+
+	return keys, nil
 }
 
 func FindAccessKeyByKey(key string) (*AccessKey, error) {
@@ -172,8 +322,9 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 	}
 	defer cursor.Close()
 
+	var meta driver.DocumentMeta
 	for {
-		_, err := cursor.ReadDocument(ctx, &akey)
+		meta, err = cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -184,14 +335,14 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 		}
 	}
 
-	if akey.Key == "" {
+	if meta.Key == "" {
 		return nil, &models.ModelError{
 			Msg:     "key not found",
 			ErrType: models.DocumentNotFound,
 		}
 	}
 
-	return akey.toAccessKey(), nil
+	return akey.toAccessKey(meta.Key), nil
 }
 
 func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessKey, error) {
@@ -218,7 +369,7 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 
 	for {
 		akey := accessKey{}
-		_, err := cursor.ReadDocument(ctx, &akey)
+		meta, err := cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -228,10 +379,18 @@ func FindAccessKeyByUidBid(uid string, bid string, limit, offset int) ([]AccessK
 			}
 		}
 
-		keys = append(keys, *akey.toAccessKey())
+		keys = append(keys, *akey.toAccessKey(meta.Key))
 	}
 
 	return keys, nil
+}
+
+func DeleteAccessKeyById(key string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	_, err := apiKeyCol.RemoveDocument(ctx, key)
+	return err
 }
 
 func DeleteAccessKey(key, bid, uid string) error {
