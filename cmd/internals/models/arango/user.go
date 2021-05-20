@@ -256,14 +256,14 @@ func FindUserByEmail(mail string) (*User, error) {
 //	return &user, err
 //}
 
-func UpdateActive(uname string, isActive bool) error {
+func UpdateActive(email string, isActive bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR u IN users FILTER u.username == @uname " +
+	query := "FOR u IN users FILTER u.email == @email " +
 		"UPDATE u WITH { is_active: @isActive } IN users RETURN NEW"
 	bindVars := map[string]interface{}{
-		"uname":    uname,
+		"email":    email,
 		"isActive": isActive,
 	}
 

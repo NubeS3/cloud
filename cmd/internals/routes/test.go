@@ -14,7 +14,7 @@ import (
 
 func TestRoute(r *gin.Engine) {
 	r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
-		err := nats.SendEmailEvent("phamtuan199911@gmail.com", "meow", "123456", time.Now().Add(time.Minute*5))
+		err := nats.SendEmailEvent("phamtuan199911@gmail.com", "12345", time.Now().Add(time.Minute*5))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return
@@ -77,10 +77,8 @@ func TestRoute(r *gin.Engine) {
 	//	})
 	//})
 	r.GET("/arango/test/user/create", func(c *gin.Context) {
-		user, err := arango.SaveUser("test", "user",
-			"t1", "1234",
-			"abc@abc.com", time.Now(),
-			"meow", true)
+		user, err := arango.SaveUser("test",
+			"abc@abc.com")
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": err.Error(),

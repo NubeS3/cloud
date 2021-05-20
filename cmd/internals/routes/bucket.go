@@ -190,8 +190,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
+				//	"Db Error")
 
 				return
 			}
@@ -207,8 +207,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
+				//	"Unknown Error")
 
 				return
 			}
@@ -230,8 +230,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
-				return
+				//_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
+				//return
 			}
 
 			if bucket.Uid != uid {
@@ -248,8 +248,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("bucket size not found in authenticated route at /buckets/create: "+err.Error(),
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("bucket size not found in authenticated route at /buckets/create: "+err.Error(),
+				//	"Unknown Error")
 
 				return
 			}

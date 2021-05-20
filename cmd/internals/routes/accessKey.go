@@ -157,8 +157,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
 				return
 			}
 
@@ -186,8 +186,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at get all key:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at get all key:",
+				//	"Db Error")
 
 				return
 			}
@@ -427,8 +427,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/delete:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKeys/delete:",
+				//	"Unknown Error")
 				return
 			}
 
@@ -446,8 +446,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
+				//	"Db Error")
 
 				return
 			}
@@ -466,8 +466,8 @@ func AccessKeyRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
+				//	"Db Error")
 
 				return
 			}

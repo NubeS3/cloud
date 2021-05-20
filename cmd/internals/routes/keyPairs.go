@@ -103,8 +103,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
 				return
 			}
 
@@ -114,8 +114,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
+				//	"Db Error")
 				return
 			}
 
@@ -177,8 +177,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
+				//	"Db Error")
 				return
 			}
 
@@ -262,8 +262,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/create:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/create:",
+				//	"Unknown Error")
 				return
 			}
 
@@ -292,8 +292,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
-					"Unknown Error")
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
+				//	"Unknown Error")
 				return
 			}
 
@@ -302,8 +302,8 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
-					"Db Error")
+				//_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
+				//	"Db Error")
 
 				return
 			}

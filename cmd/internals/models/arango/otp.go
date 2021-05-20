@@ -54,8 +54,8 @@ func GenerateOTP(email string) (*Otp, error) {
 	return &otp, nil
 }
 
-func OTPConfirm(uname string, otp string) error {
-	userOtp, err := FindOTPByUsername(uname)
+func OTPConfirm(email string, otp string) error {
+	userOtp, err := FindOTPByEmail(email)
 	if err != nil {
 		return &models.ModelError{
 			Msg:     "otp not found",
@@ -77,7 +77,7 @@ func OTPConfirm(uname string, otp string) error {
 		}
 	}
 
-	err = UpdateActive(uname, true)
+	err = UpdateActive(email, true)
 	if err != nil {
 		return &models.ModelError{
 			Msg:     err.Error(),
@@ -95,13 +95,41 @@ func OTPConfirm(uname string, otp string) error {
 	return err
 }
 
-func FindOTPByUsername(uname string) (*Otp, error) {
+//func FindOTPByUsername(uname string) (*Otp, error) {
+//	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+//	defer cancel()
+//
+//	query := "FOR o IN otps FILTER o.username == @uname LIMIT 1 RETURN o"
+//	bindVars := map[string]interface{}{
+//		"uname": uname,
+//	}
+//
+//	otp := Otp{}
+//	cursor, err := arangoDb.Query(ctx, query, bindVars)
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer cursor.Close()
+//
+//	for {
+//		_, err := cursor.ReadDocument(ctx, &otp)
+//		if driver.IsNoMoreDocuments(err) {
+//			break
+//		} else if err != nil {
+//			return nil, err
+//		}
+//	}
+//
+//	return &otp, nil
+//}
+
+func FindOTPByEmail(email string) (*Otp, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR o IN otps FILTER o.username == @uname LIMIT 1 RETURN o"
+	query := "FOR o IN otps FILTER o.email == @email LIMIT 1 RETURN o"
 	bindVars := map[string]interface{}{
-		"uname": uname,
+		"email": email,
 	}
 
 	otp := Otp{}
