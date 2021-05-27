@@ -42,7 +42,8 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := arango.FindBucketByUid(uid.(string), limit, offset)
+			//res, err := arango.FindBucketByUid(uid.(string), limit, offset)
+			res, err := arango.FindDetailBucketByUid(uid.(string), limit, offset)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something when wrong",
@@ -314,7 +315,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
+				_ = nats.SendErrorEvent("error at auth/bucket/count: "+err.Error(), "db error")
 				return
 			}
 

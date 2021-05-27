@@ -34,6 +34,12 @@ type bucket struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type DetailBucket struct {
+	Bucket      Bucket  `json:"bucket"`
+	Size        float64 `json:"size"`
+	ObjectCount int64   `json:"object_count"`
+}
+
 func InsertBucket(uid string, name string, isPublic, isEncrypted, isObjectLock bool) (*Bucket, error) {
 	createdTime := time.Now()
 	doc := bucket{
@@ -137,6 +143,54 @@ func FindBucketByName(bname string) (*Bucket, error) {
 	return &bucket, nil
 }
 
+func FindDetailBucketByName(bname string) (*DetailBucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR b IN buckets FILTER b.name == @bname LIMIT 1" +
+		" let size =" +
+		" (for s in bucketSize filter s.bucket_id == b._key limit 1 return s.size)" +
+		" let objectCount =" +
+		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
+		" collect with count into c return c) " +
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
+	bindVars := map[string]interface{}{
+		"bname": bname,
+	}
+
+	bucket := DetailBucket{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		bucket.Bucket.Id = meta.Key
+	}
+
+	if bucket.Bucket.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return &bucket, nil
+}
+
 func FindBucketById(bid string) (*Bucket, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
@@ -158,6 +212,54 @@ func FindBucketById(bid string) (*Bucket, error) {
 	}
 
 	bucket.Id = meta.Key
+
+	return &bucket, nil
+}
+
+func FindDetailBucketById(bid string) (*DetailBucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR b IN buckets FILTER b._key == @bid LIMIT 1" +
+		" let size =" +
+		" (for s in bucketSize filter s.bucket_id == b._key limit 1 return s.size)" +
+		" let objectCount =" +
+		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
+		" collect with count into c return c) " +
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
+	bindVars := map[string]interface{}{
+		"bid": bid,
+	}
+
+	bucket := DetailBucket{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		bucket.Bucket.Id = meta.Key
+	}
+
+	if bucket.Bucket.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
 
 	return &bucket, nil
 }
@@ -235,6 +337,54 @@ func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 			}
 		}
 		bucket.Id = meta.Key
+		buckets = append(buckets, bucket)
+	}
+
+	return buckets, nil
+}
+
+func FindDetailBucketByUid(uid string, limit int64, offset int64) ([]DetailBucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "for b in buckets" +
+		" filter b.uid == @uid" +
+		" limit @offset, @limit" +
+		" let size =" +
+		" (for s in bucketSize filter s.bucket_id == b._key limit 1 return s.size)" +
+		" let objectCount =" +
+		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
+		" collect with count into c return c) " +
+		" return {_key: b._key, bucket: b, size: FIRST(size), object_count: FIRST(objectCount)}"
+	bindVars := map[string]interface{}{
+		"uid":    uid,
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	buckets := []DetailBucket{}
+	bucket := DetailBucket{}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		bucket.Bucket.Id = meta.Key
 		buckets = append(buckets, bucket)
 	}
 

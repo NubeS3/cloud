@@ -56,7 +56,7 @@ func UserRoutes(route *gin.Engine) {
 			user, err := arango.FindUserByEmail(curSigninUser.Email)
 			if err != nil {
 				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "invalid username",
+					"error": "invalid email",
 				})
 				return
 			}
@@ -69,12 +69,12 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			if !user.IsActive {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": "user have not verified account via otp",
-				})
-				return
-			}
+			//if !user.IsActive {
+			//	c.JSON(http.StatusUnauthorized, gin.H{
+			//		"error": "user have not verified account via otp",
+			//	})
+			//	return
+			//}
 
 			if user.IsBanned {
 				c.JSON(http.StatusUnauthorized, gin.H{
@@ -168,7 +168,7 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			createdUser, err := arango.SaveUser(user.Email, user.Password)
+			createdUser, err := arango.SaveUser(user.Password, user.Email)
 			if err != nil {
 				if err.(*models.ModelError).ErrType == models.Duplicated {
 					c.JSON(http.StatusInternalServerError, gin.H{

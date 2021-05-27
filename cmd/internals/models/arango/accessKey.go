@@ -154,7 +154,7 @@ func GenerateApplicationKey(name string, bid *string, uid string,
 
 		targetBucketId = *bid
 	} else {
-		targetBucketId = ""
+		targetBucketId = "*"
 	}
 
 	var permissions []Permission
@@ -170,13 +170,14 @@ func GenerateApplicationKey(name string, bid *string, uid string,
 	defer cancel()
 
 	doc := accessKey{
-		Name:        name,
-		Key:         key,
-		BucketId:    targetBucketId,
-		ExpiredDate: expiredDate,
-		Permissions: permissions,
-		Uid:         uid,
-		KeyType:     APP_KEY,
+		Name:                   name,
+		Key:                    key,
+		BucketId:               targetBucketId,
+		ExpiredDate:            expiredDate,
+		Permissions:            permissions,
+		Uid:                    uid,
+		KeyType:                APP_KEY,
+		FileNamePrefixRestrict: filenamePrefix,
 	}
 
 	meta, err := apiKeyCol.CreateDocument(ctx, doc)
@@ -213,7 +214,7 @@ func GenerateMasterKey(uid string) (*AccessKey, error) {
 		Name:                   "Master Key",
 		Key:                    key,
 		BucketId:               "*",
-		ExpiredDate:            time.Time{},
+		ExpiredDate:            time.Now().Add(time.Hour * 24 * 365 * 100),
 		FileNamePrefixRestrict: "",
 		Permissions: []Permission{
 			ListKeys,
@@ -252,9 +253,10 @@ func FindMasterKeyByUid(uid string) (*AccessKey, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	query := "FOR k IN apiKeys FILTER k.uid == @uid AND k.type == MASTER LIMIT 1 RETURN k"
+	query := "FOR k IN apiKeys FILTER k.uid == @uid AND k.type == @t LIMIT 1 RETURN k"
 	bindVars := map[string]interface{}{
 		"uid": uid,
+		"t":   "MASTER",
 	}
 
 	akey := accessKey{}
@@ -269,7 +271,7 @@ func FindMasterKeyByUid(uid string) (*AccessKey, error) {
 
 	var meta driver.DocumentMeta
 	for {
-		meta, err = cursor.ReadDocument(ctx, &akey)
+		m, err := cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -278,9 +280,55 @@ func FindMasterKeyByUid(uid string) (*AccessKey, error) {
 				ErrType: models.DbError,
 			}
 		}
+		meta = m
 	}
 
-	if meta.Key == "" {
+	if akey.Key == "" {
+		return nil, &models.ModelError{
+			Msg:     "key not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return akey.toAccessKey(meta.Key), nil
+}
+
+func FindAppKeyByNameAndUid(uid, name string) (*AccessKey, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	query := "FOR k IN apiKeys FILTER k.uid == @uid AND k.name == @name AND k.type == @t LIMIT 1 RETURN k"
+	bindVars := map[string]interface{}{
+		"uid":  uid,
+		"name": name,
+		"t":    "APP",
+	}
+
+	akey := accessKey{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	var meta driver.DocumentMeta
+	for {
+		m, err := cursor.ReadDocument(ctx, &akey)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+		meta = m
+	}
+
+	if akey.Key == "" {
 		return nil, &models.ModelError{
 			Msg:     "key not found",
 			ErrType: models.DocumentNotFound,

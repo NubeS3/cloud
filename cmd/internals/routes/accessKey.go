@@ -407,6 +407,19 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
+			_, err := arango.FindAppKeyByNameAndUid(uid.(string), keyData.Name)
+			if err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "name duplicated",
+				})
+
+				return
+			}
+
+			if *keyData.BucketId == "*" {
+				keyData.BucketId = nil
+			}
+
 			res, err := arango.GenerateApplicationKey(keyData.Name, keyData.BucketId, uid.(string), keyData.Permissions, keyData.ExpiredDate, *keyData.FilenamePrefixRestrict)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
