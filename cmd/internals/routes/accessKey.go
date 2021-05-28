@@ -15,7 +15,7 @@ import (
 func AccessKeyRoutes(r *gin.Engine) {
 	uar := r.Group("/get-auth-token")
 	{
-		uar.GET("/", func(c *gin.Context) {
+		uar.POST("/", func(c *gin.Context) {
 			type reqKey struct {
 				KeyId string `json:"key_id" binding:"required"`
 				Key   string `json:"key"  binding:"required"`
@@ -518,4 +518,232 @@ func AccessKeyRoutes(r *gin.Engine) {
 		//	c.JSON(http.StatusOK, key)
 		//})
 	}
+
+	kr := r.Group("/apiKey/accessKey", middlewares.AccessKeyAuthenticate, middlewares.AccessKeyReqCount)
+	{
+		kr.GET("/", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.ListKeys)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			keys, err := arango.GetAccessKeyByUid(key.Uid, int(limit), int(offset))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at get all key:",
+				//	"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, keys)
+		})
+		kr.POST("/app", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.WriteKey)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			type createAKeyData struct {
+				Name                   string    `json:"name" binding:"required"`
+				BucketId               *string   `json:"bucket_id"`
+				ExpiredDate            time.Time `json:"expired_date"`
+				Permissions            []string  `json:"permissions"`
+				FilenamePrefixRestrict *string   `json:"filename_prefix_restrict"`
+			}
+
+			var keyData createAKeyData
+			if err := c.ShouldBind(&keyData); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			_, err = arango.FindAppKeyByNameAndUid(key.Uid, keyData.Name)
+			if err == nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "name duplicated",
+				})
+
+				return
+			}
+
+			if *keyData.BucketId == "*" {
+				keyData.BucketId = nil
+			}
+
+			res, err := arango.GenerateApplicationKey(keyData.Name, keyData.BucketId, key.Uid, keyData.Permissions, keyData.ExpiredDate, *keyData.FilenamePrefixRestrict)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+
+			c.JSON(http.StatusOK, res.Key)
+		})
+		kr.DELETE("/:id", func(c *gin.Context) {
+			id := c.Param("id")
+
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			uKey := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(uKey, arango.DeleteKey)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			key, err := arango.FindAccessKeyById(id)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "key not found",
+					})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
+				//	"Db Error")
+
+				return
+			}
+
+			if key.Uid != uKey.Uid {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "not your key",
+				})
+
+				return
+			}
+
+			err = arango.DeleteAccessKeyById(id)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at key/delete:",
+				//	"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"key": key.Id,
+			})
+		})
+	}
+}
+
+func CheckPerm(key *arango.AccessKey, perm arango.Permission) (hasPerm bool, err error) {
+	hasPerm = false
+	err = nil
+	for _, k := range key.Permissions {
+		p, err := arango.ParsePerm(k)
+		if err != nil {
+			return false, err
+		}
+		if perm == p {
+			hasPerm = true
+			break
+		}
+	}
+	return
 }

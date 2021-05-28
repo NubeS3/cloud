@@ -74,7 +74,7 @@ func GenerateKeyPair(bid, uid string, exp time.Time, perms []string) (*KeyPair, 
 
 	var permissions []Permission
 	for _, perm := range perms {
-		permission, err := parsePerm(perm)
+		permission, err := ParsePerm(perm)
 		if err != nil {
 			return nil, err
 		}

@@ -52,7 +52,7 @@ func (perm Permission) String() string {
 	}[perm]
 }
 
-func parsePerm(p string) (Permission, error) {
+func ParsePerm(p string) (Permission, error) {
 	switch p {
 	case "ListKeys":
 		return ListKeys, nil
@@ -159,7 +159,7 @@ func GenerateApplicationKey(name string, bid *string, uid string,
 
 	var permissions []Permission
 	for _, perm := range perms {
-		permission, err := parsePerm(perm)
+		permission, err := ParsePerm(perm)
 		if err != nil {
 			return nil, err
 		}
@@ -387,7 +387,7 @@ func GetAccessKeyByUid(uid string, limit, offset int) ([]AccessKey, error) {
 			}
 		}
 
-		akey.Key = ""
+		akey.Key = "*****"
 		keys = append(keys, *akey.toAccessKey(meta.Key))
 	}
 

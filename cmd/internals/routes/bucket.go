@@ -322,4 +322,208 @@ func BucketRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, count)
 		})
 	}
+
+	kr := r.Group("/apiKey/buckets", middlewares.AccessKeyAuthenticate, middlewares.AccessKeyReqCount)
+	{
+		kr.GET("/", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.ListBuckets)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+
+			//res, err := arango.FindBucketByUid(uid.(string), limit, offset)
+			res, err := arango.FindDetailBucketByUid(key.Uid, limit, offset)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at buckets/all:",
+					"Db Error")
+
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+		kr.POST("/", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.WriteBucket)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			type createBucket struct {
+				Name string `json:"name" binding:"required"`
+				//Region string `json:"region" binding:"required"`
+				IsPublic     *bool `json:"is_public" binding:"required"`
+				IsEncrypted  *bool `json:"is_encrypted" binding:"required"`
+				IsObjectLock *bool `json:"is_object_lock" binding:"required"`
+			}
+
+			var curCreateBucket createBucket
+			if err := c.ShouldBind(&curCreateBucket); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			if ok, err := ultis.ValidateBucketName(curCreateBucket.Name); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("create bucket > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Bucket name must be 8-64 characters, contains only alphanumeric",
+				})
+
+				return
+			}
+
+			bucket, err := arango.InsertBucket(key.Uid, curCreateBucket.Name, *curCreateBucket.IsPublic, *curCreateBucket.IsEncrypted, *curCreateBucket.IsObjectLock)
+			if err != nil {
+				if err.(*models.ModelError).ErrType == models.Duplicated {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "duplicated bucket name",
+					})
+
+					return
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/create:",
+					"Db Error")
+
+				return
+			}
+			c.JSON(http.StatusOK, bucket)
+		})
+		kr.DELETE("/:bucket_id", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.DeleteBucket)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			bucketId := c.Param("bucket_id")
+			//id, err := gocql.ParseUUID(bucketId)
+			//if err != nil {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something went wrong",
+			//	})
+			//
+			//	log.Println("at /buckets/delete:")
+			//	log.Println("parse bucket_id failed")
+			//	return
+			//}
+
+			if err := arango.RemoveBucket(key.Uid, bucketId); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
+				//	"Db Error")
+
+				return
+			}
+			c.JSON(http.StatusOK, gin.H{
+				"message": "delete success.",
+			})
+		})
+	}
 }

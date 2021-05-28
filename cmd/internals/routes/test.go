@@ -59,6 +59,10 @@ func TestRoute(r *gin.Engine) {
 		c.JSON(http.StatusOK, "Ok")
 	})
 
+	r.GET("/test/key-token", middlewares.AccessKeyAuthenticate, func(c *gin.Context) {
+		c.JSON(http.StatusOK, "ok")
+	})
+
 	//r.GET("/test", func(c *gin.Context) {
 	//	c.JSON(http.StatusOK, gin.H{
 	//		"message": "Connected",

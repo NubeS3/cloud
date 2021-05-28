@@ -61,7 +61,7 @@ func CreateKeyToken(keyId string) (string, error) {
 	keyClaims := KeyClaims{
 		KeyId: keyId,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour * 3600).Unix(),
+			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 		},
 	}
 
