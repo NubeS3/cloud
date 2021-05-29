@@ -49,6 +49,14 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
+			if ultis.TimeCheck(key.ExpiredDate) {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Key expired",
+				})
+
+				return
+			}
+
 			token, err := ultis.CreateKeyToken(key.Id)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -377,15 +385,15 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, res.Key)
+			c.JSON(http.StatusOK, res)
 		})
 		ar.POST("/app", func(c *gin.Context) {
 			type createAKeyData struct {
-				Name                   string    `json:"name" binding:"required"`
-				BucketId               *string   `json:"bucket_id"`
-				ExpiredDate            time.Time `json:"expired_date"`
-				Permissions            []string  `json:"permissions"`
-				FilenamePrefixRestrict *string   `json:"filename_prefix_restrict"`
+				Name                   string     `json:"name" binding:"required"`
+				BucketId               *string    `json:"bucket_id"`
+				ExpiredDate            *time.Time `json:"expired_date"`
+				Permissions            []string   `json:"permissions"`
+				FilenamePrefixRestrict *string    `json:"filename_prefix_restrict"`
 			}
 
 			var keyData createAKeyData
@@ -416,7 +424,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if *keyData.BucketId == "*" {
+			if keyData.BucketId == nil || *keyData.BucketId == "*" {
 				keyData.BucketId = nil
 			}
 
@@ -429,7 +437,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, res.Key)
+			c.JSON(http.StatusOK, res)
 		})
 		ar.DELETE("/:id", func(c *gin.Context) {
 			id := c.Param("id")
@@ -614,11 +622,11 @@ func AccessKeyRoutes(r *gin.Engine) {
 			}
 
 			type createAKeyData struct {
-				Name                   string    `json:"name" binding:"required"`
-				BucketId               *string   `json:"bucket_id"`
-				ExpiredDate            time.Time `json:"expired_date"`
-				Permissions            []string  `json:"permissions"`
-				FilenamePrefixRestrict *string   `json:"filename_prefix_restrict"`
+				Name                   string     `json:"name" binding:"required"`
+				BucketId               *string    `json:"bucket_id"`
+				ExpiredDate            *time.Time `json:"expired_date"`
+				Permissions            []string   `json:"permissions"`
+				FilenamePrefixRestrict *string    `json:"filename_prefix_restrict"`
 			}
 
 			var keyData createAKeyData
@@ -638,7 +646,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			if *keyData.BucketId == "*" {
+			if keyData.BucketId == nil || *keyData.BucketId == "*" {
 				keyData.BucketId = nil
 			}
 
@@ -651,7 +659,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 				return
 			}
 
-			c.JSON(http.StatusOK, res.Key)
+			c.JSON(http.StatusOK, res)
 		})
 		kr.DELETE("/:id", func(c *gin.Context) {
 			id := c.Param("id")

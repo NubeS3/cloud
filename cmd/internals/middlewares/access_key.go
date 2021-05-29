@@ -92,7 +92,7 @@ func AccessKeyAuthenticate(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	if key.ExpiredDate != time.Unix(0, 0) && key.ExpiredDate.Before(time.Now()) {
+	if ultis.TimeCheck(key.ExpiredDate) {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Key expired",
 		})

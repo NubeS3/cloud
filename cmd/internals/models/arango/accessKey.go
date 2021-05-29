@@ -142,8 +142,15 @@ func (a *accessKey) toAccessKey(id string) *AccessKey {
 }
 
 func GenerateApplicationKey(name string, bid *string, uid string,
-	perms []string, expiredDate time.Time, filenamePrefix string) (*AccessKey, error) {
+	perms []string, expiredDate *time.Time, filenamePrefix string) (*AccessKey, error) {
 	key := randstr.GetString(16)
+
+	var exp time.Time
+	if expiredDate == nil {
+		exp = time.Time{}
+	} else {
+		exp = *expiredDate
+	}
 
 	var targetBucketId string
 	if bid != nil {
@@ -173,7 +180,7 @@ func GenerateApplicationKey(name string, bid *string, uid string,
 		Name:                   name,
 		Key:                    key,
 		BucketId:               targetBucketId,
-		ExpiredDate:            expiredDate,
+		ExpiredDate:            exp,
 		Permissions:            permissions,
 		Uid:                    uid,
 		KeyType:                APP_KEY,
@@ -214,7 +221,7 @@ func GenerateMasterKey(uid string) (*AccessKey, error) {
 		Name:                   "Master Key",
 		Key:                    key,
 		BucketId:               "*",
-		ExpiredDate:            time.Now().Add(time.Hour * 24 * 365 * 100),
+		ExpiredDate:            time.Time{},
 		FileNamePrefixRestrict: "",
 		Permissions: []Permission{
 			ListKeys,
