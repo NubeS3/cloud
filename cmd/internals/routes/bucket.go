@@ -7,6 +7,7 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
 	"github.com/gin-gonic/gin"
+	"github.com/m1ome/randstr"
 	"net/http"
 	"strconv"
 )
@@ -128,6 +129,8 @@ func BucketRoutes(r *gin.Engine) {
 				IsPublic     *bool `json:"is_public"`
 				IsEncrypted  *bool `json:"is_encrypted"`
 				IsObjectLock *bool `json:"is_object_lock"`
+
+				Passphrase *string `json:"passphrase"`
 			}
 
 			var curUpdateBucket updateBucket
@@ -159,6 +162,19 @@ func BucketRoutes(r *gin.Engine) {
 
 				return
 			}
+
+			if curUpdateBucket.IsEncrypted != nil {
+				if *curUpdateBucket.IsEncrypted {
+					if curUpdateBucket.Passphrase == nil {
+						passph := randstr.GetString(16)
+						curUpdateBucket.Passphrase = &passph
+					}
+					_, _ = arango.CreateEncrypt(*curUpdateBucket.Passphrase, bid)
+				} else {
+					_, _ = arango.UpdateToEncryptionInfoByBucketId(bid)
+				}
+			}
+
 			c.JSON(http.StatusOK, bucket)
 		})
 		ar.DELETE("/:bucket_id", func(c *gin.Context) {

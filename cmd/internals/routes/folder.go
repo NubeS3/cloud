@@ -321,7 +321,7 @@ func FolderRoutes(r *gin.Engine) {
 				//TODO LOG wrong permission
 				return
 			}
-			if !hasPerm {
+			if !hasPerm || key.BucketId != "*" {
 				c.JSON(http.StatusForbidden, gin.H{
 					"error": "missing permission",
 				})
@@ -358,6 +358,10 @@ func FolderRoutes(r *gin.Engine) {
 			}
 
 			c.JSON(http.StatusOK, res)
+		})
+
+		kr.GET("/list", func(c *gin.Context) {
+			c.JSON(http.StatusNotImplemented, "not implemented")
 		})
 
 		kr.POST("/", func(c *gin.Context) {

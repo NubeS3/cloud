@@ -397,9 +397,13 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 
 	updateTarget := "{ "
 	addComa := false
+	bindVars := make(map[string]interface{})
+	bindVars["id"] = bid
+
 	if isPublic != nil {
 		updateTarget += "is_public: @isPublic"
 		addComa = true
+		bindVars["isPublic"] = isPublic
 	}
 	if isEncrypted != nil {
 		if addComa {
@@ -407,6 +411,7 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 		}
 
 		updateTarget += "is_encrypted: @isEncrypted"
+		bindVars["isEncrypted"] = isEncrypted
 	}
 	if isObjectLock != nil {
 		if addComa {
@@ -414,17 +419,18 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 		}
 
 		updateTarget += "is_object_lock: @isLock"
+		bindVars["isLock"] = isObjectLock
 	}
 	updateTarget += " }"
 
 	query := "FOR b IN buckets FILTER b._key == @id " +
 		"UPDATE b WITH " + updateTarget + " IN buckets RETURN NEW"
-	bindVars := map[string]interface{}{
-		"id":          bid,
-		"isPublic":    isPublic,
-		"isEncrypted": isEncrypted,
-		"isLock":      isObjectLock,
-	}
+	//bindVars := map[string]interface{}{
+	//	"id":          bid,
+	//	"isPublic":    isPublic,
+	//	"isEncrypted": isEncrypted,
+	//	"isLock":      isObjectLock,
+	//}
 
 	bucket := Bucket{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)

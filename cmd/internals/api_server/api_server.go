@@ -77,6 +77,7 @@ func Run() {
 	fmt.Println("Starting Cloud Server")
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
+	r.MaxMultipartMemory = 8 << 20 // 8MiB
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"},

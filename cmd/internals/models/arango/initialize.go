@@ -25,6 +25,7 @@ var (
 	fileMetadataCol  arangoDriver.Collection
 	adminCol         arangoDriver.Collection
 	bucketSizeCol    arangoDriver.Collection
+	encryptCol       arangoDriver.Collection
 )
 
 func InitArangoDb() error {
@@ -141,15 +142,15 @@ func initArangoDb() error {
 		apiKeyCol, _ = arangoDb.Collection(ctx, "apiKeys")
 	}
 
-	exist, err = arangoDb.CollectionExists(ctx, "keyPairs")
-	if err != nil {
-		return err
-	}
-	if !exist {
-		keyPairsCol, _ = arangoDb.CreateCollection(ctx, "keyPairs", &arangoDriver.CreateCollectionOptions{})
-	} else {
-		keyPairsCol, _ = arangoDb.Collection(ctx, "keyPairs")
-	}
+	//exist, err = arangoDb.CollectionExists(ctx, "keyPairs")
+	//if err != nil {
+	//	return err
+	//}
+	//if !exist {
+	//	keyPairsCol, _ = arangoDb.CreateCollection(ctx, "keyPairs", &arangoDriver.CreateCollectionOptions{})
+	//} else {
+	//	keyPairsCol, _ = arangoDb.Collection(ctx, "keyPairs")
+	//}
 
 	exist, err = arangoDb.CollectionExists(ctx, "fileMetadata")
 	if err != nil {
@@ -169,6 +170,16 @@ func initArangoDb() error {
 		bucketSizeCol, _ = arangoDb.CreateCollection(ctx, "bucketSize", &arangoDriver.CreateCollectionOptions{})
 	} else {
 		bucketSizeCol, _ = arangoDb.Collection(ctx, "bucketSize")
+	}
+
+	exist, err = arangoDb.CollectionExists(ctx, "encryptInfo")
+	if err != nil {
+		return err
+	}
+	if !exist {
+		encryptCol, _ = arangoDb.CreateCollection(ctx, "encryptInfo", &arangoDriver.CreateCollectionOptions{})
+	} else {
+		encryptCol, _ = arangoDb.Collection(ctx, "encryptInfo")
 	}
 
 	exist, err = arangoDb.CollectionExists(ctx, "admin")

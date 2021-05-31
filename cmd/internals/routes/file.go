@@ -7,7 +7,9 @@ import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
 	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/ultis"
+	"github.com/blend/go-sdk/crypto"
 	"github.com/gin-gonic/gin"
+	"github.com/minio/sio"
 	"io"
 	"net/http"
 	"strconv"
@@ -878,11 +880,57 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
-			res, err := arango.SaveFile(fileContent, bid, path, fileName, isHidden,
-				cType, fileSize, time.Duration(ttl))
+			var encryptionInfo *arango.EncryptionInfo
+			var res *arango.FileMetadata
+			var isEncrypted bool
+			var r io.Reader
+
+			if bucket.IsEncrypted {
+				encryptionInfo, err = arango.FindLatestEncryptionInfoByBucketId(bucket.Id)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG
+					return
+				}
+
+				if encryptionInfo.To == nil || encryptionInfo.To.After(time.Now()) {
+					isEncrypted = true
+					r, err = ultis.EncryptReader(fileContent, encryptionInfo.Passphrase)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something went wrong",
+						})
+
+						//TODO LOG
+						return
+					}
+
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					return
+				}
+			} else {
+				isEncrypted = false
+				r = fileContent
+			}
+
+			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
+				cType, fileSize, time.Duration(ttl), isEncrypted)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
 					if err.ErrType == models.NotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": err.Msg,
+						})
+					}
+
+					if err.ErrType == models.Duplicated {
 						c.JSON(http.StatusBadRequest, gin.H{
 							"error": err.Msg,
 						})
@@ -893,6 +941,26 @@ func FileRoutes(r *gin.Engine) {
 					})
 				}
 				return
+			}
+
+			if isEncrypted {
+				er := r.(*crypto.StreamEncrypter)
+				meta := er.Meta()
+				res, err = arango.UpdateFileEncryptData(res.Id, meta.IV, meta.Hash)
+				if err != nil {
+					if err, ok := err.(*models.ModelError); ok {
+						if err.ErrType == models.NotFound {
+							c.JSON(http.StatusBadRequest, gin.H{
+								"error": err.Msg,
+							})
+						}
+					} else {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": err.Error(),
+						})
+					}
+					return
+				}
 			}
 
 			//LOG
@@ -955,9 +1023,28 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if metadata.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, metadata.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   metadata.EncryptData.IV,
+						Hash: metadata.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
+				}
+
 				extraHeaders := map[string]string{}
 
-				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
 					From:       userId,
 					BucketId:   bucket.Id,
@@ -1066,11 +1153,28 @@ func FileRoutes(r *gin.Engine) {
 					}
 				}
 
-				extraHeaders := map[string]string{
-					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if fileMeta.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, fileMeta.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   fileMeta.EncryptData.IV,
+						Hash: fileMeta.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
 				}
 
-				teeReader := io.TeeReader(reader, &ultis.DownloadBandwidthLogger{
+				extraHeaders := map[string]string{}
+
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
 					From:       userId,
 					BucketId:   bucket.Id,
@@ -1397,6 +1501,1148 @@ func FileRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, gin.H{
 				"message": "successfully deleted",
 			})
+		})
+	}
+
+	kr := r.Group("/accessKey/files", middlewares.AccessKeyAuthenticate)
+	{
+		kr.GET("/", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.ListFiles)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid limit format",
+				})
+
+				return
+			}
+			offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid offset format",
+				})
+
+				return
+			}
+			bid := c.DefaultQuery("bucketId", "")
+			if bid == "" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "missing bid",
+				})
+
+				return
+			}
+
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+				//	"Db Error")
+				return
+			}
+
+			if !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
+				//	"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			res, err := arango.FindMetadataByBid(bid, limit, offset, true)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
+				//	"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		kr.POST("/upload", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.WriteFiles)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			bid := c.DefaultPostForm("bucket_id", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+				//	"Db Error")
+				return
+			}
+
+			if !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+				//	"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			uploadFile, err := c.FormFile("file")
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+			queryPath := c.DefaultPostForm("path", "/")
+			path := ultis.StandardizedPath(bucket.Name+"/"+queryPath, true)
+
+			fileName := c.DefaultPostForm("name", uploadFile.Filename)
+
+			if ok, err := ultis.ValidateFileName(fileName); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("upload file auth > "+err.Error(), "validate")
+				return
+			} else if !ok {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "File should not contain special characters, from 1-255 characters",
+				})
+
+				return
+			}
+
+			fileContent, err := uploadFile.Open()
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("open file failed at /files/auth/upload:",
+				//	"File Error")
+				return
+			}
+
+			fileSize := uploadFile.Size
+			ttlStr := c.DefaultPostForm("ttl", "0")
+			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+			}
+
+			isHiddenStr := c.DefaultPostForm("hidden", "false")
+			isHidden, err := strconv.ParseBool(isHiddenStr)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+
+				return
+			}
+
+			cType, err := ultis.GetFileContentType(fileContent)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "unknown file content type",
+				})
+
+				return
+			}
+
+			var encryptionInfo *arango.EncryptionInfo
+			var res *arango.FileMetadata
+			var isEncrypted bool
+			var r io.Reader
+
+			if bucket.IsEncrypted {
+				encryptionInfo, err = arango.FindLatestEncryptionInfoByBucketId(bucket.Id)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG
+					return
+				}
+
+				if encryptionInfo.To == nil || encryptionInfo.To.After(time.Now()) {
+					isEncrypted = true
+					r, err = ultis.EncryptReader(fileContent, encryptionInfo.Passphrase)
+					if err != nil {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something went wrong",
+						})
+
+						//TODO LOG
+						return
+					}
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					return
+				}
+			} else {
+				isEncrypted = false
+				r = fileContent
+			}
+
+			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
+				cType, fileSize, time.Duration(ttl), isEncrypted)
+			if err != nil {
+				if err, ok := err.(*models.ModelError); ok {
+					if err.ErrType == models.NotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": err.Msg,
+						})
+					}
+				} else {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": err.Error(),
+					})
+				}
+				return
+			}
+
+			if isEncrypted {
+				er := r.(*crypto.StreamEncrypter)
+				meta := er.Meta()
+				res, err = arango.UpdateFileEncryptData(res.Id, meta.IV, meta.Hash)
+				if err != nil {
+					if err, ok := err.(*models.ModelError); ok {
+						if err.ErrType == models.NotFound {
+							c.JSON(http.StatusBadRequest, gin.H{
+								"error": err.Msg,
+							})
+						}
+					} else {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": err.Error(),
+						})
+					}
+					return
+				}
+			}
+
+			//LOG
+			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
+				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
+
+			c.JSON(http.StatusOK, res)
+		})
+
+		kr.DELETE("/*fullpath", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+			hasPerm, err := CheckPerm(key, arango.DeleteFiles)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//TODO LOG wrong permission
+				return
+			}
+			if !hasPerm {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "missing permission",
+				})
+
+				return
+			}
+
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bid := c.DefaultQuery("bucketId", "")
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				return
+			}
+
+			if !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			if uid, ok := c.Get("uid"); !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
+				//	"Unknown Error")
+				return
+			} else {
+				if uid.(string) != bucket.Uid {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "permission denied",
+					})
+					return
+				}
+			}
+
+			if bucket.Name != bucketName {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid bucket name",
+				})
+
+				return
+			}
+
+			err = arango.MarkDeleteFile(parentPath, fileName, bucket.Id)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download:",
+				//	"Db Error")
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"message": "successfully deleted",
+			})
+		})
+	}
+
+	skr := r.Group("/key/files", middlewares.CheckBucketPublic, middlewares.SkipableAccessKeyAuthenticate)
+	{
+		skr.GET("/download", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			isPublic := c.GetBool("is_public")
+			if !ok && !isPublic {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+
+			if !isPublic {
+				hasPerm, err := CheckPerm(key, arango.ReadFiles)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG wrong permission
+					return
+				}
+				if !hasPerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "missing permission",
+					})
+
+					return
+				}
+			}
+
+			fid := c.DefaultQuery("fileId", "")
+			bid := c.DefaultQuery("bucketId", "")
+
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				return
+			}
+
+			if !isPublic && !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			userId := key.Uid
+			if userId != bucket.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			err = arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
+				if metadata.BucketId != bid {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if metadata.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, metadata.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   metadata.EncryptData.IV,
+						Hash: metadata.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
+				}
+
+				extraHeaders := map[string]string{}
+
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
+					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
+				//	"File Error")
+				return
+			}
+		})
+
+		skr.GET("/download/*fullpath", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			isPublic := c.GetBool("is_public")
+			if !ok && !isPublic {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+
+			if !isPublic {
+				hasPerm, err := CheckPerm(key, arango.ReadFiles)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG wrong permission
+					return
+				}
+				if !hasPerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "missing permission",
+					})
+
+					return
+				}
+			}
+
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bucket, err := arango.FindBucketByName(bucketName)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+						//	"Db Error")
+						return
+					}
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+				//	"Db Error")
+				return
+			}
+
+			if !isPublic && !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			userId := key.Uid
+			if userId != bucket.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			fileMeta, err := arango.FindMetadataByFilename(parentPath, fileName, bucket.Id)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "file not found",
+				})
+
+				return
+			}
+
+			err = arango.GetFileByFidIgnoreQueryMetadata(fileMeta.FileId, func(reader io.Reader) error {
+				if fileMeta.BucketId != bucket.Id {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if fileMeta.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, fileMeta.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   fileMeta.EncryptData.IV,
+						Hash: fileMeta.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
+				}
+
+				extraHeaders := map[string]string{
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				}
+
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
+				//	"File Error")
+				return
+			}
+		})
+	}
+
+	sqkr := r.Group("/key-query/files", middlewares.CheckBucketPublic, middlewares.SkipableAccessKeyAuthenticateQuery)
+	{
+		sqkr.GET("/download", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			isPublic := c.GetBool("is_public")
+			if !ok && !isPublic {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+
+			if !isPublic {
+				hasPerm, err := CheckPerm(key, arango.ReadFiles)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG wrong permission
+					return
+				}
+				if !hasPerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "missing permission",
+					})
+
+					return
+				}
+			}
+
+			fid := c.DefaultQuery("fileId", "")
+			bid := c.DefaultQuery("bucketId", "")
+
+			bucket, err := arango.FindBucketById(bid)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
+						//	"Db Error")
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				return
+			}
+
+			if !isPublic && !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			userId := key.Uid
+			if userId != bucket.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			err = arango.GetFileByFid(fid, func(reader io.Reader, metadata *arango.FileMetadata) error {
+				if metadata.BucketId != bid {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if metadata.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, metadata.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   metadata.EncryptData.IV,
+						Hash: metadata.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
+				}
+
+				extraHeaders := map[string]string{}
+
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
+					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
+				//	"File Error")
+				return
+			}
+		})
+
+		sqkr.GET("/download/*fullpath", func(c *gin.Context) {
+			k, ok := c.Get("key")
+			isPublic := c.GetBool("is_public")
+			if !ok && !isPublic {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				//	"Unknown Error")
+				return
+			}
+
+			key := k.(*arango.AccessKey)
+
+			if !isPublic {
+				hasPerm, err := CheckPerm(key, arango.ReadFiles)
+				if err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{
+						"error": "something went wrong",
+					})
+
+					//TODO LOG wrong permission
+					return
+				}
+				if !hasPerm {
+					c.JSON(http.StatusForbidden, gin.H{
+						"error": "missing permission",
+					})
+
+					return
+				}
+			}
+
+			fullpath := c.Param("fullpath")
+			fullpath = ultis.StandardizedPath(fullpath, true)
+			bucketName := ultis.GetBucketName(fullpath)
+			parentPath := ultis.GetParentPath(fullpath)
+			fileName := ultis.GetFileName(fullpath)
+
+			bucket, err := arango.FindBucketByName(bucketName)
+			if err != nil {
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "something when wrong",
+						})
+
+						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+						//	"Db Error")
+						return
+					}
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
+				//	"Db Error")
+				return
+			}
+
+			if !isPublic && !ultis.CheckBucketPerm(key.BucketId, bucket.Id) {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "this key is not associated with this bucket",
+				})
+
+				return
+			}
+
+			userId := key.Uid
+			if userId != bucket.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
+				})
+				return
+			}
+
+			fileMeta, err := arango.FindMetadataByFilename(parentPath, fileName, bucket.Id)
+			if err != nil {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "file not found",
+				})
+
+				return
+			}
+
+			err = arango.GetFileByFidIgnoreQueryMetadata(fileMeta.FileId, func(reader io.Reader) error {
+				if fileMeta.BucketId != bucket.Id {
+					return &models.RouteError{
+						Msg:     "invalid bucket",
+						ErrType: models.InvalidBucket,
+					}
+				}
+
+				var encryptInfo *arango.EncryptionInfo
+				var r io.Reader
+				if fileMeta.IsEncrypted {
+					encryptInfo, err = arango.FindEncryptionInfoInDate(bucket.Id, fileMeta.UploadedDate)
+					if err != nil {
+						return err
+					}
+
+					r, err = ultis.DecryptReader(reader, crypto.StreamMeta{
+						IV:   fileMeta.EncryptData.IV,
+						Hash: fileMeta.EncryptData.Hash,
+					}, encryptInfo.Passphrase)
+					if err != nil {
+						return err
+					}
+				} else {
+					r = reader
+				}
+
+				extraHeaders := map[string]string{
+					//"Content-Disposition": `attachment; filename=` + fileMeta.Name,
+				}
+
+				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
+					Uid:        userId,
+					From:       userId,
+					BucketId:   bucket.Id,
+					SourceType: "auth",
+				})
+
+				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
+
+				//LOG
+				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
+					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
+
+				return nil
+			})
+
+			if err != nil {
+				if e, ok := err.(*models.RouteError); ok {
+					if e.ErrType == models.InvalidBucket {
+						c.JSON(http.StatusForbidden, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
+
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DocumentNotFound {
+						c.JSON(http.StatusNotFound, gin.H{
+							"error": "file not found",
+						})
+
+						return
+					}
+				}
+
+				if _, ok := err.(*sio.Error); ok {
+					return
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				//_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
+				//	"File Error")
+				return
+			}
 		})
 	}
 
