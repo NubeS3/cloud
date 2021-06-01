@@ -25,10 +25,12 @@ type FileMetadata struct {
 	DeletedDate time.Time `json:"-"`
 
 	UploadedDate time.Time `json:"-"`
-	ExpiredDate  time.Time `json:"expired_date"`
+	//ExpiredDate  time.Time `json:"expired_date"`
 
 	IsEncrypted bool         `json:"is_encrypted"`
 	EncryptData *EncryptData `json:"encrypt_data,omitempty"`
+
+	HoldUntil time.Time `json:"hold_until"`
 }
 
 type fileMetadata struct {
@@ -45,10 +47,12 @@ type fileMetadata struct {
 	DeletedDate time.Time `json:"deleted_date"`
 
 	UploadedDate time.Time `json:"upload_date"`
-	ExpiredDate  time.Time `json:"expired_date"`
+	//ExpiredDate  time.Time `json:"expired_date"`
 
 	IsEncrypted bool         `json:"is_encrypted"`
 	EncryptData *EncryptData `json:"encrypt_data,omitempty"`
+
+	HoldUntil time.Time `json:"hold_until"`
 }
 
 type SimpleFileMetadata struct {
@@ -63,7 +67,7 @@ type EncryptData struct {
 
 func saveFileMetadata(fid string, bid string,
 	path string, name string, isHidden bool,
-	contentType string, size int64, expiredDate time.Time, isEncrypt bool) (*FileMetadata, error) {
+	contentType string, size int64, isEncrypt bool, holdUntil time.Duration) (*FileMetadata, error) {
 	uploadedTime := time.Now()
 	f, err := FindFolderByFullpath(path)
 	if err != nil {
@@ -84,8 +88,8 @@ func saveFileMetadata(fid string, bid string,
 		IsDeleted:    false,
 		DeletedDate:  time.Time{},
 		UploadedDate: uploadedTime,
-		ExpiredDate:  expiredDate,
 		IsEncrypted:  isEncrypt,
+		HoldUntil:    time.Now().Add(holdUntil),
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
@@ -99,7 +103,7 @@ func saveFileMetadata(fid string, bid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, doc.ExpiredDate, isHidden)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, isHidden)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
@@ -132,7 +136,6 @@ func saveFileMetadata(fid string, bid string,
 		IsDeleted:    doc.IsDeleted,
 		DeletedDate:  doc.DeletedDate,
 		UploadedDate: doc.UploadedDate,
-		ExpiredDate:  doc.ExpiredDate,
 		IsEncrypted:  isEncrypt,
 	}, nil
 }
@@ -191,7 +194,6 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 				IsDeleted:    fileMetadata.IsDeleted,
 				DeletedDate:  fileMetadata.DeletedDate,
 				UploadedDate: fileMetadata.UploadedDate,
-				ExpiredDate:  fileMetadata.ExpiredDate,
 				IsEncrypted:  fileMetadata.IsEncrypted,
 				EncryptData:  fileMetadata.EncryptData,
 			})
@@ -246,13 +248,12 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 			IsDeleted:    fm.IsDeleted,
 			DeletedDate:  fm.DeletedDate,
 			UploadedDate: fm.UploadedDate,
-			ExpiredDate:  fm.ExpiredDate,
 			IsEncrypted:  fm.IsEncrypted,
 			EncryptData:  fm.EncryptData,
 		}
 	}
 
-	if retMeta.Id == "" || retMeta.IsDeleted || retMeta.ExpiredDate.Before(time.Now()) {
+	if retMeta.Id == "" || retMeta.IsDeleted {
 		return nil, &models.ModelError{
 			Msg:     "not found",
 			ErrType: models.NotFound,
@@ -305,13 +306,12 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 			IsDeleted:    fm.IsDeleted,
 			DeletedDate:  fm.DeletedDate,
 			UploadedDate: fm.UploadedDate,
-			ExpiredDate:  fm.ExpiredDate,
 			IsEncrypted:  fm.IsEncrypted,
 			EncryptData:  fm.EncryptData,
 		}
 	}
 
-	if retMeta.IsDeleted || retMeta.ExpiredDate.Before(time.Now()) {
+	if retMeta.IsDeleted {
 		return nil, &models.ModelError{
 			Msg:     "file not found",
 			ErrType: models.NotFound,
@@ -334,7 +334,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 		}
 	}
 
-	if data.IsDeleted || data.ExpiredDate.Before(time.Now()) {
+	if data.IsDeleted {
 		return nil, &models.ModelError{
 			Msg:     "file not found",
 			ErrType: models.NotFound,
@@ -353,7 +353,6 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 		IsDeleted:    data.IsDeleted,
 		DeletedDate:  data.DeletedDate,
 		UploadedDate: data.UploadedDate,
-		ExpiredDate:  data.ExpiredDate,
 		IsEncrypted:  data.IsEncrypted,
 		EncryptData:  data.EncryptData,
 	}, nil
@@ -361,7 +360,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 
 func SaveFile(reader io.Reader, bid string,
 	path string, name string, isHidden bool,
-	contentType string, size int64, ttl time.Duration, isEncrypted bool) (*FileMetadata, error) {
+	contentType string, size int64, isEncrypted bool, holdUntil time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
 	//_, err := FindBucketById(bid)
 	//if err != nil {
@@ -375,10 +374,6 @@ func SaveFile(reader io.Reader, bid string,
 	//		ErrType: models.DbError,
 	//	}
 	//}
-
-	if ttl == time.Duration(0) {
-		ttl = time.Hour * 24 * 365 * 10
-	}
 
 	//CHECK DUP FILE NAME
 	// TODO versioning
@@ -398,7 +393,7 @@ func SaveFile(reader io.Reader, bid string,
 		return nil, err
 	}
 
-	return saveFileMetadata(meta.FileID, bid, path, name, isHidden, contentType, meta.FileSize, time.Now().Add(ttl), isEncrypted)
+	return saveFileMetadata(meta.FileID, bid, path, name, isHidden, contentType, meta.FileSize, isEncrypted, holdUntil)
 }
 
 func GetFile(bid string, path, name string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
@@ -517,6 +512,18 @@ func ToggleHidden(fullpath string, isHidden bool) (*FileMetadata, error) {
 }
 
 func MarkDeleteFile(path string, name string, bid string) error {
+	f, err := FindMetadataByFilename(path, name, bid)
+	if err != nil {
+		return err
+	}
+
+	if f.HoldUntil.After(time.Now()) {
+		return &models.ModelError{
+			Msg:     "fild is locked until " + f.HoldUntil.Format(time.RFC3339),
+			ErrType: models.Locked,
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 

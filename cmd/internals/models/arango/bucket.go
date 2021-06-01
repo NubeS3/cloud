@@ -19,7 +19,8 @@ type Bucket struct {
 
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+
+	HoldDuration time.Duration `json:"hold_duration"`
 }
 
 type bucket struct {
@@ -32,6 +33,8 @@ type bucket struct {
 	//Region string `json:"region" binding:"required"`
 	// DB Info
 	CreatedAt time.Time `json:"created_at"`
+
+	HoldDuration time.Duration `json:"hold_duration"`
 }
 
 type DetailBucket struct {
@@ -49,7 +52,8 @@ func InsertBucket(uid string, name string, isPublic, isEncrypted, isObjectLock b
 		IsEncrypted:  isEncrypted,
 		IsObjectLock: isObjectLock,
 		//Region:    region,
-		CreatedAt: createdTime,
+		CreatedAt:    createdTime,
+		HoldDuration: 0,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
@@ -448,6 +452,50 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 			break
 		} else if err != nil {
 			return nil, err
+		}
+		bucket.Id = meta.Key
+	}
+
+	if bucket.Id == "" {
+		return nil, &models.ModelError{
+			Msg:     "bucket not found",
+			ErrType: models.DocumentNotFound,
+		}
+	}
+
+	return &bucket, nil
+}
+
+func UpdateHoldDuration(bid string, duration time.Duration) (*Bucket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR b IN buckets FILTER b._key == @id " +
+		"UPDATE b WITH { b.hold_duration = @duration } IN buckets RETURN NEW"
+	bindVars := map[string]interface{}{
+		"id":       bid,
+		"duration": duration,
+	}
+
+	bucket := Bucket{}
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	for {
+		meta, err := cursor.ReadDocument(ctx, &bucket)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
 		}
 		bucket.Id = meta.Key
 	}

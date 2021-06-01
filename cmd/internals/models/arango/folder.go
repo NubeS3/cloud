@@ -26,9 +26,8 @@ type Child struct {
 }
 
 type ChildFileMetadata struct {
-	ContentType string    `json:"content_type"`
-	Size        int64     `json:"size"`
-	ExpiredDate time.Time `json:"expired_date"`
+	ContentType string `json:"content_type"`
+	Size        int64  `json:"size"`
 }
 
 func InsertBucketFolder(bucketName string) (*Folder, error) {
@@ -114,7 +113,7 @@ func InsertFolder(name, parentId, ownerId string) (*Folder, error) {
 	return doc, nil
 }
 
-func InsertFile(fid, fname, parentId, contentType string, size int64, expiredDate time.Time, isHidden bool) (*Folder, error) {
+func InsertFile(fid, fname, parentId, contentType string, size int64, isHidden bool) (*Folder, error) {
 	f, err := AppendChildToFolderById(parentId, Child{
 		Id:       fid,
 		Name:     fname,
@@ -123,7 +122,6 @@ func InsertFile(fid, fname, parentId, contentType string, size int64, expiredDat
 		Metadata: ChildFileMetadata{
 			ContentType: contentType,
 			Size:        size,
-			ExpiredDate: expiredDate,
 		},
 	})
 	if err != nil {

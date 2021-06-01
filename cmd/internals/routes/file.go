@@ -853,14 +853,6 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			fileSize := uploadFile.Size
-			ttlStr := c.DefaultPostForm("ttl", "0")
-			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-			}
-
 			isHiddenStr := c.DefaultPostForm("hidden", "false")
 			isHidden, err := strconv.ParseBool(isHiddenStr)
 			if err != nil {
@@ -878,6 +870,13 @@ func FileRoutes(r *gin.Engine) {
 				})
 
 				return
+			}
+
+			var holdDuration time.Duration
+			if bucket.IsObjectLock {
+				holdDuration = bucket.HoldDuration
+			} else {
+				holdDuration = 0
 			}
 
 			var encryptionInfo *arango.EncryptionInfo
@@ -921,7 +920,7 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
-				cType, fileSize, time.Duration(ttl), isEncrypted)
+				cType, fileSize, isEncrypted, holdDuration)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
 					if err.ErrType == models.NotFound {
@@ -1478,6 +1477,13 @@ func FileRoutes(r *gin.Engine) {
 
 						return
 					}
+					if e.ErrType == models.Locked {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": e.Msg,
+						})
+
+						return
+					}
 					if e.ErrType == models.DbError {
 						c.JSON(http.StatusInternalServerError, gin.H{
 							"error": "something when wrong",
@@ -1755,14 +1761,6 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			fileSize := uploadFile.Size
-			ttlStr := c.DefaultPostForm("ttl", "0")
-			ttl, err := strconv.ParseInt(ttlStr, 10, 64)
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{
-					"error": err.Error(),
-				})
-			}
-
 			isHiddenStr := c.DefaultPostForm("hidden", "false")
 			isHidden, err := strconv.ParseBool(isHiddenStr)
 			if err != nil {
@@ -1780,6 +1778,13 @@ func FileRoutes(r *gin.Engine) {
 				})
 
 				return
+			}
+
+			var holdDuration time.Duration
+			if bucket.IsObjectLock {
+				holdDuration = bucket.HoldDuration
+			} else {
+				holdDuration = 0
 			}
 
 			var encryptionInfo *arango.EncryptionInfo
@@ -1822,7 +1827,7 @@ func FileRoutes(r *gin.Engine) {
 			}
 
 			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
-				cType, fileSize, time.Duration(ttl), isEncrypted)
+				cType, fileSize, isEncrypted, holdDuration)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
 					if err.ErrType == models.NotFound {
@@ -1908,6 +1913,13 @@ func FileRoutes(r *gin.Engine) {
 					if e.ErrType == models.DocumentNotFound {
 						c.JSON(http.StatusBadRequest, gin.H{
 							"error": "bid invalid",
+						})
+
+						return
+					}
+					if e.ErrType == models.Locked {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": e.Msg,
 						})
 
 						return

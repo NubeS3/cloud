@@ -12,6 +12,7 @@ const (
 	InvalidBucket
 	UidMismatch
 	GeneratorError
+	Locked
 	Other
 )
 

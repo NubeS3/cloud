@@ -10,6 +10,7 @@ import (
 	"github.com/m1ome/randstr"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func BucketRoutes(r *gin.Engine) {
@@ -131,6 +132,7 @@ func BucketRoutes(r *gin.Engine) {
 				IsObjectLock *bool `json:"is_object_lock"`
 
 				Passphrase *string `json:"passphrase"`
+				Duration   int     `json:"duration"`
 			}
 
 			var curUpdateBucket updateBucket
@@ -169,9 +171,22 @@ func BucketRoutes(r *gin.Engine) {
 						passph := randstr.GetString(16)
 						curUpdateBucket.Passphrase = &passph
 					}
-					_, _ = arango.CreateEncrypt(*curUpdateBucket.Passphrase, bid)
+					_, err = arango.CreateEncrypt(*curUpdateBucket.Passphrase, bid)
+					//TODO temp ignore errors
+
 				} else {
-					_, _ = arango.UpdateToEncryptionInfoByBucketId(bid)
+					_, err = arango.UpdateToEncryptionInfoByBucketId(bid)
+					//TODO temp ignore errors
+				}
+			}
+
+			if curUpdateBucket.IsObjectLock != nil {
+				if *curUpdateBucket.IsObjectLock {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, time.Duration(curUpdateBucket.Duration*1_000_000_000))
+					//TODO temp ignore errors
+				} else {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, 0)
+					//TODO temp ignore errors
 				}
 			}
 
