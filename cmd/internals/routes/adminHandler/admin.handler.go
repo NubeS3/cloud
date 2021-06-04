@@ -132,6 +132,70 @@ func AdminCreateMod(c *gin.Context) {
 	c.JSON(http.StatusOK, resAdmin)
 }
 
+func AdminCreateUser(c *gin.Context) {
+	type user struct {
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+	var newUser user
+	if err := c.ShouldBind(&newUser); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if ok, err := ultis.ValidateEmail(newUser.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create user > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Email must be <something>@<something.com>",
+		})
+
+		return
+	}
+
+	if ok, err := ultis.ValidatePassword(newUser.Password); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "something went wrong",
+		})
+
+		_ = nats.SendErrorEvent("admin create user > "+err.Error(), "validate")
+		return
+	} else if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Password must be 8-32 characters, contains at least one uppercase, one lowercase, one number and one special character",
+		})
+
+		return
+	}
+
+	resUser, err := arango.SaveUser(newUser.Password, newUser.Email)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.Duplicated {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, resUser)
+}
+
 func AdminModDisable(c *gin.Context) {
 	type toggleReq struct {
 		Username string `json:"username" binding:"required"`
@@ -169,8 +233,8 @@ func AdminModDisable(c *gin.Context) {
 
 func AdminBanUser(c *gin.Context) {
 	type toggleReq struct {
-		Username string `json:"username" binding:"required"`
-		IsBan    *bool  `json:"is_ban" binding:"required"`
+		Email string `json:"email" binding:"required"`
+		IsBan *bool  `json:"is_ban" binding:"required"`
 	}
 
 	var req toggleReq
@@ -181,7 +245,7 @@ func AdminBanUser(c *gin.Context) {
 		return
 	}
 
-	user, err := arango.FindUserByUsername(req.Username)
+	user, err := arango.FindUserByEmail(req.Email)
 	if err != nil {
 		if err, ok := err.(*models.ModelError); ok {
 			if err.ErrType == models.Duplicated {
