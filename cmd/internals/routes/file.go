@@ -919,7 +919,7 @@ func FileRoutes(r *gin.Engine) {
 				r = fileContent
 			}
 
-			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
+			res, err = arango.SaveFile(r, bid, bucket.Uid, path, fileName, isHidden,
 				cType, fileSize, isEncrypted, holdDuration)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
@@ -964,7 +964,7 @@ func FileRoutes(r *gin.Engine) {
 
 			//LOG
 			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
-				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
+				res.BucketId, res.UploadedDate, bucket.Uid)
 
 			c.JSON(http.StatusOK, res)
 		})
@@ -1054,7 +1054,7 @@ func FileRoutes(r *gin.Engine) {
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
-					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
+					metadata.BucketId, metadata.UploadedDate, userId)
 
 				return nil
 			})
@@ -1184,7 +1184,7 @@ func FileRoutes(r *gin.Engine) {
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
-					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
+					fileMeta.BucketId, fileMeta.UploadedDate, userId)
 
 				return nil
 			})
@@ -1826,7 +1826,7 @@ func FileRoutes(r *gin.Engine) {
 				r = fileContent
 			}
 
-			res, err = arango.SaveFile(r, bid, path, fileName, isHidden,
+			res, err = arango.SaveFile(r, bid, key.Uid, path, fileName, isHidden,
 				cType, fileSize, isEncrypted, holdDuration)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
@@ -1865,7 +1865,7 @@ func FileRoutes(r *gin.Engine) {
 
 			//LOG
 			_ = nats.SendUploadFileEvent(res.Id, res.FileId, res.Name, res.Size,
-				res.BucketId, res.ContentType, res.UploadedDate, res.Path, res.IsHidden)
+				res.BucketId, res.UploadedDate, key.Uid)
 
 			c.JSON(http.StatusOK, res)
 		})
@@ -2125,16 +2125,16 @@ func FileRoutes(r *gin.Engine) {
 
 				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
-					From:       userId,
+					From:       key.Id,
 					BucketId:   bucket.Id,
-					SourceType: "auth",
+					SourceType: "key",
 				})
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
-					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
+					metadata.BucketId, metadata.UploadedDate, key.Uid)
 
 				return nil
 			})
@@ -2287,16 +2287,16 @@ func FileRoutes(r *gin.Engine) {
 
 				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
-					From:       userId,
+					From:       key.Id,
 					BucketId:   bucket.Id,
-					SourceType: "auth",
+					SourceType: "key",
 				})
 
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
-					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
+					fileMeta.BucketId, fileMeta.UploadedDate, key.Uid)
 
 				return nil
 			})
@@ -2447,16 +2447,16 @@ func FileRoutes(r *gin.Engine) {
 
 				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
-					From:       userId,
+					From:       key.Id,
 					BucketId:   bucket.Id,
-					SourceType: "auth",
+					SourceType: "key",
 				})
 
 				c.DataFromReader(http.StatusOK, metadata.Size, metadata.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(metadata.Id, metadata.FileId, metadata.Name, metadata.Size,
-					metadata.BucketId, metadata.ContentType, metadata.UploadedDate, metadata.Path, metadata.IsHidden)
+					metadata.BucketId, metadata.UploadedDate, key.Uid)
 
 				return nil
 			})
@@ -2609,16 +2609,16 @@ func FileRoutes(r *gin.Engine) {
 
 				teeReader := io.TeeReader(r, &ultis.DownloadBandwidthLogger{
 					Uid:        userId,
-					From:       userId,
+					From:       key.Id,
 					BucketId:   bucket.Id,
-					SourceType: "auth",
+					SourceType: "key",
 				})
 
 				c.DataFromReader(http.StatusOK, fileMeta.Size, fileMeta.ContentType, teeReader, extraHeaders)
 
 				//LOG
 				_ = nats.SendDownloadFileEvent(fileMeta.Id, fileMeta.FileId, fileMeta.Name, fileMeta.Size,
-					fileMeta.BucketId, fileMeta.ContentType, fileMeta.UploadedDate, fileMeta.Path, fileMeta.IsHidden)
+					fileMeta.BucketId, fileMeta.UploadedDate, key.Uid)
 
 				return nil
 			})

@@ -539,46 +539,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/bandwidth-report/signed/:key", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
-			k := c.Param("key")
-			key, err := arango.FindKeyPairByPublic(k)
-			if err != nil {
-				if err, ok := err.(*models.ModelError); ok {
-					if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
-						c.JSON(http.StatusNotFound, gin.H{
-							"error": "key not found",
-						})
-
-						return
-					}
-				}
-
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
-				return
-			}
-
-			uid, ok := c.Get("uid")
-			if !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
-				})
-
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
-				return
-			}
-
-			if key.GeneratorUid != uid {
-				c.JSON(http.StatusForbidden, gin.H{
-					"error": "not your key",
-				})
-
-				return
-			}
-
+		userRoutesGroup.GET("/report/size", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -600,7 +561,17 @@ func UserRoutes(route *gin.Engine) {
 			fromT := time.Unix(from, 0)
 			toT := time.Unix(to, 0)
 
-			total, err := nats.SumBandwidthByDateRangeWithFrom(key.Public, fromT, toT)
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				return
+			}
+
+			total, err := nats.GetAvgStoredSizeByUidInDateRange(uid.(string), fromT, toT)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
@@ -612,6 +583,124 @@ func UserRoutes(route *gin.Engine) {
 
 			c.JSON(http.StatusOK, total)
 		})
+
+		userRoutesGroup.GET("/report/object-count", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			fromT := time.Unix(from, 0)
+			toT := time.Unix(to, 0)
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				return
+			}
+
+			total, err := nats.GetAvgObjectStoredByUidInDateRange(uid.(string), fromT, toT)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				return
+			}
+
+			c.JSON(http.StatusOK, total)
+		})
+		//userRoutesGroup.GET("/bandwidth-report/signed/:key", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		//	k := c.Param("key")
+		//	key, err := arango.FindKeyPairByPublic(k)
+		//	if err != nil {
+		//		if err, ok := err.(*models.ModelError); ok {
+		//			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
+		//				c.JSON(http.StatusNotFound, gin.H{
+		//					"error": "key not found",
+		//				})
+		//
+		//				return
+		//			}
+		//		}
+		//
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something went wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		//		return
+		//	}
+		//
+		//	uid, ok := c.Get("uid")
+		//	if !ok {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something went wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+		//		return
+		//	}
+		//
+		//	if key.GeneratorUid != uid {
+		//		c.JSON(http.StatusForbidden, gin.H{
+		//			"error": "not your key",
+		//		})
+		//
+		//		return
+		//	}
+		//
+		//	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+		//	if err != nil {
+		//		c.JSON(http.StatusBadRequest, gin.H{
+		//			"error": "invalid from format",
+		//		})
+		//
+		//		return
+		//	}
+		//
+		//	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+		//	if err != nil {
+		//		c.JSON(http.StatusBadRequest, gin.H{
+		//			"error": "invalid from format",
+		//		})
+		//
+		//		return
+		//	}
+		//
+		//	fromT := time.Unix(from, 0)
+		//	toT := time.Unix(to, 0)
+		//
+		//	total, err := nats.SumBandwidthByDateRangeWithFrom(key.Public, fromT, toT)
+		//	if err != nil {
+		//		c.JSON(http.StatusInternalServerError, gin.H{
+		//			"error": "something went wrong",
+		//		})
+		//
+		//		_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+		//		return
+		//	}
+		//
+		//	c.JSON(http.StatusOK, total)
+		//})
 	}
 }
 

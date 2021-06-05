@@ -199,8 +199,7 @@ func CountAuthReqCountByDateRange(uid string, from, to time.Time, limit, offset 
 		return 0, err
 	}
 
-	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
-	return count, nil
+	return strconv.ParseInt(string(res.Data), 10, 64)
 }
 
 //
@@ -221,7 +220,7 @@ func ReadAccessKeyReqCountByDateRange(key string, from, to time.Time, limit, off
 	}
 
 	var logs []AccessKeyReqLog
-	_ = json.Unmarshal(res.Data, &logs)
+	err = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
@@ -240,8 +239,7 @@ func CountAccessKeyReqCountByDateRange(key string, from, to time.Time, limit, of
 		return 0, err
 	}
 
-	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
-	return count, nil
+	return strconv.ParseInt(string(res.Data), 10, 64)
 }
 
 func ReadAccessKeyReqCount(key string, limit, offset int) ([]AccessKeyReqLog, error) {
@@ -260,7 +258,7 @@ func ReadAccessKeyReqCount(key string, limit, offset int) ([]AccessKeyReqLog, er
 	}
 
 	var logs []AccessKeyReqLog
-	_ = json.Unmarshal(res.Data, &logs)
+	err = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
@@ -279,8 +277,7 @@ func CountAccessKeyReqCount(key string, limit, offset int) (int64, error) {
 		return 0, err
 	}
 
-	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
-	return count, nil
+	return strconv.ParseInt(string(res.Data), 10, 64)
 }
 
 //
@@ -301,7 +298,7 @@ func ReadSignedReqCountByDateRange(public string, from, to time.Time, limit, off
 	}
 
 	var logs []SignedReqLog
-	_ = json.Unmarshal(res.Data, &logs)
+	err = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
@@ -320,8 +317,7 @@ func CountSignedReqCountByDateRange(public string, from, to time.Time, limit, of
 		return 0, err
 	}
 
-	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
-	return count, nil
+	return strconv.ParseInt(string(res.Data), 10, 64)
 }
 
 func ReadSignedReqCount(public string, limit, offset int) ([]SignedReqLog, error) {
@@ -340,7 +336,7 @@ func ReadSignedReqCount(public string, limit, offset int) ([]SignedReqLog, error
 	}
 
 	var logs []SignedReqLog
-	_ = json.Unmarshal(res.Data, &logs)
+	err = json.Unmarshal(res.Data, &logs)
 	return logs, err
 }
 
@@ -359,6 +355,5 @@ func CountSignedReqCount(public string, limit, offset int) (int64, error) {
 		return 0, err
 	}
 
-	count, _ := strconv.ParseInt(string(res.Data), 10, 64)
-	return count, nil
+	return strconv.ParseInt(string(res.Data), 10, 64)
 }

@@ -3,7 +3,6 @@ package arango
 import (
 	"context"
 	"github.com/NubeS3/cloud/cmd/internals/models"
-	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"github.com/arangodb/go-driver"
 	"io"
@@ -12,8 +11,9 @@ import (
 
 type FileMetadata struct {
 	Id       string `json:"id"`
-	FileId   string `json:"-"`
+	FileId   string `json:"fid"`
 	BucketId string `json:"bucket_id"`
+	Uid      string `json:"uid"`
 	Path     string `json:"path"`
 	Name     string `json:"name"`
 
@@ -24,7 +24,7 @@ type FileMetadata struct {
 	IsDeleted   bool      `json:"-"`
 	DeletedDate time.Time `json:"-"`
 
-	UploadedDate time.Time `json:"-"`
+	UploadedDate time.Time `json:"upload_date"`
 	//ExpiredDate  time.Time `json:"expired_date"`
 
 	IsEncrypted bool         `json:"is_encrypted"`
@@ -36,6 +36,7 @@ type FileMetadata struct {
 type fileMetadata struct {
 	FileId   string `json:"fid"`
 	BucketId string `json:"bucket_id"`
+	Uid      string `json:"uid"`
 	Path     string `json:"path"`
 	Name     string `json:"name"`
 
@@ -56,8 +57,12 @@ type fileMetadata struct {
 }
 
 type SimpleFileMetadata struct {
-	Id  string `json:"id"`
-	Fid string `json:"fid"`
+	Id       string `json:"id"`
+	Fid      string `json:"fid"`
+	BucketId string `json:"bucket_id"`
+	Name     string `json:"name"`
+	Size     int64  `json:"size"`
+	Uid      string `json:"uid"`
 }
 
 type EncryptData struct {
@@ -65,7 +70,7 @@ type EncryptData struct {
 	Hash []byte `json:"hash"`
 }
 
-func saveFileMetadata(fid string, bid string,
+func saveFileMetadata(fid string, bid, uid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, isEncrypt bool, holdUntil time.Duration) (*FileMetadata, error) {
 	uploadedTime := time.Now()
@@ -80,6 +85,7 @@ func saveFileMetadata(fid string, bid string,
 	doc := fileMetadata{
 		FileId:       fid,
 		BucketId:     bid,
+		Uid:          uid,
 		Path:         path,
 		Name:         name,
 		ContentType:  contentType,
@@ -115,7 +121,6 @@ func saveFileMetadata(fid string, bid string,
 	//_ = nats.SendUploadSuccessFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size,
 	//	doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
 
-	_ = nats.SendUploadFileEvent(meta.Key, doc.FileId, doc.Name, doc.Size, doc.BucketId, doc.ContentType, doc.UploadedDate, doc.Path, doc.IsHidden)
 	_, err = IncreaseBucketSize(doc.BucketId, float64(doc.Size))
 	if err != nil {
 		return nil, &models.ModelError{
@@ -186,6 +191,7 @@ func FindMetadataByBid(bid string, limit int64, offset int64, showHidden bool) (
 				Id:           meta.Key,
 				FileId:       fileMetadata.FileId,
 				BucketId:     fileMetadata.BucketId,
+				Uid:          fileMetadata.Uid,
 				Path:         fileMetadata.Path,
 				Name:         fileMetadata.Name,
 				ContentType:  fileMetadata.ContentType,
@@ -240,6 +246,7 @@ func FindMetadataByFilename(path string, name string, bid string) (*FileMetadata
 			Id:           meta.Key,
 			FileId:       fm.FileId,
 			BucketId:     fm.BucketId,
+			Uid:          fm.Uid,
 			Path:         fm.Path,
 			Name:         fm.Name,
 			ContentType:  fm.ContentType,
@@ -298,6 +305,7 @@ func FindMetadataByFid(fid string) (*FileMetadata, error) {
 			Id:           meta.Key,
 			FileId:       fm.FileId,
 			BucketId:     fm.BucketId,
+			Uid:          fm.Uid,
 			Path:         fm.Path,
 			Name:         fm.Name,
 			ContentType:  fm.ContentType,
@@ -345,6 +353,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 		Id:           meta.Key,
 		FileId:       data.FileId,
 		BucketId:     data.BucketId,
+		Uid:          data.Uid,
 		Path:         data.Path,
 		Name:         data.Name,
 		ContentType:  data.ContentType,
@@ -358,7 +367,7 @@ func FindMetadataById(fid string) (*FileMetadata, error) {
 	}, nil
 }
 
-func SaveFile(reader io.Reader, bid string,
+func SaveFile(reader io.Reader, bid, uid string,
 	path string, name string, isHidden bool,
 	contentType string, size int64, isEncrypted bool, holdUntil time.Duration) (*FileMetadata, error) {
 	//CHECK BUCKET ID AND NAME
@@ -393,7 +402,7 @@ func SaveFile(reader io.Reader, bid string,
 		return nil, err
 	}
 
-	return saveFileMetadata(meta.FileID, bid, path, name, isHidden, contentType, meta.FileSize, isEncrypted, holdUntil)
+	return saveFileMetadata(meta.FileID, bid, uid, path, name, isHidden, contentType, meta.FileSize, isEncrypted, holdUntil)
 }
 
 func GetFile(bid string, path, name string, callback func(reader io.Reader, metadata *FileMetadata) error) error {
@@ -665,8 +674,12 @@ func GetMarkedDeleteFileList(limit, offset int64) ([]SimpleFileMetadata, error) 
 		}
 
 		simpleMetadata = append(simpleMetadata, SimpleFileMetadata{
-			Id:  meta.Key,
-			Fid: fileMetadata.FileId,
+			Id:       meta.Key,
+			Fid:      fileMetadata.FileId,
+			Uid:      fileMetadata.Uid,
+			Name:     fileMetadata.Name,
+			BucketId: fileMetadata.BucketId,
+			Size:     fileMetadata.Size,
 		})
 	}
 

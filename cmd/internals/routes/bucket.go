@@ -66,6 +66,9 @@ func BucketRoutes(r *gin.Engine) {
 				IsPublic     *bool `json:"is_public" binding:"required"`
 				IsEncrypted  *bool `json:"is_encrypted" binding:"required"`
 				IsObjectLock *bool `json:"is_object_lock" binding:"required"`
+
+				Passphrase *string `json:"passphrase"`
+				Duration   int     `json:"duration"`
 			}
 
 			var curCreateBucket createBucket
@@ -122,6 +125,27 @@ func BucketRoutes(r *gin.Engine) {
 
 				return
 			}
+
+			if curCreateBucket.IsEncrypted != nil {
+				if *curCreateBucket.IsEncrypted {
+					if curCreateBucket.Passphrase == nil {
+						passph := randstr.GetString(16)
+						curCreateBucket.Passphrase = &passph
+					}
+					_, err = arango.CreateEncrypt(*curCreateBucket.Passphrase, bucket.Id)
+					//TODO temp ignore errors
+
+				}
+			}
+
+			if curCreateBucket.IsObjectLock != nil {
+				if *curCreateBucket.IsObjectLock {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, time.Duration(curCreateBucket.Duration*1_000_000_000))
+				} else {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, 0)
+				}
+			}
+
 			c.JSON(http.StatusOK, bucket)
 		})
 		ar.PUT("/:bucket_id", func(c *gin.Context) {
@@ -454,6 +478,9 @@ func BucketRoutes(r *gin.Engine) {
 				IsPublic     *bool `json:"is_public" binding:"required"`
 				IsEncrypted  *bool `json:"is_encrypted" binding:"required"`
 				IsObjectLock *bool `json:"is_object_lock" binding:"required"`
+
+				Passphrase *string `json:"passphrase"`
+				Duration   int     `json:"duration"`
 			}
 
 			var curCreateBucket createBucket
@@ -498,6 +525,27 @@ func BucketRoutes(r *gin.Engine) {
 
 				return
 			}
+
+			if curCreateBucket.IsEncrypted != nil {
+				if *curCreateBucket.IsEncrypted {
+					if curCreateBucket.Passphrase == nil {
+						passph := randstr.GetString(16)
+						curCreateBucket.Passphrase = &passph
+					}
+					_, err = arango.CreateEncrypt(*curCreateBucket.Passphrase, bucket.Id)
+					//TODO temp ignore errors
+
+				}
+			}
+
+			if curCreateBucket.IsObjectLock != nil {
+				if *curCreateBucket.IsObjectLock {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, time.Duration(curCreateBucket.Duration*1_000_000_000))
+				} else {
+					bucket, err = arango.UpdateHoldDuration(bucket.Id, 0)
+				}
+			}
+
 			c.JSON(http.StatusOK, bucket)
 		})
 		kr.DELETE("/:bucket_id", func(c *gin.Context) {

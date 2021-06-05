@@ -2,7 +2,9 @@ package cron
 
 import (
 	"github.com/NubeS3/cloud/cmd/internals/models/arango"
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
+	"time"
 )
 
 func DeleteFile() {
@@ -12,7 +14,8 @@ func DeleteFile() {
 	}
 
 	for _, f := range list {
-		_ = arango.DeleteMarkedFileMetadata(f.Id)
-		_ = seaweedfs.DeleteFile(f.Fid)
+		err = arango.DeleteMarkedFileMetadata(f.Id)
+		err = seaweedfs.DeleteFile(f.Fid)
+		err = nats.SendDeleteFileEvent(f.Id, f.Fid, f.Name, f.Size, f.BucketId, time.Now(), f.Uid)
 	}
 }

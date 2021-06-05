@@ -471,7 +471,7 @@ func UpdateHoldDuration(bid string, duration time.Duration) (*Bucket, error) {
 	defer cancel()
 
 	query := "FOR b IN buckets FILTER b._key == @id " +
-		"UPDATE b WITH { b.hold_duration = @duration } IN buckets RETURN NEW"
+		"UPDATE b WITH { hold_duration: @duration } IN buckets RETURN NEW"
 	bindVars := map[string]interface{}{
 		"id":       bid,
 		"duration": duration,
