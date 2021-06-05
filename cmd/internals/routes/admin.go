@@ -15,6 +15,7 @@ func AdminRoutes(route *gin.Engine) {
 		{
 			aar.GET("/test", adminHandler.AdminTestHandler)
 			aar.POST("/mod", adminHandler.AdminCreateMod)
+			aar.POST("/user", adminHandler.AdminCreateUser)
 			aar.PATCH("/disable-mod", adminHandler.AdminModDisable)
 			aar.PATCH("/ban-user", adminHandler.AdminBanUser)
 			aar.GET("/err-log", adminHandler.AdminGetErrLog)

@@ -350,7 +350,7 @@ func UpdateBanStatus(uid string, isBan bool) (*User, error) {
 	defer cancel()
 
 	query := "FOR u IN users FILTER u._key == @uid LIMIT 1 UPDATE u WITH { is_banned: @isBan } IN users " +
-		"RETURN u"
+		"RETURN NEW"
 	bindVars := map[string]interface{}{
 		"uid":   uid,
 		"isBan": isBan,
