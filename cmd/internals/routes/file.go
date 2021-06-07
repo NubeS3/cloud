@@ -1705,22 +1705,22 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
-			if uid, ok := c.Get("uid"); !ok {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something when wrong",
+			//if uid, ok := c.Get("uid"); !ok {
+			//	c.JSON(http.StatusInternalServerError, gin.H{
+			//		"error": "something when wrong",
+			//	})
+			//
+			//	//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
+			//	//	"Unknown Error")
+			//	return
+			//} else {
+			if key.Uid != bucket.Uid {
+				c.JSON(http.StatusForbidden, gin.H{
+					"error": "permission denied",
 				})
-
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Unknown Error")
 				return
-			} else {
-				if uid.(string) != bucket.Uid {
-					c.JSON(http.StatusForbidden, gin.H{
-						"error": "permission denied",
-					})
-					return
-				}
 			}
+			//}
 
 			uploadFile, err := c.FormFile("file")
 			if err != nil {

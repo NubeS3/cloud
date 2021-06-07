@@ -77,6 +77,7 @@ func CheckBucketPublic(c *gin.Context) {
 		return
 	}
 	c.Set("is_public", false)
+	c.Set("uid", bucket.Uid)
 	c.Next()
 }
 

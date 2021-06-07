@@ -422,7 +422,7 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 
 	var meta driver.DocumentMeta
 	for {
-		meta, err = cursor.ReadDocument(ctx, &akey)
+		m, err := cursor.ReadDocument(ctx, &akey)
 		if driver.IsNoMoreDocuments(err) {
 			break
 		} else if err != nil {
@@ -431,9 +431,10 @@ func FindAccessKeyByKey(key string) (*AccessKey, error) {
 				ErrType: models.DbError,
 			}
 		}
+		meta = m
 	}
 
-	if meta.Key == "" {
+	if akey.Key == "" {
 		return nil, &models.ModelError{
 			Msg:     "key not found",
 			ErrType: models.DocumentNotFound,
