@@ -15,7 +15,7 @@ import (
 func AccessKeyRoutes(r *gin.Engine) {
 	uar := r.Group("/get-auth-token")
 	{
-		uar.POST("/", func(c *gin.Context) {
+		uar.POST("/", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			type reqKey struct {
 				KeyId string `json:"key_id" binding:"required"`
 				Key   string `json:"key"  binding:"required"`
@@ -75,7 +75,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 		})
 	}
 
-	ar := r.Group("/auth/accessKey", middlewares.UserAuthenticate, middlewares.AuthReqCount)
+	ar := r.Group("/auth/accessKey", middlewares.UserAuthenticate)
 	{
 		//ar.GET("/all/:bucket_id", func(c *gin.Context) {
 		//	bucketId := c.Param("bucket_id")
@@ -158,7 +158,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 		//
 		//	c.JSON(http.StatusOK, accessKey)
 		//})
-		ar.GET("/", func(c *gin.Context) {
+		ar.GET("/", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -202,7 +202,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keys)
 		})
-		ar.GET("/use-count/all/:access_key", func(c *gin.Context) {
+		ar.GET("/use-count/all/:access_key", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			key := c.Param("access_key")
 
 			uid, ok := c.Get("uid")
@@ -265,7 +265,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, count)
 		})
-		ar.GET("/use-count/date/:access_key", func(c *gin.Context) {
+		ar.GET("/use-count/date/:access_key", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			key := c.Param("access_key")
 
 			uid, ok := c.Get("uid")
@@ -349,7 +349,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, count)
 		})
-		ar.POST("/master", func(c *gin.Context) {
+		ar.POST("/master", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -387,7 +387,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		ar.POST("/app", func(c *gin.Context) {
+		ar.POST("/app", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			type createAKeyData struct {
 				Name                   string     `json:"name" binding:"required"`
 				BucketId               *string    `json:"bucket_id"`
@@ -439,7 +439,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		ar.DELETE("/:id", func(c *gin.Context) {
+		ar.DELETE("/:id", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			id := c.Param("id")
 
 			uid, ok := c.Get("uid")
@@ -527,9 +527,9 @@ func AccessKeyRoutes(r *gin.Engine) {
 		//})
 	}
 
-	kr := r.Group("/apiKey/accessKey", middlewares.AccessKeyAuthenticate, middlewares.AccessKeyReqCount)
+	kr := r.Group("/apiKey/accessKey", middlewares.AccessKeyAuthenticate)
 	{
-		kr.GET("/", func(c *gin.Context) {
+		kr.GET("/", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -591,7 +591,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keys)
 		})
-		kr.POST("/app", func(c *gin.Context) {
+		kr.POST("/app", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -661,7 +661,7 @@ func AccessKeyRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		kr.DELETE("/:id", func(c *gin.Context) {
+		kr.DELETE("/:id", middlewares.ReqLogger("key", "A"), func(c *gin.Context) {
 			id := c.Param("id")
 
 			k, ok := c.Get("key")

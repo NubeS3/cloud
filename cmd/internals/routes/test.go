@@ -1,67 +1,59 @@
 package routes
 
 import (
-	"errors"
-	"github.com/NubeS3/cloud/cmd/internals/middlewares"
-	"github.com/NubeS3/cloud/cmd/internals/models/arango"
-	"github.com/NubeS3/cloud/cmd/internals/models/nats"
-	"github.com/NubeS3/cloud/cmd/internals/ultis"
-	arangoDriver "github.com/arangodb/go-driver"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"time"
 )
 
 func TestRoute(r *gin.Engine) {
-	r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
-		err := nats.SendEmailEvent("phamtuan199911@gmail.com", "12345", time.Now().Add(time.Minute*5))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		c.JSON(http.StatusOK, "sent")
-	})
-
-	r.DELETE("/test/user/:uid", func(c *gin.Context) {
-		uid := c.Param("uid")
-		err := arango.RemoveUser(uid)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		c.JSON(http.StatusOK, "deleted")
-	})
-
-	r.GET("/test/nats/sendError", func(c *gin.Context) {
-		err := nats.SendErrorEvent("test error", "test")
-
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		c.JSON(http.StatusOK, "sent")
-	})
-
-	r.GET("/test/validate/:target", func(c *gin.Context) {
-		target := c.Param("target")
-		ok, err := ultis.ValidateBucketName(target)
-		println(target)
-		println(ok)
-		if err != nil {
-			println(err.Error())
-		}
-	})
-
-	r.GET("/test/signed", middlewares.CheckSigned, func(c *gin.Context) {
-		c.JSON(http.StatusOK, "Ok")
-	})
-
-	r.GET("/test/key-token", middlewares.AccessKeyAuthenticate, func(c *gin.Context) {
-		c.JSON(http.StatusOK, "ok")
-	})
+	//r.GET("/test/nats/sendEmailEvent", func(c *gin.Context) {
+	//	err := nats.SendEmailEvent("phamtuan199911@gmail.com", "12345", time.Now().Add(time.Minute*5))
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//
+	//	c.JSON(http.StatusOK, "sent")
+	//})
+	//
+	//r.DELETE("/test/user/:uid", func(c *gin.Context) {
+	//	uid := c.Param("uid")
+	//	err := arango.RemoveUser(uid)
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//
+	//	c.JSON(http.StatusOK, "deleted")
+	//})
+	//
+	//r.GET("/test/nats/sendError", func(c *gin.Context) {
+	//	err := nats.SendErrorEvent("test error", "test")
+	//
+	//	if err != nil {
+	//		c.JSON(http.StatusInternalServerError, err.Error())
+	//		return
+	//	}
+	//
+	//	c.JSON(http.StatusOK, "sent")
+	//})
+	//
+	//r.GET("/test/validate/:target", func(c *gin.Context) {
+	//	target := c.Param("target")
+	//	ok, err := ultis.ValidateBucketName(target)
+	//	println(target)
+	//	println(ok)
+	//	if err != nil {
+	//		println(err.Error())
+	//	}
+	//})
+	//
+	//r.GET("/test/signed", middlewares.CheckSigned, func(c *gin.Context) {
+	//	c.JSON(http.StatusOK, "Ok")
+	//})
+	//
+	//r.GET("/test/key-token", middlewares.AccessKeyAuthenticate, func(c *gin.Context) {
+	//	c.JSON(http.StatusOK, "ok")
+	//})
 
 	//r.GET("/test", func(c *gin.Context) {
 	//	c.JSON(http.StatusOK, gin.H{
@@ -80,17 +72,17 @@ func TestRoute(r *gin.Engine) {
 	//		"user": user,
 	//	})
 	//})
-	r.GET("/arango/test/user/create", func(c *gin.Context) {
-		user, err := arango.SaveUser("test",
-			"abc@abc.com")
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": err.Error(),
-			})
-			return
-		}
-		c.JSON(http.StatusOK, user)
-	})
+	//r.GET("/arango/test/user/create", func(c *gin.Context) {
+	//	user, err := arango.SaveUser("test",
+	//		"abc@abc.com")
+	//	if err != nil {
+	//		c.JSON(http.StatusBadRequest, gin.H{
+	//			"error": err.Error(),
+	//		})
+	//		return
+	//	}
+	//	c.JSON(http.StatusOK, user)
+	//})
 	//r.GET("/arango/test/otp/create", func(c *gin.Context) {
 	//	otp, err := arango.GenerateOTP("test123", "abc@abc.com")
 	//	if err != nil {
@@ -108,25 +100,25 @@ func TestRoute(r *gin.Engine) {
 	//	}
 	//	c.JSON(http.StatusOK, otp)
 	//})
-	r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
-		err := arango.OTPConfirm("test123", "7A785414")
-		if err != nil {
-			if arangoDriver.IsNotFound(err) {
-				c.JSON(http.StatusNotFound, gin.H{
-					"error": "otp not found",
-				})
-				return
-			} else {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": errors.New("read fail"),
-				})
-				return
-			}
-		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "otp confirmed.",
-		})
-	})
+	//r.GET("/arango/test/otp/confirm", func(c *gin.Context) {
+	//	err := arango.OTPConfirm("test123", "7A785414")
+	//	if err != nil {
+	//		if arangoDriver.IsNotFound(err) {
+	//			c.JSON(http.StatusNotFound, gin.H{
+	//				"error": "otp not found",
+	//			})
+	//			return
+	//		} else {
+	//			c.JSON(http.StatusInternalServerError, gin.H{
+	//				"error": errors.New("read fail"),
+	//			})
+	//			return
+	//		}
+	//	}
+	//	c.JSON(http.StatusOK, gin.H{
+	//		"message": "otp confirmed.",
+	//	})
+	//})
 	//r.GET("/arango/test/user/findId", func(c *gin.Context) {
 	//	user, err := arango.FindUserById("14112")
 	//	if err != nil {

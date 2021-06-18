@@ -68,6 +68,6 @@ func AdminAuthenticate(c *gin.Context) {
 		return
 	}
 
-	c.Set("admin", adminClaims)
+	c.Set("admin", admin)
 	c.Next()
 }

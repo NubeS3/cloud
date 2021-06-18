@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"github.com/m1ome/randstr"
 	"github.com/nats-io/nats.go"
 	stan "github.com/nats-io/stan.go"
 	"github.com/spf13/viper"
@@ -30,8 +31,9 @@ func InitNats() error {
 	url := viper.GetString("NATS_URL")
 	clusterId := viper.GetString("STAN_CLUSTER_ID")
 
+	println("connecting to nats at: " + url)
 	var err error
-	sc, err = stan.Connect(clusterId, "nubes3", stan.NatsURL("nats://"+url))
+	sc, err = stan.Connect(clusterId, "nubes3"+randstr.GetString(8), stan.NatsURL("nats://"+url))
 	if err != nil {
 		return err
 	}

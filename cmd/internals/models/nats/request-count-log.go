@@ -10,6 +10,7 @@ type ReqLog struct {
 	Method   string `json:"method"`
 	Req      string `json:"req"`
 	SourceIp string `json:"source_ip"`
+	Class    string `json:"class"`
 }
 
 type UnauthReqLog struct {
@@ -35,7 +36,13 @@ type SignedReqLog struct {
 	Public string `json:"public"`
 }
 
-func SendReqCountEvent(data, t, method, source, req string) error {
+type ReqCountByClass struct {
+	A float64 `json:"a"`
+	B float64 `json:"b"`
+	C float64 `json:"c"`
+}
+
+func SendReqCountEvent(data, t, method, source, req, class string) error {
 	var jsonData []byte
 	var err error
 	var subjectSuffix string
@@ -49,6 +56,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 				Method:   method,
 				SourceIp: source,
 				Req:      req,
+				Class:    class,
 			},
 		})
 		subjectSuffix = "unauth"
@@ -62,6 +70,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 				Method:   method,
 				SourceIp: source,
 				Req:      req,
+				Class:    class,
 			},
 			UserId: data,
 		})
@@ -76,6 +85,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 				Method:   method,
 				SourceIp: source,
 				Req:      req,
+				Class:    class,
 			},
 			Key: data,
 		})
@@ -90,6 +100,7 @@ func SendReqCountEvent(data, t, method, source, req string) error {
 				Method:   method,
 				SourceIp: source,
 				Req:      req,
+				Class:    class,
 			},
 			Public: data,
 		})
@@ -356,4 +367,26 @@ func CountSignedReqCount(public string, limit, offset int) (int64, error) {
 	}
 
 	return strconv.ParseInt(string(res.Data), 10, 64)
+}
+
+//
+
+func CountByClass(uid string, from, to time.Time) (*ReqCountByClass, error) {
+	request := Req{
+		Limit:  0,
+		Offset: 0,
+		Type:   "Date",
+		Data:   []string{from.Format(time.RFC3339), to.Format(time.RFC3339), uid},
+	}
+
+	jsonReq, _ := json.Marshal(request)
+
+	res, err := nc.Request(reqSubj+"report"+"query", jsonReq, contextExpTime)
+	if err != nil {
+		return nil, err
+	}
+
+	var count ReqCountByClass
+	err = json.Unmarshal(res.Data, &count)
+	return &count, err
 }

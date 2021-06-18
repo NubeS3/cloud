@@ -109,7 +109,7 @@ func saveFileMetadata(fid string, bid, uid string,
 		}
 	}
 
-	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, isHidden)
+	_, err = InsertFile(meta.Key, doc.Name, f.Id, doc.ContentType, doc.Size, isHidden, uploadedTime)
 	if err != nil {
 		return nil, &models.ModelError{
 			Msg:     "insert file to folder failed",
@@ -133,6 +133,7 @@ func saveFileMetadata(fid string, bid, uid string,
 		Id:           meta.Key,
 		FileId:       doc.FileId,
 		BucketId:     doc.BucketId,
+		Uid:          uid,
 		Path:         doc.Path,
 		Name:         doc.Name,
 		ContentType:  doc.ContentType,
@@ -586,6 +587,7 @@ func MarkDeleteFile(path string, name string, bid string) error {
 		Metadata: ChildFileMetadata{
 			ContentType: fm.ContentType,
 			Size:        fm.Size,
+			UploadDate:  fm.UploadedDate,
 		},
 	})
 	if err != nil {
@@ -642,7 +644,7 @@ func GetMarkedDeleteFileList(limit, offset int64) ([]SimpleFileMetadata, error) 
 	defer cancel()
 
 	query := "for fm in fileMetadata " +
-		"filter  fm.expired_date < DATE_NOW() or fm.is_deleted == true " +
+		"filter fm.is_deleted == true " +
 		"limit @offset, @limit " +
 		"return fm"
 	bindVars := map[string]interface{}{

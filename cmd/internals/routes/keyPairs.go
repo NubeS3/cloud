@@ -13,7 +13,7 @@ import (
 func KeyPairsRoutes(r *gin.Engine) {
 	ar := r.Group("/auth/keyPairs", middlewares.UserAuthenticate)
 	{
-		ar.GET("/all/:bucket_id", func(c *gin.Context) {
+		ar.GET("/all/:bucket_id", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			bucketId := c.Param("bucket_id")
 			limit := c.DefaultQuery("limit", "0")
 			offset := c.DefaultQuery("offset", "0")
@@ -59,7 +59,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keyPairs)
 		})
-		ar.GET("/info/:public_key", func(c *gin.Context) {
+		ar.GET("/info/:public_key", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			key := c.Param("public_key")
 
 			uid, ok := c.Get("uid")
@@ -94,7 +94,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, keyPair)
 		})
-		ar.GET("/use-count/all/:public", func(c *gin.Context) {
+		ar.GET("/use-count/all/:public", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			key := c.Param("public")
 
 			uid, ok := c.Get("uid")
@@ -157,7 +157,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, count)
 		})
-		ar.GET("/use-count/date/:public", func(c *gin.Context) {
+		ar.GET("/use-count/date/:public", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			key := c.Param("public")
 
 			uid, ok := c.Get("uid")
@@ -241,7 +241,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, count)
 		})
-		ar.POST("/", func(c *gin.Context) {
+		ar.POST("/", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			type createKeyPairData struct {
 				BucketId    string    `json:"bucket_id"`
 				ExpiredDate time.Time `json:"expired_date"`
@@ -282,7 +282,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 			})
 
 		})
-		ar.DELETE("/:bucket_id/:public_key", func(c *gin.Context) {
+		ar.DELETE("/:bucket_id/:public_key", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			key := c.Param("public_key")
 			bucketId := c.Param("bucket_id")
 

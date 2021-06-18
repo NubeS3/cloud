@@ -43,6 +43,11 @@ type DetailBucket struct {
 	ObjectCount int64   `json:"object_count"`
 }
 
+type BucketUpdateResult struct {
+	Old Bucket `json:"old"`
+	New Bucket `json:"new"`
+}
+
 func InsertBucket(uid string, name string, isPublic, isEncrypted, isObjectLock bool) (*Bucket, error) {
 	createdTime := time.Now()
 	doc := bucket{
@@ -268,18 +273,24 @@ func FindDetailBucketById(bid string) (*DetailBucket, error) {
 	return &bucket, nil
 }
 
-func FindAllBucket(limit int64, offset int64) ([]Bucket, error) {
+func FindAllBucket(limit int64, offset int64) ([]DetailBucket, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR b IN buckets LIMIT @offset, @limit RETURN b"
+	query := "FOR b IN buckets LIMIT @offset, @limit" +
+		" let size =" +
+		" (for s in bucketSize filter s.bucket_id == b._key limit 1 return s.size)" +
+		" let objectCount =" +
+		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
+		" collect with count into c return c) " +
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
 	bindVars := map[string]interface{}{
 		"limit":  limit,
 		"offset": offset,
 	}
 
-	buckets := []Bucket{}
-	bucket := Bucket{}
+	buckets := []DetailBucket{}
+	bucket := DetailBucket{}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
@@ -300,26 +311,32 @@ func FindAllBucket(limit int64, offset int64) ([]Bucket, error) {
 				ErrType: models.DbError,
 			}
 		}
-		bucket.Id = meta.Key
+		bucket.Bucket.Id = meta.Key
 		buckets = append(buckets, bucket)
 	}
 
 	return buckets, nil
 }
 
-func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
+func FindBucketByUid(uid string, limit int64, offset int64) ([]DetailBucket, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
-	query := "FOR b IN buckets FILTER b.uid == @uid LIMIT @offset, @limit RETURN b"
+	query := "FOR b IN buckets FILTER b.uid == @uid LIMIT @offset, @limit" +
+		" let size =" +
+		" (for s in bucketSize filter s.bucket_id == b._key limit 1 return s.size)" +
+		" let objectCount =" +
+		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
+		" collect with count into c return c) " +
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
 	bindVars := map[string]interface{}{
 		"uid":    uid,
 		"limit":  limit,
 		"offset": offset,
 	}
 
-	buckets := []Bucket{}
-	bucket := Bucket{}
+	buckets := []DetailBucket{}
+	bucket := DetailBucket{}
 
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
@@ -340,7 +357,7 @@ func FindBucketByUid(uid string, limit int64, offset int64) ([]Bucket, error) {
 				ErrType: models.DbError,
 			}
 		}
-		bucket.Id = meta.Key
+		bucket.Bucket.Id = meta.Key
 		buckets = append(buckets, bucket)
 	}
 
@@ -395,7 +412,7 @@ func FindDetailBucketByUid(uid string, limit int64, offset int64) ([]DetailBucke
 	return buckets, nil
 }
 
-func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*Bucket, error) {
+func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*BucketUpdateResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
 	defer cancel()
 
@@ -428,7 +445,7 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 	updateTarget += " }"
 
 	query := "FOR b IN buckets FILTER b._key == @id " +
-		"UPDATE b WITH " + updateTarget + " IN buckets RETURN NEW"
+		"UPDATE b WITH " + updateTarget + " IN buckets RETURN { new: NEW, old: OLD }"
 	//bindVars := map[string]interface{}{
 	//	"id":          bid,
 	//	"isPublic":    isPublic,
@@ -436,7 +453,7 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 	//	"isLock":      isObjectLock,
 	//}
 
-	bucket := Bucket{}
+	bucket := BucketUpdateResult{}
 	cursor, err := arangoDb.Query(ctx, query, bindVars)
 	if err != nil {
 		return nil, &models.ModelError{
@@ -453,10 +470,11 @@ func UpdateBucketById(bid string, isPublic, isEncrypted, isObjectLock *bool) (*B
 		} else if err != nil {
 			return nil, err
 		}
-		bucket.Id = meta.Key
+		bucket.Old.Id = meta.Key
+		bucket.New.Id = meta.Key
 	}
 
-	if bucket.Id == "" {
+	if bucket.New.Id == "" {
 		return nil, &models.ModelError{
 			Msg:     "bucket not found",
 			ErrType: models.DocumentNotFound,

@@ -14,7 +14,7 @@ import (
 func FolderRoutes(r *gin.Engine) {
 	ar := r.Group("/auth/folders", middlewares.UserAuthenticate)
 	{
-		ar.GET("/all", func(c *gin.Context) {
+		ar.GET("/all", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -56,7 +56,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
-		ar.POST("/", func(c *gin.Context) {
+		ar.POST("/", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			type insertFolder struct {
 				Name       string `json:"name"`
 				ParentPath string `json:"parent_path"`
@@ -137,7 +137,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder)
 		})
 
-		ar.GET("/child/allByFid", func(c *gin.Context) {
+		ar.GET("/child/allByFid", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			fid := c.DefaultQuery("folderId", "")
 			folder, err := arango.FindFolderById(fid)
 			if err != nil {
@@ -166,7 +166,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder.Children)
 		})
 
-		ar.GET("/child/all/*full_path", func(c *gin.Context) {
+		ar.GET("/child/all/*full_path", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
@@ -249,7 +249,7 @@ func FolderRoutes(r *gin.Engine) {
 		//
 		//	c.JSON(http.StatusOK, folder.Children)
 		//})
-		ar.DELETE("/*full_path", func(c *gin.Context) {
+		ar.DELETE("/*full_path", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			queryPath := c.Param("full_path")
 			path := ultis.StandardizedPath(queryPath, true)
 			token := strings.Split(path, "/")
@@ -299,7 +299,7 @@ func FolderRoutes(r *gin.Engine) {
 
 	kr := r.Group("/accessKey/folders", middlewares.AccessKeyAuthenticate)
 	{
-		kr.GET("/all", func(c *gin.Context) {
+		kr.GET("/all", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -360,11 +360,11 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, res)
 		})
 
-		kr.GET("/list", func(c *gin.Context) {
+		kr.GET("/list", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			c.JSON(http.StatusNotImplemented, "not implemented")
 		})
 
-		kr.POST("/", func(c *gin.Context) {
+		kr.POST("/", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -463,7 +463,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder)
 		})
 
-		kr.GET("/child/all/*full_path", func(c *gin.Context) {
+		kr.GET("/child/all/*full_path", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -528,7 +528,7 @@ func FolderRoutes(r *gin.Engine) {
 			c.JSON(http.StatusOK, folder.Children)
 		})
 
-		kr.DELETE("/*full_path", func(c *gin.Context) {
+		kr.DELETE("/*full_path", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{

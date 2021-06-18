@@ -210,6 +210,24 @@ func AdminModDisable(c *gin.Context) {
 		return
 	}
 
+	cAdmin, ok := c.Get("admin")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "current admin not found",
+		})
+
+		return
+	}
+
+	currentAdmin := cAdmin.(*arango.Admin)
+	if currentAdmin.Username == req.Username {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "self-disable is forbidden, please contact the root admin",
+		})
+
+		return
+	}
+
 	admin, err := arango.ToggleAdmin(req.Username, *req.Disable)
 	if err != nil {
 		if err, ok := err.(*models.ModelError); ok {
@@ -1180,21 +1198,21 @@ func AdminGetUsers(c *gin.Context) {
 }
 
 func AdminGetMods(c *gin.Context) {
-	a, ok := c.Get("admin")
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "admin not found.",
-		})
-		return
-	}
-	admin := a.(ultis.AdminClaims)
+	//a, ok := c.Get("admin")
+	//if !ok {
+	//	c.JSON(http.StatusBadRequest, gin.H{
+	//		"error": "admin not found.",
+	//	})
+	//	return
+	//}
+	//admin := a.(ultis.AdminClaims)
 
-	if admin.AdminType != 0 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "You are not allowed",
-		})
-		return
-	}
+	//if admin.AdminType != 0 {
+	//	c.JSON(http.StatusBadRequest, gin.H{
+	//		"error": "You are not allowed",
+	//	})
+	//	return
+	//}
 
 	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 	if err != nil {
@@ -1213,10 +1231,8 @@ func AdminGetMods(c *gin.Context) {
 		return
 	}
 
-	users, err := arango.GetAllMods(int(offset), int(limit))
-
+	admins, err := arango.GetAllMods(int(offset), int(limit))
 	if err != nil {
-
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -1224,7 +1240,7 @@ func AdminGetMods(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, admins)
 }
 
 func AdminGetUidTotalBandwidth(c *gin.Context) {
@@ -1361,9 +1377,9 @@ func AdminGetAkTotalBandwidth(c *gin.Context) {
 	fromT := time.Unix(from, 0)
 	toT := time.Unix(to, 0)
 
-	k := c.Param("key")
+	k := c.Param("id")
 
-	key, err := arango.FindAccessKeyByKey(k)
+	key, err := arango.FindAccessKeyById(k)
 	if err != nil {
 		if err, ok := err.(*models.ModelError); ok {
 			if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
@@ -1383,7 +1399,7 @@ func AdminGetAkTotalBandwidth(c *gin.Context) {
 		return
 	}
 
-	res, err := nats.SumBandwidthByDateRangeWithFrom(key.Key, fromT, toT)
+	res, err := nats.SumBandwidthByDateRangeWithFrom(key.Id, fromT, toT)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

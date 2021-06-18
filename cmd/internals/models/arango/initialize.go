@@ -26,6 +26,7 @@ var (
 	adminCol         arangoDriver.Collection
 	bucketSizeCol    arangoDriver.Collection
 	encryptCol       arangoDriver.Collection
+	snapCol          arangoDriver.Collection
 )
 
 func InitArangoDb() error {
@@ -34,33 +35,36 @@ func InitArangoDb() error {
 	hostUrl := viper.GetString("ARANGODB_HOST")
 	_username := viper.GetString("ARANGODB_USER")
 	_password := viper.GetString("ARANGODB_PASSWORD")
+	println("connecting to db at" + hostUrl)
 	arangoConnection, err = arangoHttp.NewConnection(arangoHttp.ConnectionConfig{
 		Endpoints: []string{hostUrl},
 	})
 
 	if err != nil {
-		return err
+		panic(err)
 	}
 
+	println("creating new client")
 	arangoClient, err = arangoDriver.NewClient(arangoDriver.ClientConfig{
 		Connection:     arangoConnection,
 		Authentication: arangoDriver.BasicAuthentication(_username, _password),
 	})
 
 	if err != nil {
-		return err
+		panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	println("creating database")
 	dbExist, err := arangoClient.DatabaseExists(ctx, "nubes3")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	if !dbExist {
-		arangoDb, _ = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
+		arangoDb, err = arangoClient.CreateDatabase(ctx, "nubes3", &arangoDriver.CreateDatabaseOptions{
 			Users: []arangoDriver.CreateDatabaseUserOptions{
 				{
 					UserName: _username,
@@ -68,15 +72,23 @@ func InitArangoDb() error {
 				},
 			},
 		})
+
+		if err != nil {
+			panic(err)
+		}
 	} else {
-		arangoDb, _ = arangoClient.Database(ctx, "nubes3")
+		arangoDb, err = arangoClient.Database(ctx, "nubes3")
+
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return initArangoDb()
 }
 
 func initArangoDb() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	var exist bool
@@ -192,6 +204,17 @@ func initArangoDb() error {
 		adminCol, _ = arangoDb.Collection(ctx, "admin")
 	}
 
+	exist, err = arangoDb.CollectionExists(ctx, "snapshots")
+	if err != nil {
+		return err
+	}
+	if !exist {
+		snapCol, _ = arangoDb.CreateCollection(ctx, "snapshots", &arangoDriver.CreateCollectionOptions{})
+	} else {
+		snapCol, _ = arangoDb.Collection(ctx, "snapshots")
+	}
+
+	println("initializing admin")
 	initAdmin()
 
 	return nil

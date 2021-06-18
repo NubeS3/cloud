@@ -17,7 +17,7 @@ import (
 func UserRoutes(route *gin.Engine) {
 	userRoutesGroup := route.Group("/users")
 	{
-		userRoutesGroup.GET("/validate-email/:email", middlewares.UnauthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/validate-email/:email", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			email := c.Param("emai")
 			_, err := arango.FindUserByEmail(email)
 			if err != nil {
@@ -40,7 +40,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
 
-		userRoutesGroup.POST("/signin", middlewares.UnauthReqCount, func(c *gin.Context) {
+		userRoutesGroup.POST("/signin", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			type signinUser struct {
 				Email    string `json:"email" binding:"required"`
 				Password string `json:"password" binding:"required"`
@@ -109,7 +109,7 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 
-		userRoutesGroup.POST("/signup", middlewares.UnauthReqCount, func(c *gin.Context) {
+		userRoutesGroup.POST("/signup", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			type signupUser struct {
 				Email    string `json:"email" binding:"required"`
 				Password string `json:"password" binding:"required"`
@@ -218,7 +218,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, createdUser)
 		})
 
-		userRoutesGroup.PUT("/send-otp", middlewares.UnauthReqCount, func(c *gin.Context) {
+		userRoutesGroup.PUT("/send-otp", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			type sentUser struct {
 				Email string `json:"email"`
 			}
@@ -262,7 +262,7 @@ func UserRoutes(route *gin.Engine) {
 
 		})
 
-		userRoutesGroup.POST("/confirm-otp", middlewares.UnauthReqCount, func(c *gin.Context) {
+		userRoutesGroup.POST("/confirm-otp", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			type otpValidate struct {
 				Email string `json:"email"`
 				Otp   string `json:"otp"`
@@ -298,7 +298,7 @@ func UserRoutes(route *gin.Engine) {
 			})
 		})
 
-		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.POST("/update", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			//type updateUser struct {
 			//	Firstname string    `json:"firstname" binding:"required"`
 			//	Lastname  string    `json:"lastname" binding:"required"`
@@ -346,7 +346,7 @@ func UserRoutes(route *gin.Engine) {
 			//})
 		})
 
-		userRoutesGroup.GET("/bandwidth-report", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/bandwidth-report", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -391,7 +391,52 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/bandwidth-report/bucket/:bucketId", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/request-report", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
+			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "invalid from format",
+				})
+
+				return
+			}
+
+			fromT := time.Unix(from, 0)
+			toT := time.Unix(to, 0)
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				return
+			}
+
+			total, err := nats.CountByClass(uid.(string), fromT, toT)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something went wrong",
+				})
+
+				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				return
+			}
+
+			c.JSON(http.StatusOK, total)
+		})
+
+		userRoutesGroup.GET("/bandwidth-report/bucket/:bucketId", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			bucketID := c.Param("bucketId")
 			bucket, err := arango.FindBucketById(bucketID)
 			if err != nil {
@@ -465,7 +510,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/bandwidth-report/access-key/:key", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/bandwidth-report/access-key/:key", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			k := c.Param("key")
 			key, err := arango.FindAccessKeyByKey(k)
 			if err != nil {
@@ -539,7 +584,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/report/size", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/report/size", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -584,7 +629,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/report/object-count", middlewares.UserAuthenticate, middlewares.AuthReqCount, func(c *gin.Context) {
+		userRoutesGroup.GET("/report/object-count", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{

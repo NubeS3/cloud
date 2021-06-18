@@ -14,9 +14,9 @@ import (
 )
 
 func BucketRoutes(r *gin.Engine) {
-	ar := r.Group("/auth/buckets", middlewares.UserAuthenticate, middlewares.AuthReqCount)
+	ar := r.Group("/auth/buckets", middlewares.UserAuthenticate)
 	{
-		ar.GET("/all", func(c *gin.Context) {
+		ar.GET("/all", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -59,7 +59,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		ar.POST("/", func(c *gin.Context) {
+		ar.POST("/", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			type createBucket struct {
 				Name string `json:"name" binding:"required"`
 				//Region string `json:"region" binding:"required"`
@@ -148,7 +148,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, bucket)
 		})
-		ar.PUT("/:bucket_id", func(c *gin.Context) {
+		ar.PUT("/:bucket_id", middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
 			type updateBucket struct {
 				//Region string `json:"region" binding:"required"`
 				IsPublic     *bool `json:"is_public"`
@@ -156,7 +156,7 @@ func BucketRoutes(r *gin.Engine) {
 				IsObjectLock *bool `json:"is_object_lock"`
 
 				Passphrase *string `json:"passphrase"`
-				Duration   int     `json:"duration"`
+				Duration   *int    `json:"duration"`
 			}
 
 			var curUpdateBucket updateBucket
@@ -169,7 +169,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			bid := c.Param("bucket_id")
 
-			bucket, err := arango.UpdateBucketById(bid, curUpdateBucket.IsPublic, curUpdateBucket.IsEncrypted, curUpdateBucket.IsObjectLock)
+			updateResult, err := arango.UpdateBucketById(bid, curUpdateBucket.IsPublic, curUpdateBucket.IsEncrypted, curUpdateBucket.IsObjectLock)
 			if err != nil {
 				if err.(*models.ModelError).ErrType == models.NotFound || err.(*models.ModelError).ErrType == models.DocumentNotFound {
 					c.JSON(http.StatusInternalServerError, gin.H{
@@ -189,7 +189,7 @@ func BucketRoutes(r *gin.Engine) {
 				return
 			}
 
-			if curUpdateBucket.IsEncrypted != nil {
+			if updateResult.Old.IsEncrypted != updateResult.New.IsEncrypted {
 				if *curUpdateBucket.IsEncrypted {
 					if curUpdateBucket.Passphrase == nil {
 						passph := randstr.GetString(16)
@@ -204,19 +204,23 @@ func BucketRoutes(r *gin.Engine) {
 				}
 			}
 
-			if curUpdateBucket.IsObjectLock != nil {
+			var bucket *arango.Bucket
+			if updateResult.Old.IsObjectLock != updateResult.New.IsObjectLock {
 				if *curUpdateBucket.IsObjectLock {
-					bucket, err = arango.UpdateHoldDuration(bucket.Id, time.Duration(curUpdateBucket.Duration*1_000_000_000))
+					bucket, err = arango.UpdateHoldDuration(updateResult.New.Id, time.Duration(*curUpdateBucket.Duration*1_000_000_000))
 					//TODO temp ignore errors
 				} else {
-					bucket, err = arango.UpdateHoldDuration(bucket.Id, 0)
+					bucket, err = arango.UpdateHoldDuration(updateResult.New.Id, 0)
 					//TODO temp ignore errors
 				}
+			}
+			if bucket != nil {
+				bucket = &updateResult.New
 			}
 
 			c.JSON(http.StatusOK, bucket)
 		})
-		ar.DELETE("/:bucket_id", func(c *gin.Context) {
+		ar.DELETE("/:bucket_id", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -256,7 +260,7 @@ func BucketRoutes(r *gin.Engine) {
 			})
 		})
 
-		ar.GET("/size/:bucket_id", func(c *gin.Context) {
+		ar.GET("/size/:bucket_id", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -312,7 +316,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, bucketSize)
 		})
-		ar.GET("/object-count/:bucket_id", func(c *gin.Context) {
+		ar.GET("/object-count/:bucket_id", middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			uid, ok := c.Get("uid")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -378,9 +382,9 @@ func BucketRoutes(r *gin.Engine) {
 		})
 	}
 
-	kr := r.Group("/apiKey/buckets", middlewares.AccessKeyAuthenticate, middlewares.AccessKeyReqCount)
+	kr := r.Group("/apiKey/buckets", middlewares.AccessKeyAuthenticate)
 	{
-		kr.GET("/", func(c *gin.Context) {
+		kr.GET("/", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -442,7 +446,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, res)
 		})
-		kr.POST("/", func(c *gin.Context) {
+		kr.POST("/", middlewares.ReqLogger("key", "C"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
@@ -548,7 +552,7 @@ func BucketRoutes(r *gin.Engine) {
 
 			c.JSON(http.StatusOK, bucket)
 		})
-		kr.DELETE("/:bucket_id", func(c *gin.Context) {
+		kr.DELETE("/:bucket_id", middlewares.ReqLogger("key", "A"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			if !ok {
 				c.JSON(http.StatusInternalServerError, gin.H{
