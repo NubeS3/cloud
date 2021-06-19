@@ -37,6 +37,7 @@ func AdminRoutes(route *gin.Engine) {
 			aar.GET("/req-log/accessKey", adminHandler.AdminGetAccessKeyReqLog)
 			//aar.GET("/req-log/signed", adminHandler.AdminGetSignedReqLog)
 			aar.GET("/req-log/count/accessKey", adminHandler.AdminCountAccessKeyReqLog)
+			aar.GET("/req-log/count/auth", adminHandler.AdminCountAuthReqLog)
 			//aar.GET("/req-log/count/signed", adminHandler.AdminCountSignedReqLog)
 			aar.GET("/users-list", adminHandler.AdminGetUsers)
 			aar.GET("/admins-list", adminHandler.AdminGetMods)

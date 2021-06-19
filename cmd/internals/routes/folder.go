@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/models/nats"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,8 +38,8 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allFolder",
-				//	"Unknown Error")
+				err = nats.SendErrorEvent("uid not found in authenticate at auth/folders/all",
+					"Unknown Error")
 				return
 			}
 
@@ -48,8 +49,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/allFolder:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -67,14 +67,15 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 			}
 
 			if ok, err := ultis.ValidateFolderName(curInsertedFolder.Name); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "something went wrong",
+					"error": "something when wrong",
 				})
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 
-				//_ = nats.SendErrorEvent("create folder auth > "+err.Error(), "validate")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -90,8 +91,6 @@ func FolderRoutes(r *gin.Engine) {
 					"error": err.Error(),
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/insertFolder:",
-				//	"Db Error")
 				return
 			}
 
@@ -101,8 +100,8 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allFolder",
-				//	"Unknown Error")
+				err = nats.SendErrorEvent("uid not found in at /folders/auth/allFolder",
+					"Unknown Error")
 				return
 			}
 
@@ -129,8 +128,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/folder:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -144,6 +142,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			uid, ok := c.Get("uid")
@@ -152,8 +151,8 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allByFid",
-				//	"Unknown Error")
+				err = nats.SendErrorEvent("uid not found in authenticate at auth/folders/child/allByFid",
+					"Unknown Error")
 				return
 			}
 
@@ -182,6 +181,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			folder, err := arango.FindFolderByFullpath(path)
@@ -189,6 +189,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			uid, ok := c.Get("uid")
@@ -197,8 +198,8 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allByPath",
-				//	"Unknown Error")
+				err = nats.SendErrorEvent("uid not found in authenticate at auth/folders/child/all/*full_path",
+					"Unknown Error")
 				return
 			}
 
@@ -258,6 +259,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			folder, err := arango.FindFolderByFullpath(path)
@@ -265,6 +267,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			uid, ok := c.Get("uid")
@@ -273,8 +276,8 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /folders/auth/allByPath",
-				//	"Unknown Error")
+				err = nats.SendErrorEvent("uid not found in authenticate at delete auth/folders/*full_path",
+					"Unknown Error")
 				return
 			}
 
@@ -290,6 +293,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -306,8 +310,9 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at /accessKey/folders/all",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -317,8 +322,8 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 
-				//TODO LOG wrong permission
 				return
 			}
 			if !hasPerm || key.BucketId != "*" {
@@ -352,8 +357,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/allFolder:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -371,8 +375,9 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at /accessKey/folders/",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -383,7 +388,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -404,6 +409,8 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
+				return
 			}
 
 			if ok, err := ultis.ValidateFolderName(curInsertedFolder.Name); err != nil {
@@ -411,7 +418,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("create folder auth > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -455,8 +462,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated folders/auth/folder:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -470,8 +476,9 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at /accessKey/folders/child/all/*full_path",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -482,7 +489,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -508,6 +515,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			folder, err := arango.FindFolderByFullpath(path)
@@ -515,6 +523,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -535,8 +544,9 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at delete /accessKey/folders/*full_path",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -547,7 +557,7 @@ func FolderRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -566,6 +576,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 			folder, err := arango.FindFolderByFullpath(path)
@@ -573,6 +584,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -588,6 +600,7 @@ func FolderRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 

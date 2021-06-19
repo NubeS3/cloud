@@ -40,9 +40,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
-
-				_ = nats.SendErrorEvent("uid not found in authenticated route at keyPairs/buckets/all:",
+				err := nats.SendErrorEvent("uid not found at get /auth/keyPairs/all/:bucket_id",
 					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -52,8 +52,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+"at keyPairs/buckets/all:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -68,8 +67,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/info/:public_key:",
+				err := nats.SendErrorEvent("uid not found at get /auth/keyPairs/info/:public_key",
 					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -79,8 +79,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/info/:public_key:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -103,8 +102,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at get /auth/keyPairs/use-count/all/:public",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -114,8 +114,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -151,7 +150,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("count signed key usage err: "+err.Error(), "nats")
+				err = nats.SendErrorEvent("count signed key usage err: "+err.Error(), "Nats Error")
 				return
 			}
 
@@ -166,8 +165,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
+				err := nats.SendErrorEvent("uid not found at get /auth/keyPairs/use-count/date/:public",
 					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -177,8 +177,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /accessKey/info/:access_key:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -235,7 +234,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("count signed usage err: "+err.Error(), "nats")
+				err = nats.SendErrorEvent("count signed usage err: "+err.Error(), "Nats Error")
 				return
 			}
 
@@ -262,8 +261,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/create:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at post /auth/keyPairs",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -292,8 +292,9 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /keyPairs/delete:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at delete /auth/keyPairs/:bucket_id/:public_key",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -302,8 +303,7 @@ func KeyPairsRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /keyPairs/delete:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}

@@ -60,8 +60,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -70,8 +69,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -80,8 +78,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at /auth/files/all",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -98,8 +97,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -123,8 +121,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -133,8 +130,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -143,8 +139,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at /auth/files/upload",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -173,7 +170,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("upload file auth > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -189,8 +186,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("open file failed at /files/auth/upload:",
-				//	"File Error")
+				err = nats.SendErrorEvent(err.Error(), "File Error")
 				return
 			}
 
@@ -233,7 +229,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG
+					err = nats.SendErrorEvent(err.Error(), "Db Error")
 					return
 				}
 
@@ -245,7 +241,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something went wrong",
 						})
 
-						//TODO LOG
+						err = nats.SendErrorEvent(err.Error(), "Encrypt Error")
 						return
 					}
 
@@ -281,6 +277,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": err.Error(),
 					})
 				}
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -333,8 +330,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -342,8 +338,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -353,8 +348,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at /auth/files/detail/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				userId = uid.(string)
@@ -397,8 +393,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -410,8 +405,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found at authenticated files/auth/download",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at /auth/files/download",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				userId = uid.(string)
@@ -483,8 +479,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
-				//	"File Error")
+				err = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
+					"File Error")
 				return
 			}
 		})
@@ -511,8 +507,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -520,8 +515,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -531,8 +525,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at /auth/files/download/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				userId = uid.(string)
@@ -623,8 +618,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
-				//	"File Error")
+				err = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download/*fullpath",
+					"File Error")
 				return
 			}
 		})
@@ -765,8 +760,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -775,8 +769,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -785,8 +778,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at auth/files/hidden",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -803,8 +797,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("parse failed at auth/files/toggle/hidden:",
-				//	"File Error")
+				err = nats.SendErrorEvent("parse failed at auth/files/toggle/hidden:",
+					"File Error")
 				return
 			}
 			file, err := arango.ToggleHidden(fm.Path, isHidden)
@@ -813,8 +807,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("toggle failed at auth/files/toggle/hidden:",
-				//	"File Error")
+				err = nats.SendErrorEvent("toggle failed at auth/files/toggle/hidden:",
+					"File Error")
 				return
 			}
 
@@ -844,8 +838,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -856,8 +849,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at delete auth/files/*full_path",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -898,8 +892,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -908,8 +901,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -928,8 +920,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get auth/files/accessKey/files",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -991,8 +984,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1001,8 +993,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1019,8 +1010,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticate at /files/auth/all",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at get auth/files/accessKey/files",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -1037,8 +1029,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/all:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1052,8 +1043,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at post /accessKey/files/upload",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1064,7 +1056,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -1091,8 +1083,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1101,8 +1092,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1148,7 +1138,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("upload file auth > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -1164,8 +1154,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("open file failed at /files/auth/upload:",
-				//	"File Error")
+				err = nats.SendErrorEvent("open file failed at accessKey/files/upload",
+					"File Error")
 				return
 			}
 
@@ -1208,7 +1198,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG
+					err = nats.SendErrorEvent(err.Error(), "Db Error")
 					return
 				}
 
@@ -1220,7 +1210,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something went wrong",
 						})
 
-						//TODO LOG
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				} else {
@@ -1249,6 +1239,10 @@ func FileRoutes(r *gin.Engine) {
 						"error": err.Error(),
 					})
 				}
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": err.Error(),
+				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1268,6 +1262,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": err.Error(),
 						})
 					}
+					err = nats.SendErrorEvent(err.Error(), "Db Error")
 					return
 				}
 			}
@@ -1286,8 +1281,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at delete /accessKey/files/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1298,7 +1294,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -1338,8 +1334,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1364,8 +1359,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found at authenticated auth/files/download",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("uid not found at delete /accessKey/files/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			} else {
 				if uid.(string) != bucket.Uid {
@@ -1399,8 +1395,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/upload:",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1409,8 +1404,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1422,7 +1416,7 @@ func FileRoutes(r *gin.Engine) {
 
 	skr := r.Group("/key/files", middlewares.CheckBucketPublic, middlewares.SkipableAccessKeyAuthenticate)
 	{
-		skr.GET("/download", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		skr.GET("/download", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			isPublic := c.GetBool("is_public")
 			if !ok && !isPublic {
@@ -1430,8 +1424,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get /key/files/download",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1444,7 +1439,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG wrong permission
+					err = nats.SendErrorEvent(err.Error(), "Key Error")
 					return
 				}
 				if !hasPerm {
@@ -1474,8 +1469,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1563,13 +1557,13 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
-				//	"File Error")
+				err = nats.SendErrorEvent(err.Error()+" at /key/files/download:",
+					"File Error")
 				return
 			}
 		})
 
-		skr.GET("/download/*fullpath", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		skr.GET("/download/*fullpath", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			isPublic := c.GetBool("is_public")
 			if !ok && !isPublic {
@@ -1577,8 +1571,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get /key/files/download/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1591,7 +1586,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG wrong permission
+					err = nats.SendErrorEvent(err.Error(), "Key Error")
 					return
 				}
 				if !hasPerm {
@@ -1624,8 +1619,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1633,8 +1627,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -1735,8 +1728,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
-				//	"File Error")
+				err = nats.SendErrorEvent("download failed: "+err.Error()+" at key/files/download/*fullpath",
+					"File Error")
 				return
 			}
 		})
@@ -1744,7 +1737,7 @@ func FileRoutes(r *gin.Engine) {
 
 	sqkr := r.Group("/key-query/files", middlewares.CheckBucketPublic, middlewares.SkipableAccessKeyAuthenticateQuery)
 	{
-		sqkr.GET("/download", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		sqkr.GET("/download", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			isPublic := c.GetBool("is_public")
 			if !ok && !isPublic {
@@ -1752,8 +1745,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get /key-query/files/download",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1766,7 +1760,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG wrong permission
+					err = nats.SendErrorEvent(err.Error(), "Key Error")
 					return
 				}
 				if !hasPerm {
@@ -1796,8 +1790,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated files/auth/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1885,13 +1878,13 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at /files/auth/download:",
-				//	"File Error")
+				_ = nats.SendErrorEvent(err.Error()+" at key-query/files/download",
+					"File Error")
 				return
 			}
 		})
 
-		sqkr.GET("/download/*fullpath", middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		sqkr.GET("/download/*fullpath", middlewares.ReqLogger("key", "B"), func(c *gin.Context) {
 			k, ok := c.Get("key")
 			isPublic := c.GetBool("is_public")
 			if !ok && !isPublic {
@@ -1899,8 +1892,9 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get /key-query/files/download/*fullpath",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -1913,7 +1907,7 @@ func FileRoutes(r *gin.Engine) {
 						"error": "something went wrong",
 					})
 
-					//TODO LOG wrong permission
+					err = nats.SendErrorEvent(err.Error(), "Key Error")
 					return
 				}
 				if !hasPerm {
@@ -1946,8 +1940,7 @@ func FileRoutes(r *gin.Engine) {
 							"error": "something when wrong",
 						})
 
-						//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-						//	"Db Error")
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
 						return
 					}
 				}
@@ -1955,8 +1948,7 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at authenticated auth/files/download",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -2060,8 +2052,8 @@ func FileRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("download failed: "+err.Error()+" at auth/files/download:",
-				//	"File Error")
+				_ = nats.SendErrorEvent("download failed: "+err.Error()+" at /key-query/files/download:",
+					"File Error")
 				return
 			}
 		})

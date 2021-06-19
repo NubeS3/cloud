@@ -19,7 +19,7 @@ const (
 	folderSubj     = "nubes3_folder"
 	accessKeySubj  = "nubes3_accessKey"
 	keyPairSubj    = "nubes3_keyPair"
-	contextExpTime = time.Second * 10
+	contextExpTime = time.Second * 30
 )
 
 var (

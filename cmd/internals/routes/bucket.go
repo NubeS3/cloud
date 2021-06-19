@@ -51,8 +51,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at buckets/all:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -84,7 +83,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("create bucket > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -100,8 +99,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
+				err := nats.SendErrorEvent("uid not found at  /auth/buckets/",
 					"Unknown Error")
+				print(err)
 
 				return
 			}
@@ -120,8 +120,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/create:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -183,8 +182,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at buckets/create:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -227,9 +225,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at auth/buckets/create:",
+				err := nats.SendErrorEvent("uid not found in authenticated route at auth/buckets/:bucket_id",
 					"Unknown Error")
-
+				print(err)
 				return
 			}
 
@@ -250,8 +248,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -267,8 +264,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at auth/buckets/size/:bucket_id",
+					"Unknown Error")
+				print(err)
 
 				return
 			}
@@ -290,8 +288,8 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
-				//return
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
+				return
 			}
 
 			if bucket.Uid != uid {
@@ -308,8 +306,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("bucket size not found in authenticated route at /buckets/create: "+err.Error(),
-				//	"Unknown Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -323,9 +320,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found in authenticated route at /buckets/create:",
+				err := nats.SendErrorEvent("uid not found at /auth/buckets/object-count/:bucket_id",
 					"Unknown Error")
-
+				print(err)
 				return
 			}
 
@@ -346,7 +343,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at auth/bucket/size: "+err.Error(), "db error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -374,7 +371,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at auth/bucket/count: "+err.Error(), "db error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -391,8 +388,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at get /apiKey/buckets/",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -403,7 +401,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -438,8 +436,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at buckets/all:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -453,8 +450,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at post /apiKey/buckets/",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -465,7 +463,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -500,7 +498,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("create bucket > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -524,8 +522,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/create:",
-					"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -559,8 +556,9 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("uid not found in authenticated route at /accessKey/info/:access_key:",
-				//	"Unknown Error")
+				err := nats.SendErrorEvent("key not found at /apiKey/buckets/:bucket_id",
+					"Unknown Error")
+				print(err)
 				return
 			}
 
@@ -571,7 +569,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//TODO LOG wrong permission
+				err = nats.SendErrorEvent(err.Error(), "Key Error")
 				return
 			}
 			if !hasPerm {
@@ -599,8 +597,7 @@ func BucketRoutes(r *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at auth/buckets/delete:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}

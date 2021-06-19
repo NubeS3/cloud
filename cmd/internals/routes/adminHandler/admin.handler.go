@@ -86,7 +86,7 @@ func AdminCreateMod(c *gin.Context) {
 			"error": "something went wrong",
 		})
 
-		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		err = nats.SendErrorEvent(err.Error(), "Validate Error")
 		return
 	} else if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -101,7 +101,7 @@ func AdminCreateMod(c *gin.Context) {
 			"error": "something went wrong",
 		})
 
-		_ = nats.SendErrorEvent("admin create mod > "+err.Error(), "validate")
+		err = nats.SendErrorEvent(err.Error(), "Validate Error")
 		return
 	} else if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -125,7 +125,7 @@ func AdminCreateMod(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -150,7 +150,7 @@ func AdminCreateUser(c *gin.Context) {
 			"error": "something went wrong",
 		})
 
-		_ = nats.SendErrorEvent("admin create user > "+err.Error(), "validate")
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	} else if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -165,7 +165,7 @@ func AdminCreateUser(c *gin.Context) {
 			"error": "something went wrong",
 		})
 
-		_ = nats.SendErrorEvent("admin create user > "+err.Error(), "validate")
+		err = nats.SendErrorEvent(err.Error(), "Validate Error")
 		return
 	} else if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -189,7 +189,7 @@ func AdminCreateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -215,7 +215,9 @@ func AdminModDisable(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "current admin not found",
 		})
-
+		err := nats.SendErrorEvent("admin not found at admin/auth/disable-mod",
+			"Unknown Error")
+		print(err)
 		return
 	}
 
@@ -242,7 +244,7 @@ func AdminModDisable(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -277,7 +279,7 @@ func AdminBanUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -309,7 +311,7 @@ func AdminGetErrLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -340,7 +342,7 @@ func AdminGetErrLogByType(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -391,7 +393,7 @@ func AdminGetErrLogByDate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -420,7 +422,7 @@ func AdminGetBucketLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -451,7 +453,7 @@ func AdminGetBucketLogByType(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -502,7 +504,7 @@ func AdminGetBucketLogByDate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -531,7 +533,7 @@ func AdminGetUserLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -562,7 +564,7 @@ func AdminGetUserLogByType(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -613,7 +615,7 @@ func AdminGetUserLogByDate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -642,7 +644,7 @@ func AdminGetAccessKeyLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -673,7 +675,7 @@ func AdminGetAccessKeyLogByType(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -724,7 +726,7 @@ func AdminGetAccessKeyLogByDate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -753,7 +755,7 @@ func AdminGetKeyPairLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -784,7 +786,7 @@ func AdminGetKeyPairLogByType(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -835,7 +837,7 @@ func AdminGetKeyPairLogByDate(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, logs)
@@ -887,7 +889,7 @@ func AdminGetAuthReqLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -940,7 +942,43 @@ func AdminGetAccessKeyReqLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
 
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminCountAuthReqLog(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	uid := c.DefaultQuery("uid", "")
+
+	res, err := nats.CountByClass(uid, fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -993,7 +1031,7 @@ func AdminCountAccessKeyReqLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1046,7 +1084,7 @@ func AdminGetSignedReqLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1099,7 +1137,7 @@ func AdminCountSignedReqLog(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1130,7 +1168,7 @@ func AdminGetAccessKeyByBid(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -1160,7 +1198,7 @@ func AdminGetKeyPairByBid(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 	c.JSON(http.StatusOK, res)
@@ -1190,7 +1228,7 @@ func AdminGetUsers(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1236,7 +1274,7 @@ func AdminGetMods(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1282,8 +1320,7 @@ func AdminGetUidTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
-		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1292,7 +1329,7 @@ func AdminGetUidTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1339,7 +1376,7 @@ func AdminGetBidTotalBandwidth(c *gin.Context) {
 			"error": err.Error(),
 		})
 
-		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1348,7 +1385,7 @@ func AdminGetBidTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1394,8 +1431,7 @@ func AdminGetAkTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
-		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1404,7 +1440,7 @@ func AdminGetAkTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1450,8 +1486,7 @@ func AdminGetSignedTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
-		_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1460,7 +1495,7 @@ func AdminGetSignedTotalBandwidth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1493,7 +1528,7 @@ func AdminGetBucketByUid(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 
@@ -1524,7 +1559,7 @@ func AdminGetAllBucket(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
-
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
 		return
 	}
 

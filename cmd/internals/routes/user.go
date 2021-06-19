@@ -31,8 +31,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at user/signup:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -88,8 +87,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/access token",
-				//	"Token Error")
+				err = nats.SendErrorEvent(err.Error()+" at user route/sign in/access token",
+					"Token Error")
 				return
 			}
 
@@ -98,8 +97,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/sign in/find refresh token",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -143,7 +141,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -158,7 +156,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				//_ = nats.SendErrorEvent("user signup > "+err.Error(), "validate")
+				err = nats.SendErrorEvent(err.Error(), "Validate Error")
 				return
 			} else if !ok {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -182,8 +180,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something when wrong",
 				})
 
-				//_ = nats.SendErrorEvent(err.Error()+" at user/signup:",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 
 				return
 			}
@@ -192,8 +189,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/generate refresh token",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -227,6 +223,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": err.Error(),
 				})
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
+				return
 			}
 
 			user, err := arango.FindUserByEmail(curUser.Email)
@@ -242,8 +240,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/generate otp",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -251,8 +248,8 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
-				//	"OTP Error")
+				err = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
+					"OTP Error")
 				return
 			}
 
@@ -288,8 +285,7 @@ func UserRoutes(route *gin.Engine) {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "internal server error",
 				})
-				//_ = nats.SendErrorEvent(err.Error()+" at user route/confirm otp/models otp confirm",
-				//	"Db Error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -374,7 +370,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent("uid not found at user get bandwidth report", "Unknown Error")
 				return
 			}
 
@@ -384,7 +380,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "Unknown Error")
 				return
 			}
 
@@ -419,7 +415,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent("uid not found at user get request report", "Unknown Error")
 				return
 			}
 
@@ -429,7 +425,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("error at user get request report: "+err.Error(), "Unknown Error")
 				return
 			}
 
@@ -454,7 +450,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+				_ = nats.SendErrorEvent("error at bandwidth report bucket: "+err.Error(), "db error")
 				return
 			}
 
@@ -464,7 +460,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -503,7 +499,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("error at user get bandwidth report bucket: "+err.Error(), "Unknown Error")
 				return
 			}
 
@@ -512,12 +508,12 @@ func UserRoutes(route *gin.Engine) {
 
 		userRoutesGroup.GET("/bandwidth-report/access-key/:key", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
 			k := c.Param("key")
-			key, err := arango.FindAccessKeyByKey(k)
+			key, err := arango.FindAccessKeyById(k)
 			if err != nil {
 				if err, ok := err.(*models.ModelError); ok {
 					if err.ErrType == models.NotFound || err.ErrType == models.DocumentNotFound {
 						c.JSON(http.StatusNotFound, gin.H{
-							"error": "key not found",
+							"error": "key_id not found",
 						})
 
 						return
@@ -528,7 +524,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at bandwidth report: "+err.Error(), "db error")
+				err = nats.SendErrorEvent(err.Error(), "Db Error")
 				return
 			}
 
@@ -538,7 +534,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent("uid not found at user get bandwidth report access-key", "Unknown Error")
 				return
 			}
 
@@ -571,13 +567,13 @@ func UserRoutes(route *gin.Engine) {
 			fromT := time.Unix(from, 0)
 			toT := time.Unix(to, 0)
 
-			total, err := nats.SumBandwidthByDateRangeWithFrom(key.Key, fromT, toT)
+			total, err := nats.SumBandwidthByDateRangeWithFrom(key.Id, fromT, toT)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("uid not found at user get bandwidth report access-key", "Unknown Error")
 				return
 			}
 
@@ -612,7 +608,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent("uid not found at user get report size", "Unknown Error")
 				return
 			}
 
@@ -622,7 +618,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("uid not found at user get report size", "Unknown Error")
 				return
 			}
 
@@ -657,7 +653,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("uid not found at user get bandwidth report", "unknown")
+				err = nats.SendErrorEvent("uid not found at user get report object-count", "Unknown Error")
 				return
 			}
 
@@ -667,7 +663,7 @@ func UserRoutes(route *gin.Engine) {
 					"error": "something went wrong",
 				})
 
-				_ = nats.SendErrorEvent("error at user get bandwidth report: "+err.Error(), "unknown")
+				err = nats.SendErrorEvent("uid not found at user get report object-count", "Unknown Error")
 				return
 			}
 

@@ -283,7 +283,7 @@ func FindAllBucket(limit int64, offset int64) ([]DetailBucket, error) {
 		" let objectCount =" +
 		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
 		" collect with count into c return c) " +
-		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object: b}"
 	bindVars := map[string]interface{}{
 		"limit":  limit,
 		"offset": offset,
@@ -328,7 +328,7 @@ func FindBucketByUid(uid string, limit int64, offset int64) ([]DetailBucket, err
 		" let objectCount =" +
 		" (for fm in fileMetadata filter fm.is_deleted != false and fm.bucket_id == b._key" +
 		" collect with count into c return c) " +
-		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object}"
+		" RETURN {_key: b._key, bucket: b, size: FIRST(size), object: b}"
 	bindVars := map[string]interface{}{
 		"uid":    uid,
 		"limit":  limit,
