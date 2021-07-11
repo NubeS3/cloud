@@ -17,7 +17,7 @@ import (
 func UserRoutes(route *gin.Engine) {
 	userRoutesGroup := route.Group("/users")
 	{
-		userRoutesGroup.GET("/validate-email/:email", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
+		userRoutesGroup.GET("/validate-email/*email", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
 			email := c.Param("emai")
 			_, err := arango.FindUserByEmail(email)
 			if err != nil {
@@ -36,6 +36,10 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
+			c.JSON(http.StatusOK, gin.H{})
+		})
+
+		userRoutesGroup.GET("/check-active-status", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "A"), func(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{})
 		})
 
@@ -193,24 +197,24 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			//otp, err := arango.GenerateOTP(user.Username, curUser.Email)
-			//if err != nil {
-			//	c.JSON(http.StatusInternalServerError, gin.H{
-			//		"error": "internal server error",
-			//	})
-			//	_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
-			//		"Db Error")
-			//	return
-			//}
+			otp, err := arango.GenerateOTP(createdUser.Email)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "internal server error",
+				})
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
+					"Db Error")
+				return
+			}
 
-			//if err := SendOTP(user.Username, user.Email, otp.Otp, otp.ExpiredTime); err != nil {
-			//	c.JSON(http.StatusInternalServerError, gin.H{
-			//		"error": "internal server error",
-			//	})
-			//	_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
-			//		"OTP Failed")
-			//	return
-			//}
+			if err := SendOTP(createdUser.Email, otp.Otp, otp.ExpiredTime); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "internal server error",
+				})
+				_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
+					"OTP Failed")
+				return
+			}
 			c.JSON(http.StatusOK, createdUser)
 		})
 
@@ -224,6 +228,9 @@ func UserRoutes(route *gin.Engine) {
 					"error": err.Error(),
 				})
 				err = nats.SendErrorEvent(err.Error(), "Db Error")
+				if err != nil {
+					println(err)
+				}
 				return
 			}
 
@@ -241,6 +248,9 @@ func UserRoutes(route *gin.Engine) {
 					"error": "internal server error",
 				})
 				err = nats.SendErrorEvent(err.Error(), "Db Error")
+				if err != nil {
+					println(err)
+				}
 				return
 			}
 
@@ -250,13 +260,15 @@ func UserRoutes(route *gin.Engine) {
 				})
 				err = nats.SendErrorEvent(err.Error()+" at user route/resend otp/send otp",
 					"OTP Error")
+				if err != nil {
+					println(err)
+				}
 				return
 			}
 
 			c.JSON(http.StatusOK, gin.H{
 				"message": "otp sent",
 			})
-
 		})
 
 		userRoutesGroup.POST("/confirm-otp", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
@@ -272,21 +284,32 @@ func UserRoutes(route *gin.Engine) {
 				return
 			}
 
-			_, err := arango.FindOTPByEmail(curSigninUser.Email)
-			if err != nil {
-				c.JSON(http.StatusUnauthorized, gin.H{
-					"error": err.Error(),
-				})
-				return
-			}
+			//_, err := arango.FindOTPByEmail(curSigninUser.Email)
+			//if err != nil {
+			//	c.JSON(http.StatusUnauthorized, gin.H{
+			//		"error": err.Error(),
+			//	})
+			//	return
+			//}
 
-			err = arango.OTPConfirm(curSigninUser.Email, curSigninUser.Otp)
+			err := arango.OTPConfirm(curSigninUser.Email, curSigninUser.Otp)
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "internal server error",
-				})
-				err = nats.SendErrorEvent(err.Error(), "Db Error")
-				return
+				if e, ok := err.(*models.ModelError); ok {
+					if e.ErrType == models.DbError {
+						c.JSON(http.StatusInternalServerError, gin.H{
+							"error": "internal server error",
+						})
+						err = nats.SendErrorEvent(err.Error(), "Db Error")
+
+						return
+					} else {
+						c.JSON(http.StatusBadRequest, gin.H{
+							"error": err.Error(),
+						})
+
+						return
+					}
+				}
 			}
 
 			c.JSON(http.StatusOK, gin.H{
@@ -342,7 +365,73 @@ func UserRoutes(route *gin.Engine) {
 			//})
 		})
 
-		userRoutesGroup.GET("/bandwidth-report", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		userRoutesGroup.POST("/update-password", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
+			type updateUser struct {
+				OldPassword string `json:"old_password"`
+				NewPassword string `json:"new_password"`
+			}
+
+			var curUpdateUser updateUser
+			if err := c.ShouldBind(&curUpdateUser); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+
+			uid, ok := c.Get("uid")
+			if !ok {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				_ = nats.SendErrorEvent("uid not found in authenticate at /users/update",
+					"Unknown Error")
+				return
+			}
+
+			user, err := arango.FindUserById(uid.(string))
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				err = nats.SendErrorEvent("uid not found in authenticate at /users/update",
+					"Unknown Error")
+				if err != nil {
+					println(err)
+				}
+
+				return
+			}
+
+			err = scrypt.CompareHashAndPassword([]byte(user.Pass), []byte(curUpdateUser.OldPassword))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "incorrect old password",
+				})
+				return
+			}
+
+			u, err := arango.UpdateUserPassword(uid.(string), curUpdateUser.NewPassword)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{
+					"error": "something when wrong",
+				})
+
+				err = nats.SendErrorEvent("uid not found in authenticate at /users/update",
+					"Unknown Error")
+				if err != nil {
+					println(err)
+				}
+
+				return
+			}
+
+			c.JSON(http.StatusOK, u)
+		})
+
+		userRoutesGroup.GET("/bandwidth-report", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -387,7 +476,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/request-report", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "C"), func(c *gin.Context) {
+		userRoutesGroup.GET("/request-report", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "C"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -432,7 +521,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/bandwidth-report/bucket/:bucketId", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		userRoutesGroup.GET("/bandwidth-report/bucket/:bucketId", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "B"), func(c *gin.Context) {
 			bucketID := c.Param("bucketId")
 			bucket, err := arango.FindBucketById(bucketID)
 			if err != nil {
@@ -506,7 +595,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/bandwidth-report/access-key/:key", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		userRoutesGroup.GET("/bandwidth-report/access-key/:key", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "B"), func(c *gin.Context) {
 			k := c.Param("key")
 			key, err := arango.FindAccessKeyById(k)
 			if err != nil {
@@ -580,7 +669,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/report/size", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		userRoutesGroup.GET("/report/size", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{
@@ -625,7 +714,7 @@ func UserRoutes(route *gin.Engine) {
 			c.JSON(http.StatusOK, total)
 		})
 
-		userRoutesGroup.GET("/report/object-count", middlewares.UserAuthenticate, middlewares.ReqLogger("auth", "B"), func(c *gin.Context) {
+		userRoutesGroup.GET("/report/object-count", middlewares.UserAuthenticate, middlewares.ReqLogger("none", "B"), func(c *gin.Context) {
 			from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{

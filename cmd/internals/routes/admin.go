@@ -18,6 +18,7 @@ func AdminRoutes(route *gin.Engine) {
 			aar.POST("/user", adminHandler.AdminCreateUser)
 			aar.PATCH("/disable-mod", adminHandler.AdminModDisable)
 			aar.PATCH("/ban-user", adminHandler.AdminBanUser)
+			aar.PATCH("/active-user", adminHandler.AdminBanUser)
 			aar.GET("/err-log", adminHandler.AdminGetErrLog)
 			aar.GET("/err-log/type", adminHandler.AdminGetErrLogByType)
 			aar.GET("/err-log/date", adminHandler.AdminGetErrLogByDate)
@@ -38,19 +39,24 @@ func AdminRoutes(route *gin.Engine) {
 			//aar.GET("/req-log/signed", adminHandler.AdminGetSignedReqLog)
 			aar.GET("/req-log/count/accessKey", adminHandler.AdminCountAccessKeyReqLog)
 			aar.GET("/req-log/count/auth", adminHandler.AdminCountAuthReqLog)
+			aar.GET("/req-log/count/system", adminHandler.AdminCountAllSystemReqLog)
 			//aar.GET("/req-log/count/signed", adminHandler.AdminCountSignedReqLog)
 			aar.GET("/users-list", adminHandler.AdminGetUsers)
+			aar.GET("/users-list/no-ban", adminHandler.AdminGetNonBannedUsers)
+			aar.GET("/users-list/banned", adminHandler.AdminGetBannedUsers)
 			aar.GET("/admins-list", adminHandler.AdminGetMods)
 			aar.GET("/accessKey/:bucket_id", adminHandler.AdminGetAccessKeyByBid)
 			//aar.GET("/keyPair/:bucket_id", adminHandler.AdminGetKeyPairByBid)
 			aar.GET("/buckets/:uid", adminHandler.AdminGetBucketByUid)
 			aar.GET("/buckets", adminHandler.AdminGetAllBucket)
 
+			aar.GET("/bandwidth-report/system", adminHandler.AdminGetSystemBandwidth)
 			aar.GET("/bandwidth-report/user/:uid", adminHandler.AdminGetUidTotalBandwidth)
 			aar.GET("/bandwidth-report/bucket/:bid", adminHandler.AdminGetBidTotalBandwidth)
 			aar.GET("/bandwidth-report/access-key/:id", adminHandler.AdminGetAkTotalBandwidth)
 			//aar.GET("/bandwidth-report/signed/:key", adminHandler.AdminGetSignedTotalBandwidth)
-
+			aar.GET("/system/info/fs", adminHandler.SeaweedInfo)
+			aar.GET("/system/info/db", adminHandler.ArangoInfo)
 		}
 	}
 }

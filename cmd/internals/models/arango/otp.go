@@ -32,7 +32,7 @@ func GenerateOTP(email string) (*Otp, error) {
 	bindVars := map[string]interface{}{
 		"newOtp":      newOtp,
 		"email":       email,
-		"expiredTime": time.Now().Add(time.Minute * 5),
+		"expiredTime": time.Now().Add(time.Minute * 30),
 		"lastUpdated": time.Now(),
 	}
 	otp := Otp{}

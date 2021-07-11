@@ -1067,7 +1067,7 @@ func FileRoutes(r *gin.Engine) {
 				return
 			}
 
-			bid := c.DefaultPostForm("bucket_id", "")
+			bid := c.DefaultPostForm("bucket_id", key.BucketId)
 			bucket, err := arango.FindBucketById(bid)
 			if err != nil {
 				if e, ok := err.(*models.ModelError); ok {

@@ -93,10 +93,11 @@ func Run() {
 	Routing(r)
 
 	isProd := viper.GetBool("IS_PROD")
+	host := viper.GetString("HOST")
 	if isProd {
 		m := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
-			HostPolicy: autocert.HostWhitelist("nubes3.xyz"),
+			HostPolicy: autocert.HostWhitelist(host),
 			Cache:      autocert.DirCache("/var/www/.cache"),
 		}
 

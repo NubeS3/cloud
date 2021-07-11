@@ -157,7 +157,7 @@ func SkipableAccessKeyAuthenticateQuery(c *gin.Context) {
 		return
 	}
 
-	authToken := c.Param("authorization")
+	authToken := c.DefaultQuery("authorization", "")
 	//if len(auths) < 2 {
 	//	c.JSON(http.StatusUnauthorized, gin.H{
 	//		"error": "unauthorized",

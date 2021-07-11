@@ -99,7 +99,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		userCol, _ = arangoDb.CreateCollection(ctx, "users", &arangoDriver.CreateCollectionOptions{})
+		userCol, _ = arangoDb.CreateCollection(ctx, "users", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		userCol, _ = arangoDb.Collection(ctx, "users")
 	}
@@ -109,7 +114,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		otpCol, _ = arangoDb.CreateCollection(ctx, "otps", &arangoDriver.CreateCollectionOptions{})
+		otpCol, _ = arangoDb.CreateCollection(ctx, "otps", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      1,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		otpCol, _ = arangoDb.Collection(ctx, "otps")
 	}
@@ -119,7 +129,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		rfTokenCol, _ = arangoDb.CreateCollection(ctx, "rfTokens", &arangoDriver.CreateCollectionOptions{})
+		rfTokenCol, _ = arangoDb.CreateCollection(ctx, "rfTokens", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      1,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		rfTokenCol, _ = arangoDb.Collection(ctx, "rfTokens")
 	}
@@ -129,7 +144,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		bucketCol, _ = arangoDb.CreateCollection(ctx, "buckets", &arangoDriver.CreateCollectionOptions{})
+		bucketCol, _ = arangoDb.CreateCollection(ctx, "buckets", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		bucketCol, _ = arangoDb.Collection(ctx, "buckets")
 	}
@@ -139,7 +159,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		folderCol, _ = arangoDb.CreateCollection(ctx, "folders", &arangoDriver.CreateCollectionOptions{})
+		folderCol, _ = arangoDb.CreateCollection(ctx, "folders", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		folderCol, _ = arangoDb.Collection(ctx, "folders")
 	}
@@ -149,7 +174,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		apiKeyCol, _ = arangoDb.CreateCollection(ctx, "apiKeys", &arangoDriver.CreateCollectionOptions{})
+		apiKeyCol, _ = arangoDb.CreateCollection(ctx, "apiKeys", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		apiKeyCol, _ = arangoDb.Collection(ctx, "apiKeys")
 	}
@@ -169,7 +199,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		fileMetadataCol, _ = arangoDb.CreateCollection(ctx, "fileMetadata", &arangoDriver.CreateCollectionOptions{})
+		fileMetadataCol, _ = arangoDb.CreateCollection(ctx, "fileMetadata", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		fileMetadataCol, _ = arangoDb.Collection(ctx, "fileMetadata")
 	}
@@ -179,7 +214,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		bucketSizeCol, _ = arangoDb.CreateCollection(ctx, "bucketSize", &arangoDriver.CreateCollectionOptions{})
+		bucketSizeCol, _ = arangoDb.CreateCollection(ctx, "bucketSize", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      1,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		bucketSizeCol, _ = arangoDb.Collection(ctx, "bucketSize")
 	}
@@ -189,7 +229,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		encryptCol, _ = arangoDb.CreateCollection(ctx, "encryptInfo", &arangoDriver.CreateCollectionOptions{})
+		encryptCol, _ = arangoDb.CreateCollection(ctx, "encryptInfo", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      2,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		encryptCol, _ = arangoDb.Collection(ctx, "encryptInfo")
 	}
@@ -199,7 +244,12 @@ func initArangoDb() error {
 		return err
 	}
 	if !exist {
-		adminCol, _ = arangoDb.CreateCollection(ctx, "admin", &arangoDriver.CreateCollectionOptions{})
+		adminCol, _ = arangoDb.CreateCollection(ctx, "admin", &arangoDriver.CreateCollectionOptions{
+			ReplicationFactor: 3,
+			WriteConcern:      1,
+			NumberOfShards:    3,
+			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
+		})
 	} else {
 		adminCol, _ = arangoDb.Collection(ctx, "admin")
 	}

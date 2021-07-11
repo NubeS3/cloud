@@ -109,11 +109,19 @@ func UserAuthenticate(c *gin.Context) {
 	}
 
 	if user.IsBanned {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusForbidden, gin.H{
 			"error": "account disabled",
 		})
 
 		c.Abort()
+		return
+	}
+
+	if !user.IsActive {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "account is not active",
+		})
+
 		return
 	}
 

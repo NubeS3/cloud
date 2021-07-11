@@ -14,7 +14,7 @@ func PingRoute(r *gin.Engine) {
 	})
 
 	r.GET("/version", middlewares.ReqLogger("unauth", ""), func(c *gin.Context) {
-		c.JSON(http.StatusOK, "v2.0.3-stable")
+		c.JSON(http.StatusOK, "v2.0.8")
 	})
 
 	id, err := uuid.NewUUID()

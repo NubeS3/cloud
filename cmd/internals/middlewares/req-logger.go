@@ -45,6 +45,10 @@ func ReqLogger(reqType, class string) func(ctx *gin.Context) {
 				println(err)
 			}
 		}
+	case "none":
+		return func(ctx *gin.Context) {
+			ctx.Next()
+		}
 	}
 
 	panic(errors.New("NO LOGGER FOUND FOR: " + reqType + " with class: " + class))

@@ -458,3 +458,97 @@ func GetAllUser(offset int, limit int) ([]User, error) {
 
 	return users, nil
 }
+
+func GetAllNonBannedUser(offset int, limit int) ([]User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR u IN users FILTER u.is_banned == false LIMIT @offset, @limit RETURN u"
+	bindVars := map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	users := []User{}
+	for {
+		user := user{}
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		users = append(users, User{
+			Id:        meta.Key,
+			Pass:      user.Pass,
+			Email:     user.Email,
+			Dob:       user.Dob,
+			IsActive:  user.IsActive,
+			IsBanned:  user.IsBanned,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
+	}
+
+	return users, nil
+}
+
+func GetAllBannedUser(offset int, limit int) ([]User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*CONTEXT_EXPIRED_TIME)
+	defer cancel()
+
+	query := "FOR u IN users FILTER u.is_banned == true LIMIT @offset, @limit RETURN u"
+	bindVars := map[string]interface{}{
+		"limit":  limit,
+		"offset": offset,
+	}
+
+	cursor, err := arangoDb.Query(ctx, query, bindVars)
+	if err != nil {
+		return nil, &models.ModelError{
+			Msg:     err.Error(),
+			ErrType: models.DbError,
+		}
+	}
+	defer cursor.Close()
+
+	users := []User{}
+	for {
+		user := user{}
+		meta, err := cursor.ReadDocument(ctx, &user)
+		if driver.IsNoMoreDocuments(err) {
+			break
+		} else if err != nil {
+			return nil, &models.ModelError{
+				Msg:     err.Error(),
+				ErrType: models.DbError,
+			}
+		}
+
+		users = append(users, User{
+			Id:        meta.Key,
+			Pass:      user.Pass,
+			Email:     user.Email,
+			Dob:       user.Dob,
+			IsActive:  user.IsActive,
+			IsBanned:  user.IsBanned,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+		})
+	}
+
+	return users, nil
+}

@@ -1,6 +1,7 @@
 package adminHandler
 
 import (
+	"github.com/NubeS3/cloud/cmd/internals/models/seaweedfs"
 	"net/http"
 	"strconv"
 	"time"
@@ -193,6 +194,33 @@ func AdminCreateUser(c *gin.Context) {
 		return
 	}
 
+	if err := arango.GenerateRfToken(resUser.Id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "internal server error",
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	otp, err := arango.GenerateOTP(resUser.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "internal server error",
+		})
+		_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/generate otp",
+			"Db Error")
+		return
+	}
+
+	if err := nats.SendEmailEvent(resUser.Email, otp.Otp, otp.ExpiredTime); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "internal server error",
+		})
+		_ = nats.SendErrorEvent(err.Error()+" at user route/sign up/send otp",
+			"OTP Failed")
+		return
+	}
+
 	c.JSON(http.StatusOK, resUser)
 }
 
@@ -284,6 +312,51 @@ func AdminBanUser(c *gin.Context) {
 	}
 
 	user, err = arango.UpdateBanStatus(user.Id, *req.IsBan)
+
+	c.JSON(http.StatusOK, user)
+}
+
+func AdminActiveUser(c *gin.Context) {
+	type toggleReq struct {
+		Email    string `json:"email" binding:"required"`
+		IsActive *bool  `json:"is_active" binding:"required"`
+	}
+
+	var req toggleReq
+	if err := c.ShouldBind(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	user, err := arango.FindUserByEmail(req.Email)
+	if err != nil {
+		if err, ok := err.(*models.ModelError); ok {
+			if err.ErrType == models.Duplicated {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": err.Error(),
+				})
+				return
+			}
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	err = arango.UpdateActive(user.Email, *req.IsActive)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+	user.IsActive = true
 
 	c.JSON(http.StatusOK, user)
 }
@@ -1235,6 +1308,68 @@ func AdminGetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+func AdminGetNonBannedUsers(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	users, err := arango.GetAllNonBannedUser(int(offset), int(limit))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
+func AdminGetBannedUsers(c *gin.Context) {
+	limit, err := strconv.ParseInt(c.DefaultQuery("limit", "10"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid limit format",
+		})
+
+		return
+	}
+	offset, err := strconv.ParseInt(c.DefaultQuery("offset", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid offset format",
+		})
+
+		return
+	}
+
+	users, err := arango.GetAllBannedUser(int(offset), int(limit))
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	c.JSON(http.StatusOK, users)
+}
+
 func AdminGetMods(c *gin.Context) {
 	//a, ok := c.Get("admin")
 	//if !ok {
@@ -1564,4 +1699,129 @@ func AdminGetAllBucket(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, buckets)
+}
+
+func AdminGetSystemBandwidth(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	res, err := nats.SumBandwidthByDateRangeWithUid("", fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func AdminCountAllSystemReqLog(c *gin.Context) {
+	from, err := strconv.ParseInt(c.DefaultQuery("from", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	to, err := strconv.ParseInt(c.DefaultQuery("to", "0"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "invalid from format",
+		})
+
+		return
+	}
+
+	fromT := time.Unix(from, 0)
+	toT := time.Unix(to, 0)
+
+	res, err := nats.CountByClass("", fromT, toT)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		err = nats.SendErrorEvent(err.Error(), "Db Error")
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func SeaweedInfo(c *gin.Context) {
+	systemStatus, err := seaweedfs.SeaweedInfo()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	clusterStatus, err := seaweedfs.SeaweedClusterStatus()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"system":  systemStatus,
+		"cluster": clusterStatus,
+	})
+}
+
+func ArangoInfo(c *gin.Context) {
+	systemStatus, err := arango.ArangoInfo()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+
+		return
+	}
+
+	clusterStatus, err := arango.ArangoClusterInfo()
+	if err != nil {
+		//c.JSON(http.StatusInternalServerError, gin.H{
+		//	"error": err.Error(),
+		//})
+		//
+		//return
+
+		c.JSON(http.StatusOK, gin.H{
+			"system":  systemStatus,
+			"cluster": nil,
+		})
+
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"system":  systemStatus,
+		"cluster": clusterStatus,
+	})
 }
