@@ -30,7 +30,9 @@ func SendBandwidthLog(size int64, uid, bucketId, from, sourceType string) error 
 		return err
 	}
 
-	return sc.Publish(bandwidthSubj, jsonData)
+	//return sc.Publish(bandwidthSubj, jsonData)
+	_, err = js.Publish("NUBES3."+bandwidthSubj, jsonData)
+	return err
 }
 
 func SumBandwidthByDateRangeWithUid(uid string, from, to time.Time) (float64, error) {

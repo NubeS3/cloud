@@ -29,7 +29,9 @@ func SendBucketEvent(id, uid, name, region, t string) error {
 		return err
 	}
 
-	return sc.Publish(bucketSubj, jsonData)
+	//return sc.Publish(bucketSubj, jsonData)
+	_, err = js.Publish("NUBES3."+bucketSubj, jsonData)
+	return err
 }
 
 func GetBucketLog(limit, offset int) ([]BucketLogMessage, error) {

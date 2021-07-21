@@ -27,7 +27,9 @@ func SendAccessKeyEvent(key, bid, uid, t string) error {
 		return err
 	}
 
-	return sc.Publish(accessKeySubj, jsonData)
+	//return sc.Publish(accessKeySubj, jsonData)
+	_, err = js.Publish("NUBES3."+accessKeySubj, jsonData)
+	return err
 }
 
 func GetAccessKeyLog(limit, offset int) ([]AccessKeyLogMessage, error) {

@@ -42,7 +42,10 @@ func SendUploadFileEvent(id, fid, name string, size int64,
 		return err
 	}
 
-	return sc.Publish(fileSubject, jsonData)
+	//return sc.Publish(fileSubject, jsonData)
+	println("NUBES3." + fileSubject)
+	_, err = js.Publish("NUBES3."+fileSubject, jsonData)
+	return err
 }
 
 func SendDownloadFileEvent(id, fid, name string, size int64,
@@ -65,7 +68,9 @@ func SendDownloadFileEvent(id, fid, name string, size int64,
 		return err
 	}
 
-	return sc.Publish(fileSubject, jsonData)
+	//return sc.Publish(fileSubject, jsonData)
+	_, err = js.Publish("NUBES3."+fileSubject, jsonData)
+	return err
 }
 
 func SendDeleteFileEvent(id, fid, name string, size int64,
@@ -88,7 +93,9 @@ func SendDeleteFileEvent(id, fid, name string, size int64,
 		return err
 	}
 
-	return sc.Publish(fileSubject, jsonData)
+	//return sc.Publish(fileSubject, jsonData)
+	_, err = js.Publish("NUBES3."+fileSubject, jsonData)
+	return err
 }
 
 func GetAvgStoredSizeByUidInDateRange(uid string, from, to time.Time) (float64, error) {

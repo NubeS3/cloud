@@ -27,7 +27,9 @@ func SendUserEvent(uid, username, email, t string) error {
 		return err
 	}
 
-	return sc.Publish(bucketSubj, jsonData)
+	//return sc.Publish(bucketSubj, jsonData)
+	_, err = js.Publish("NUBES3."+bucketSubj, jsonData)
+	return err
 }
 
 func GetUserLog(limit, offset int) ([]UserLogMessage, error) {

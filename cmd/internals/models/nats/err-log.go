@@ -23,7 +23,9 @@ func SendErrorEvent(content, t string) error {
 		return err
 	}
 
-	return sc.Publish(errSubj, jsonData)
+	//return sc.Publish(errSubj, jsonData)
+	_, err = js.Publish("NUBES3."+errSubj, jsonData)
+	return err
 }
 
 func GetErrLog(limit, offset int) ([]ErrLogMessage, error) {

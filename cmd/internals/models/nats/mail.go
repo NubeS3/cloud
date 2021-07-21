@@ -21,5 +21,7 @@ func SendEmailEvent(email, otp string, expired time.Time) error {
 	if err != nil {
 		return err
 	}
-	return sc.Publish(mailSubj, jsonData)
+	//return sc.Publish(mailSubj, jsonData)
+	_, err = js.Publish("NUBES3."+mailSubj, jsonData)
+	return err
 }

@@ -27,7 +27,9 @@ func SendKeyPairEvent(pub, bid, uid, t string) error {
 		return err
 	}
 
-	return sc.Publish(keyPairSubj, jsonData)
+	//return sc.Publish(keyPairSubj, jsonData)
+	_, err = js.Publish("NUBES3."+keyPairSubj, jsonData)
+	return err
 }
 
 func GetKeyPairLog(limit, offset int) ([]KeyPairLogMessage, error) {

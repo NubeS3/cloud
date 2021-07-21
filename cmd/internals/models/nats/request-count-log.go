@@ -111,7 +111,9 @@ func SendReqCountEvent(data, t, method, source, req, class string) error {
 		return err
 	}
 
-	return sc.Publish(reqSubj+subjectSuffix, jsonData)
+	//return sc.Publish(reqSubj+subjectSuffix, jsonData)
+	_, err = js.Publish("NUBES3."+reqSubj+subjectSuffix, jsonData)
+	return err
 }
 
 func ReadUnauthReqCount(limit, offset int) ([]UnauthReqLog, error) {

@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const CONTEXT_EXPIRED_TIME = 30
+const CONTEXT_EXPIRED_TIME = 60
 
 var (
 	arangoConnection arangoDriver.Connection
@@ -35,7 +35,7 @@ func InitArangoDb() error {
 	hostUrl := viper.GetString("ARANGODB_HOST")
 	_username := viper.GetString("ARANGODB_USER")
 	_password := viper.GetString("ARANGODB_PASSWORD")
-	println("connecting to db at" + hostUrl)
+	println("connecting to db at " + hostUrl)
 	arangoConnection, err = arangoHttp.NewConnection(arangoHttp.ConnectionConfig{
 		Endpoints: []string{hostUrl},
 	})
@@ -88,17 +88,19 @@ func InitArangoDb() error {
 }
 
 func initArangoDb() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	var exist bool
 	var err error
 	// INIT DB
+	println("Checking users col")
 	exist, err = arangoDb.CollectionExists(ctx, "users")
 	if err != nil {
 		return err
 	}
 	if !exist {
+		println("Creating users col")
 		userCol, _ = arangoDb.CreateCollection(ctx, "users", &arangoDriver.CreateCollectionOptions{
 			ReplicationFactor: 3,
 			WriteConcern:      2,
@@ -106,9 +108,11 @@ func initArangoDb() error {
 			ShardingStrategy:  arangoDriver.ShardingStrategyCommunityCompat,
 		})
 	} else {
+		println("Getting users col")
 		userCol, _ = arangoDb.Collection(ctx, "users")
 	}
 
+	println("Checking otps col")
 	exist, err = arangoDb.CollectionExists(ctx, "otps")
 	if err != nil {
 		return err
@@ -124,6 +128,7 @@ func initArangoDb() error {
 		otpCol, _ = arangoDb.Collection(ctx, "otps")
 	}
 
+	println("Checking rfTokens col")
 	exist, err = arangoDb.CollectionExists(ctx, "rfTokens")
 	if err != nil {
 		return err
@@ -139,6 +144,7 @@ func initArangoDb() error {
 		rfTokenCol, _ = arangoDb.Collection(ctx, "rfTokens")
 	}
 
+	println("Checking bucket col")
 	exist, err = arangoDb.CollectionExists(ctx, "buckets")
 	if err != nil {
 		return err
@@ -154,6 +160,7 @@ func initArangoDb() error {
 		bucketCol, _ = arangoDb.Collection(ctx, "buckets")
 	}
 
+	println("Checking folders col")
 	exist, err = arangoDb.CollectionExists(ctx, "folders")
 	if err != nil {
 		return err
@@ -169,6 +176,7 @@ func initArangoDb() error {
 		folderCol, _ = arangoDb.Collection(ctx, "folders")
 	}
 
+	println("Checking apiKeys col")
 	exist, err = arangoDb.CollectionExists(ctx, "apiKeys")
 	if err != nil {
 		return err
@@ -194,6 +202,7 @@ func initArangoDb() error {
 	//	keyPairsCol, _ = arangoDb.Collection(ctx, "keyPairs")
 	//}
 
+	println("Checking fileMetadata col")
 	exist, err = arangoDb.CollectionExists(ctx, "fileMetadata")
 	if err != nil {
 		return err
@@ -209,6 +218,7 @@ func initArangoDb() error {
 		fileMetadataCol, _ = arangoDb.Collection(ctx, "fileMetadata")
 	}
 
+	println("Checking bucketSize col")
 	exist, err = arangoDb.CollectionExists(ctx, "bucketSize")
 	if err != nil {
 		return err
@@ -224,6 +234,7 @@ func initArangoDb() error {
 		bucketSizeCol, _ = arangoDb.Collection(ctx, "bucketSize")
 	}
 
+	println("Checking encryptInfo col")
 	exist, err = arangoDb.CollectionExists(ctx, "encryptInfo")
 	if err != nil {
 		return err
@@ -239,6 +250,7 @@ func initArangoDb() error {
 		encryptCol, _ = arangoDb.Collection(ctx, "encryptInfo")
 	}
 
+	println("Checking admin col")
 	exist, err = arangoDb.CollectionExists(ctx, "admin")
 	if err != nil {
 		return err

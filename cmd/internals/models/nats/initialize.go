@@ -1,9 +1,7 @@
 package nats
 
 import (
-	"github.com/m1ome/randstr"
 	"github.com/nats-io/nats.go"
-	stan "github.com/nats-io/stan.go"
 	"github.com/spf13/viper"
 	"time"
 )
@@ -23,33 +21,49 @@ const (
 )
 
 var (
-	sc stan.Conn
+	//sc stan.Conn
 	nc *nats.Conn
+	js nats.JetStreamContext
 )
 
 func InitNats() error {
 	url := viper.GetString("NATS_URL")
-	clusterId := viper.GetString("STAN_CLUSTER_ID")
+	//clusterId := viper.GetString("STAN_CLUSTER_ID")
 
 	println("connecting to nats at: " + url)
 	var err error
-	sc, err = stan.Connect(clusterId, "nubes3"+randstr.GetString(8), stan.NatsURL("nats://"+url))
-	if err != nil {
-		return err
-	}
+	//sc, err = stan.Connect(clusterId, "nubes3"+randstr.GetString(8), stan.NatsURL("nats://"+url))
+	//if err != nil {
+	//	return err
+	//}
 
 	nc, err = nats.Connect("nats://" + url)
 	if err != nil {
 		return err
 	}
 
+	js, err = nc.JetStream()
+	if err != nil {
+		return err
+	}
+
+	info, err := js.AddStream(&nats.StreamConfig{
+		Name:     "NUBES3",
+		Subjects: []string{"NUBES3.*"},
+	})
+	if err != nil {
+		println(err)
+	} else {
+		println(info.Config.Name + " stream created at " + info.Created.String())
+	}
+
 	return nil
 }
 
 func CleanUp() {
-	if sc != nil {
-		_ = sc.Close()
-	}
+	//if sc != nil {
+	//	_ = sc.Close()
+	//}
 	if nc != nil {
 		nc.Close()
 	}

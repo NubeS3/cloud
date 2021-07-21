@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 	"log"
 	"net/http"
+	"strconv"
 )
 
 func init() {
@@ -93,8 +94,8 @@ func Run() {
 	Routing(r)
 
 	isProd := viper.GetBool("IS_PROD")
-	host := viper.GetString("HOST")
 	if isProd {
+		host := viper.GetString("HOST")
 		m := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(host),
@@ -103,7 +104,11 @@ func Run() {
 
 		log.Fatal(autotls.RunWithManager(r, &m))
 	} else {
+		port := viper.GetInt("PORT")
+		if port == 0 {
+			port = 6160
+		}
 		println("Listening for request at port 6160")
-		r.Run(":6160")
+		log.Fatal(r.Run(":" + strconv.Itoa(port)))
 	}
 }
